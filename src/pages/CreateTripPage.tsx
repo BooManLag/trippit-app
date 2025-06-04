@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
-import Layout from '../components/Layout';
-import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
-import countries from '../data/countries.min.json'; // Make sure this path is correct
+import countries from '../data/countries.min.json';
 
 interface Location {
   city: string;
@@ -72,7 +70,15 @@ const CreateTripPage: React.FC = () => {
       });
 
       if (error) throw error;
-      navigate('/trip-created');
+      
+      // Navigate to success page with trip details
+      navigate('/trip-created', {
+        state: {
+          destination: `${selectedLocation.city}, ${selectedLocation.country}`,
+          startDate,
+          endDate
+        }
+      });
     } catch (error) {
       console.error('Error creating trip:', error);
     }

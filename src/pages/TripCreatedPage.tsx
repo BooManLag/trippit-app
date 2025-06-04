@@ -1,65 +1,99 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import Card from '../components/Card';
-import Button from '../components/Button';
-import { MapPin, Calendar, ThumbsUp } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { MapPin, Calendar, ThumbsUp, Gamepad2, BookMarked, Award } from 'lucide-react';
+
+interface LocationState {
+  destination: string;
+  startDate: string;
+  endDate: string;
+}
 
 const TripCreatedPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as LocationState;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   return (
-    <Layout title="Trip Created">
-      <Card>
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
-            <ThumbsUp className="h-8 w-8 text-green-500" />
+    <div className="min-h-screen bg-black text-white">
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
+        <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-500/20 mb-4">
+              <ThumbsUp className="h-8 w-8 text-green-500" />
+            </div>
+            <h2 className="pixel-text text-2xl mb-2">ADVENTURE AWAITS!</h2>
+            <p className="outfit-text text-gray-400">Your trip has been created successfully</p>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800">Your Trip is Ready!</h2>
-          <p className="text-gray-600 mt-2">
-            Time to start planning your adventure
-          </p>
-        </div>
 
-        <div className="border-t border-b py-4 mb-6">
-          <div className="flex items-center mb-3">
-            <MapPin className="h-5 w-5 text-gray-500 mr-2" />
-            <span className="text-gray-700">Paris, France</span>
+          <div className="pixel-card bg-gray-800/50 border-blue-500/10 mb-8">
+            <div className="flex items-center mb-3">
+              <MapPin className="h-5 w-5 text-blue-500 mr-3" />
+              <span className="outfit-text text-lg">{state?.destination || 'Destination not specified'}</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="h-5 w-5 text-blue-500 mr-3" />
+              <span className="outfit-text text-lg">
+                {state?.startDate && state?.endDate
+                  ? `${formatDate(state.startDate)} - ${formatDate(state.endDate)}`
+                  : 'Dates not specified'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center">
-            <Calendar className="h-5 w-5 text-gray-500 mr-2" />
-            <span className="text-gray-700">June 10 - June 17, 2025</span>
+
+          <h3 className="pixel-text text-lg mb-4 text-blue-400">NEXT STEPS</h3>
+          
+          <div className="grid grid-cols-1 gap-4 mb-8">
+            <button
+              onClick={() => navigate('/game')}
+              className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
+            >
+              <Gamepad2 className="h-6 w-6 text-green-500 mr-3" />
+              <div className="text-left">
+                <h4 className="outfit-text font-semibold">Try Travel Scenarios</h4>
+                <p className="outfit-text text-sm text-gray-400">Practice handling travel situations</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate('/tips')}
+              className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
+            >
+              <BookMarked className="h-6 w-6 text-yellow-500 mr-3" />
+              <div className="text-left">
+                <h4 className="outfit-text font-semibold">Browse Travel Tips</h4>
+                <p className="outfit-text text-sm text-gray-400">Learn from experienced travelers</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate('/badges')}
+              className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
+            >
+              <Award className="h-6 w-6 text-purple-500 mr-3" />
+              <div className="text-left">
+                <h4 className="outfit-text font-semibold">View Badges</h4>
+                <p className="outfit-text text-sm text-gray-400">Track your travel achievements</p>
+              </div>
+            </button>
           </div>
-        </div>
 
-        <p className="text-gray-700 mb-6">
-          What would you like to do next?
-        </p>
-
-        <div className="space-y-3">
-          <Button 
-            fullWidth 
-            onClick={() => navigate('/tips')}
+          <button
+            onClick={() => navigate('/')}
+            className="pixel-button-secondary w-full"
           >
-            Browse Travel Tips
-          </Button>
-          <Button 
-            fullWidth 
-            variant="secondary"
-            onClick={() => navigate('/game')}
-          >
-            Try Travel Scenarios
-          </Button>
-          <Button 
-            fullWidth 
-            variant="secondary"
-            onClick={() => navigate('/bucket-list')}
-          >
-            View Bucket List
-          </Button>
+            BACK TO HOME
+          </button>
         </div>
-      </Card>
-    </Layout>
+      </div>
+    </div>
   );
 };
 

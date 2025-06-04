@@ -3,7 +3,7 @@ export interface Trip {
   destination: string;
   startDate: string;
   endDate: string;
-  userId: string;
+  userId: string | null;
 }
 
 export interface Tip {
@@ -78,7 +78,7 @@ export interface Database {
       trips: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           destination: string;
           start_date: string;
           end_date: string;
@@ -86,7 +86,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          user_id?: string | null;
           destination: string;
           start_date: string;
           end_date: string;
@@ -94,7 +94,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           destination?: string;
           start_date?: string;
           end_date?: string;

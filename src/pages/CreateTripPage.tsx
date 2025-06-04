@@ -60,15 +60,12 @@ const CreateTripPage: React.FC = () => {
     if (!selectedLocation) return;
 
     try {
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Get the current user if they're logged in
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (userError) throw userError;
-      if (!user) throw new Error('No user found');
-
-      // Create the trip with the user_id
+      // Create the trip with optional user_id
       const { error } = await supabase.from('trips').insert({
-        user_id: user.id,
+        user_id: user?.id || null, // Use null for anonymous trips
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
         end_date: endDate,

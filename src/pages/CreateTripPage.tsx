@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
-import Card from '../components/Card';
 import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Location {
   city: string;
   country: string;
-  countryCode: string;
+  population: number;
 }
 
 const CreateTripPage: React.FC = () => {
@@ -34,19 +33,13 @@ const CreateTripPage: React.FC = () => {
       setLoading(true);
       try {
         const response = await fetch(
-          `https://wft-geo-db.p.rapidapi.com/v1/geo/cities?namePrefix=${debouncedSearch}&limit=5&sort=-population`,
-          {
-            headers: {
-              'X-RapidAPI-Key': import.meta.env.VITE_RAPIDAPI_KEY,
-              'X-RapidAPI-Host': 'wft-geo-db.p.rapidapi.com'
-            }
-          }
+          `http://api.geonames.org/searchJSON?q=${encodeURIComponent(debouncedSearch)}&maxRows=5&orderby=population&cities=cities1000&username=BooManLag`
         );
         const data = await response.json();
-        const formattedLocations = data.data.map((item: any) => ({
-          city: item.city,
-          country: item.country,
-          countryCode: item.countryCode
+        const formattedLocations = data.geonames.map((item: any) => ({
+          city: item.name,
+          country: item.countryName,
+          population: item.population
         }));
         setLocations(formattedLocations);
         setShowDropdown(true);
@@ -89,108 +82,112 @@ const CreateTripPage: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <Layout title="Create Trip">
-      <Card>
-        <div className="text-center mb-8">
-          <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800">Plan Your Adventure</h2>
-          <p className="text-gray-600 mt-2">Let's create your perfect trip</p>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="relative">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              Where are you going?
-            </label>
+    <div className="min-h-screen bg-black text-white">
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
+        <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
+          <div className="text-center mb-8">
+            <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+            <h2 className="pixel-text text-2xl mb-2">PLAN YOUR ADVENTURE</h2>
+            <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => setShowDropdown(true)}
-                className="w-full px-4 py-2 border rounded-lg pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search for a city..."
-                required
-              />
-              <div className="absolute right-3 top-2.5">
-                {loading ? (
-                  <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                ) : (
-                  <Search className="w-5 h-5 text-gray-400" />
-                )}
-              </div>
-            </div>
-            
-            {showDropdown && locations.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-auto">
-                {locations.map((location, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:outline-none"
-                    onClick={() => handleLocationSelect(location)}
-                  >
-                    <div className="font-medium">{location.city}</div>
-                    <div className="text-sm text-gray-600">{location.country}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Start Date
+              <label className="block pixel-text text-sm mb-2 text-blue-400">
+                WHERE ARE YOU GOING?
               </label>
               <div className="relative">
                 <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={today}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setShowDropdown(true)}
+                  className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50 transition-colors duration-200"
+                  placeholder="Search for a city..."
                   required
                 />
-                <Calendar className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
+                <div className="absolute right-3 top-3">
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  ) : (
+                    <Search className="w-5 h-5 text-blue-500" />
+                  )}
+                </div>
               </div>
+              
+              {showDropdown && locations.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-gray-800 border-2 border-blue-500/20 max-h-60 overflow-auto">
+                  {locations.map((location, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-700 focus:outline-none transition-colors duration-200"
+                      onClick={() => handleLocationSelect(location)}
+                    >
+                      <div className="font-medium text-white">{location.city}</div>
+                      <div className="text-sm text-gray-400">{location.country}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                End Date
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || today}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                <Calendar className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
-              </div>
-            </div>
-          </div>
 
-          <div className="flex justify-between pt-4">
-            <Button 
-              variant="secondary" 
-              onClick={() => navigate('/')}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={!selectedLocation || !startDate || !endDate}
-            >
-              Create Trip
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </Layout>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block pixel-text text-sm mb-2 text-blue-400">
+                  START DATE
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={today}
+                    className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50 transition-colors duration-200"
+                    required
+                  />
+                  <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block pixel-text text-sm mb-2 text-blue-400">
+                  END DATE
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || today}
+                    className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50 transition-colors duration-200"
+                    required
+                  />
+                  <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between pt-6">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="pixel-button-secondary bg-gray-700 hover:bg-gray-600"
+              >
+                CANCEL
+              </button>
+              <button
+                type="submit"
+                disabled={!selectedLocation || !startDate || !endDate}
+                className="pixel-button-primary bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                CREATE TRIP
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 };
 

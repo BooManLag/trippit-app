@@ -51,3 +51,56 @@ export interface User {
   badges: Badge[];
   bucketList: BucketListItem[];
 }
+
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: {
+          id: string;
+          email: string;
+          display_name: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          display_name?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          display_name?: string | null;
+          created_at?: string;
+        };
+      };
+      trips: {
+        Row: {
+          id: string;
+          user_id: string;
+          destination: string;
+          start_date: string;
+          end_date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          destination: string;
+          start_date: string;
+          end_date: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          destination?: string;
+          start_date?: string;
+          end_date?: string;
+          created_at?: string;
+        };
+      };
+    };
+  };
+}

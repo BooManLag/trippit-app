@@ -47,6 +47,13 @@
   }
 }
 
+/* Hide native calendar icon in input[type="date"] */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
 /* Pixel Border Utility */
 @layer utilities {
   .pixel-text {

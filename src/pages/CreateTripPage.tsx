@@ -5,7 +5,7 @@ import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
-import countries from '../data/countries.min.json'; // ← make sure the path is correct
+import countries from '../data/countries.min.json'; // Make sure this path is correct
 
 interface Location {
   city: string;
@@ -24,31 +24,30 @@ const CreateTripPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
-useEffect(() => {
-  if (debouncedSearch.length < 2) {
-    setLocations([]);
-    return;
-  }
-
-  try {
-    const results: Location[] = [];
-
-    for (const country in countries) {
-      countries[country].forEach((city: string) => {
-        if (city.toLowerCase().includes(debouncedSearch.toLowerCase())) {
-          results.push({ city, country });
-        }
-      });
+  useEffect(() => {
+    if (debouncedSearch.length < 2) {
+      setLocations([]);
+      return;
     }
 
-    setLocations(results.slice(0, 10)); // Limit to 10 results
-    setShowDropdown(true);
-  } catch (error) {
-    console.error('Error filtering locations from JSON:', error);
-    setLocations([]);
-  }
-}, [debouncedSearch]);
+    try {
+      const results: Location[] = [];
 
+      for (const country in countries) {
+        countries[country].forEach((city: string) => {
+          if (city.toLowerCase().includes(debouncedSearch.toLowerCase())) {
+            results.push({ city, country });
+          }
+        });
+      }
+
+      setLocations(results.slice(0, 10));
+      setShowDropdown(true);
+    } catch (error) {
+      console.error('Error filtering locations from JSON:', error);
+      setLocations([]);
+    }
+  }, [debouncedSearch]);
 
   const handleLocationSelect = (location: Location) => {
     setSelectedLocation(location);
@@ -61,7 +60,15 @@ useEffect(() => {
     if (!selectedLocation) return;
 
     try {
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) throw userError;
+      if (!user) throw new Error('No user found');
+
+      // Create the trip with the user_id
       const { error } = await supabase.from('trips').insert({
+        user_id: user.id,
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
         end_date: endDate,
@@ -91,21 +98,23 @@ useEffect(() => {
               <label className="block pixel-text text-sm mb-2 text-blue-400">
                 WHERE ARE YOU GOING?
               </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => setShowDropdown(true)}
-                className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
-                placeholder="Search for a city..."
-                required
-              />
-              <div className="absolute right-3 top-3">
-                {loading ? (
-                  <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                ) : (
-                  <Search className="w-5 h-5 text-blue-500" />
-                )}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setShowDropdown(true)}
+                  className="w-full px-4 pr-10 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+                  placeholder="Search for a city..."
+                  required
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  ) : (
+                    <Search className="w-5 h-5 text-blue-500" />
+                  )}
+                </div>
               </div>
 
               {showDropdown && locations.length > 0 && (
@@ -130,30 +139,34 @@ useEffect(() => {
                 <label className="block pixel-text text-sm mb-2 text-blue-400">
                   START DATE
                 </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={today}
-                  className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white"
-                  required
-                />
-                <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={today}
+                    className="w-full px-4 pr-10 py-3 bg-gray-800 border-2 border-blue-500/20 text-white focus:outline-none focus:border-blue-500/50"
+                    required
+                  />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
+                </div>
               </div>
 
               <div>
                 <label className="block pixel-text text-sm mb-2 text-blue-400">
                   END DATE
                 </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || today}
-                  className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white"
-                  required
-                />
-                <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || today}
+                    className="w-full px-4 pr-10 py-3 bg-gray-800 border-2 border-blue-500/20 text-white focus:outline-none focus:border-blue-500/50"
+                    required
+                  />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
+                </div>
               </div>
             </div>
 

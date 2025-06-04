@@ -33,8 +33,11 @@ const CreateTripPage: React.FC = () => {
       setLoading(true);
       try {
         const response = await fetch(
-          `http://api.geonames.org/searchJSON?q=${encodeURIComponent(debouncedSearch)}&maxRows=5&orderby=population&cities=cities1000&username=BooManLag`
+          `https://secure.geonames.org/searchJSON?q=${encodeURIComponent(debouncedSearch)}&maxRows=5&orderby=population&cities=cities1000&username=boomanlag`
         );
+        if (!response.ok) {
+          throw new Error(`GeoNames error: ${response.status}`);
+        }
         const data = await response.json();
         const formattedLocations = data.geonames.map((item: any) => ({
           city: item.name,
@@ -45,6 +48,7 @@ const CreateTripPage: React.FC = () => {
         setShowDropdown(true);
       } catch (error) {
         console.error('Error fetching locations:', error);
+        setLocations([]);
       } finally {
         setLoading(false);
       }

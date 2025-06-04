@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Layer Styling */
+@layer base {
+  body {
+    @apply bg-black text-white;
+    image-rendering: pixelated;
+  }
+}
+
+/* Custom Components */
+@layer components {
+  .pixel-button {
+    @apply pixel-text px-8 py-4 rounded-none relative 
+           transition-all duration-200 
+           before:content-[''] before:absolute before:inset-0
+           before:border-2 before:border-white/20
+           hover:translate-y-[-2px];
+  }
+
+  .pixel-button-primary {
+    @apply pixel-button;
+    background-color: theme('colors.primary');
+  }
+  .pixel-button-primary:hover {
+    background-color: theme('colors.primary-hover');
+  }
+
+  .pixel-button-secondary {
+    @apply pixel-button;
+    background-color: theme('colors.secondary');
+  }
+  .pixel-button-secondary:hover {
+    background-color: theme('colors.secondary-hover');
+  }
+
+  .pixel-card {
+    @apply bg-gray-900 p-6 rounded-none border-2 border-white/20
+           transition-all duration-200 hover:border-white/40;
+  }
+}
+
+/* Pixel Border Utility */
+@layer utilities {
+  .pixel-text {
+    font-family: 'Press Start 2P', monospace;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+  }
+
+  .outfit-text {
+    font-family: 'Outfit', sans-serif;
+  }
+}

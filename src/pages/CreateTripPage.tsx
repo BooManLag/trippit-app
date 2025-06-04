@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
+import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
-import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import countries from '../data/countries.min.json'; // ← make sure the path is correct
 
 interface Location {
   city: string;
   country: string;
-  population: number;
+  population?: number;
 }
 
 const CreateTripPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch] = useDebounce(searchTerm, 500);
+  const [debouncedSearch] = useDebounce(searchTerm, 300);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -23,41 +24,31 @@ const CreateTripPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
-    const searchLocations = async () => {
-      if (debouncedSearch.length < 2) {
-        setLocations([]);
-        return;
-      }
+useEffect(() => {
+  if (debouncedSearch.length < 2) {
+    setLocations([]);
+    return;
+  }
 
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `https://secure.geonames.org/searchJSON?q=${encodeURIComponent(debouncedSearch)}&maxRows=5&orderby=population&cities=cities1000&username=${import.meta.env.VITE_GEONAMES_USERNAME}`
-        );
-        if (!response.ok) {
-          throw new Error(`GeoNames error: ${response.status}`);
+  try {
+    const results: Location[] = [];
+
+    for (const country in countries) {
+      countries[country].forEach((city: string) => {
+        if (city.toLowerCase().includes(debouncedSearch.toLowerCase())) {
+          results.push({ city, country });
         }
-        const data = await response.json();
-        const formattedLocations = data.geonames.map((item: any) => ({
-          city: item.name,
-          country: item.countryName,
-          population: item.population
-        }));
-        setLocations(formattedLocations);
-        setShowDropdown(true);
-      } catch (error) {
-        console.error('Error fetching locations:', error);
-        setLocations([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (debouncedSearch) {
-      searchLocations();
+      });
     }
-  }, [debouncedSearch]);
+
+    setLocations(results.slice(0, 10)); // Limit to 10 results
+    setShowDropdown(true);
+  } catch (error) {
+    console.error('Error filtering locations from JSON:', error);
+    setLocations([]);
+  }
+}, [debouncedSearch]);
+
 
   const handleLocationSelect = (location: Location) => {
     setSelectedLocation(location);
@@ -73,7 +64,7 @@ const CreateTripPage: React.FC = () => {
       const { error } = await supabase.from('trips').insert({
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
-        end_date: endDate
+        end_date: endDate,
       });
 
       if (error) throw error;
@@ -94,38 +85,36 @@ const CreateTripPage: React.FC = () => {
             <h2 className="pixel-text text-2xl mb-2">PLAN YOUR ADVENTURE</h2>
             <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
               <label className="block pixel-text text-sm mb-2 text-blue-400">
                 WHERE ARE YOU GOING?
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onFocus={() => setShowDropdown(true)}
-                  className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50 transition-colors duration-200"
-                  placeholder="Search for a city..."
-                  required
-                />
-                <div className="absolute right-3 top-3">
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                  ) : (
-                    <Search className="w-5 h-5 text-blue-500" />
-                  )}
-                </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setShowDropdown(true)}
+                className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+                placeholder="Search for a city..."
+                required
+              />
+              <div className="absolute right-3 top-3">
+                {loading ? (
+                  <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                ) : (
+                  <Search className="w-5 h-5 text-blue-500" />
+                )}
               </div>
-              
+
               {showDropdown && locations.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-gray-800 border-2 border-blue-500/20 max-h-60 overflow-auto">
                   {locations.map((location, index) => (
                     <button
                       key={index}
                       type="button"
-                      className="w-full px-4 py-3 text-left hover:bg-gray-700 focus:outline-none transition-colors duration-200"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-700"
                       onClick={() => handleLocationSelect(location)}
                     >
                       <div className="font-medium text-white">{location.city}</div>
@@ -141,34 +130,30 @@ const CreateTripPage: React.FC = () => {
                 <label className="block pixel-text text-sm mb-2 text-blue-400">
                   START DATE
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    min={today}
-                    className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50 transition-colors duration-200"
-                    required
-                  />
-                  <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
-                </div>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  min={today}
+                  className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white"
+                  required
+                />
+                <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
               </div>
-              
+
               <div>
                 <label className="block pixel-text text-sm mb-2 text-blue-400">
                   END DATE
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate || today}
-                    className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50 transition-colors duration-200"
-                    required
-                  />
-                  <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
-                </div>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate || today}
+                  className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white"
+                  required
+                />
+                <Calendar className="absolute right-3 top-3 w-5 h-5 text-blue-500" />
               </div>
             </div>
 
@@ -183,7 +168,7 @@ const CreateTripPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={!selectedLocation || !startDate || !endDate}
-                className="pixel-button-primary bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="pixel-button-primary bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
               >
                 CREATE TRIP
               </button>

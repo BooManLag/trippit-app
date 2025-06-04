@@ -33,7 +33,7 @@ const CreateTripPage: React.FC = () => {
       setLoading(true);
       try {
         const response = await fetch(
-          `https://secure.geonames.org/searchJSON?q=${encodeURIComponent(debouncedSearch)}&maxRows=5&orderby=population&cities=cities1000&username=boomanlag`
+          `https://secure.geonames.org/searchJSON?q=${encodeURIComponent(debouncedSearch)}&maxRows=5&orderby=population&cities=cities1000&username=${import.meta.env.VITE_GEONAMES_USERNAME}`
         );
         if (!response.ok) {
           throw new Error(`GeoNames error: ${response.status}`);

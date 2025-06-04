@@ -94,7 +94,7 @@ const HomePage: React.FC = () => {
           {["About", "Contact", "Terms"].map((link, index) => (
             <a
               key={index}
-              href={/${link.toLowerCase()}}
+              href={`/${link.toLowerCase()}`}
               className="pixel-text text-gray-400 hover:text-white mx-4 text-xs"
             >
               {link}

@@ -4,7 +4,6 @@ import { useDebounce } from 'use-debounce';
 import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
 import { supabase, isAuthenticated } from '../lib/supabase';
 import countries from '../data/countries.min.json';
-import BackButton from '../components/BackButton';
 
 interface Location {
   city: string;
@@ -98,9 +97,10 @@ const CreateTripPage: React.FC = () => {
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
-          <div className="flex justify-between items-center mb-8">
-            <BackButton to="/my-trips" />
-            <h2 className="pixel-text text-2xl">PLAN YOUR TRIP</h2>
+          <div className="text-center mb-8">
+            <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+            <h2 className="pixel-text text-2xl mb-2">PLAN YOUR TRIP</h2>
+            <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

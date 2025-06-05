@@ -125,6 +125,13 @@ const TripDashboardPage: React.FC = () => {
     );
   };
 
+  const getChecklistSummary = () => {
+    const totalTasks = checklistItems.length;
+    const completedTasks = checklistItems.filter(item => item.is_completed).length;
+    const remainingTasks = totalTasks - completedTasks;
+    return { totalTasks, completedTasks, remainingTasks };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -132,6 +139,8 @@ const TripDashboardPage: React.FC = () => {
       </div>
     );
   }
+
+  const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
 
   return (
     <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
@@ -174,7 +183,7 @@ const TripDashboardPage: React.FC = () => {
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Left Column: Checklist */}
+          {/* Left Column: Checklist Summary */}
           <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -188,15 +197,20 @@ const TripDashboardPage: React.FC = () => {
                 VIEW ALL
               </button>
             </div>
-            <div className="space-y-3">
-              {checklistItems.slice(0, 5).map(item => (
-                <div key={item.id} className="flex items-center p-3 bg-gray-800 border border-blue-500/10">
-                  <div className={`w-5 h-5 border-2 ${item.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-500'} mr-3`} />
-                  <span className={`outfit-text ${item.is_completed ? 'text-gray-500 line-through' : 'text-white'}`}>
-                    {item.description}
-                  </span>
-                </div>
-              ))}
+            <div className="text-center p-6 bg-gray-800 border border-blue-500/10">
+              <div className="pixel-text text-4xl text-yellow-400 mb-4">
+                {remainingTasks}
+              </div>
+              <p className="outfit-text text-gray-300">Tasks remaining</p>
+              <div className="mt-4 outfit-text text-sm text-gray-400">
+                {completedTasks} of {totalTasks} completed
+              </div>
+              <div className="w-full bg-gray-700 h-2 mt-3 rounded-full overflow-hidden">
+                <div 
+                  className="bg-green-500 h-full transition-all duration-300"
+                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
+                />
+              </div>
             </div>
           </div>
 

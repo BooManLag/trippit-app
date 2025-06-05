@@ -14,16 +14,17 @@ const ChecklistPage: React.FC = () => {
   const loadChecklist = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      
+      // Query based on authentication status
       const { data: items, error } = await supabase
         .from('checklist_items')
         .select('*')
-        .eq('user_id', user.id)
+        .eq(user ? 'user_id' : 'is_default', user ? user.id : true)
         .order('created_at');
 
       if (error) throw error;
 
+      // Group items by category
       const grouped = (items || []).reduce((acc: CategoryType[], item) => {
         const existing = acc.find(c => c.name === item.category);
         const entry: ChecklistItem = {
@@ -33,6 +34,7 @@ const ChecklistPage: React.FC = () => {
           isCompleted: item.is_completed,
           isDefault: item.is_default
         };
+        
         if (existing) {
           existing.items.push(entry);
         } else {
@@ -55,14 +57,22 @@ const ChecklistPage: React.FC = () => {
   };
 
   const handleToggleItem = async (id: string) => {
-    const allItems = categories.flatMap(c => c.items);
-    const item = allItems.find(i => i.id === id);
-    if (!item) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // For anonymous users, just update the state
+      setCategories(categories.map(cat => ({
+        ...cat,
+        items: cat.items.map(i =>
+          i.id === id ? { ...i, isCompleted: !i.isCompleted } : i
+        )
+      })));
+      return;
+    }
 
     try {
       const { error } = await supabase
         .from('checklist_items')
-        .update({ is_completed: !item.isCompleted })
+        .update({ is_completed: !categories.flatMap(c => c.items).find(i => i.id === id)?.isCompleted })
         .eq('id', id);
       if (error) throw error;
 
@@ -79,7 +89,25 @@ const ChecklistPage: React.FC = () => {
 
   const handleAddItem = async (category: string, description = 'New item') => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      // For anonymous users, just update the state with a temporary ID
+      const tempId = Math.random().toString(36).substring(7);
+      setCategories(categories.map(cat =>
+        cat.name === category
+          ? {
+              ...cat,
+              items: [...cat.items, {
+                id: tempId,
+                category,
+                description,
+                isCompleted: false,
+                isDefault: false
+              }]
+            }
+          : cat
+      ));
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -98,13 +126,16 @@ const ChecklistPage: React.FC = () => {
 
       setCategories(categories.map(cat =>
         cat.name === category
-          ? { ...cat, items: [...cat.items, {
-              id: data.id,
-              category: data.category,
-              description: data.description,
-              isCompleted: data.is_completed,
-              isDefault: data.is_default
-            }] }
+          ? {
+              ...cat,
+              items: [...cat.items, {
+                id: data.id,
+                category: data.category,
+                description: data.description,
+                isCompleted: data.is_completed,
+                isDefault: data.is_default
+              }]
+            }
           : cat
       ));
     } catch (err) {
@@ -113,6 +144,16 @@ const ChecklistPage: React.FC = () => {
   };
 
   const handleDeleteItem = async (id: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // For anonymous users, just update the state
+      setCategories(categories.map(cat => ({
+        ...cat,
+        items: cat.items.filter(i => i.id !== id)
+      })));
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('checklist_items')

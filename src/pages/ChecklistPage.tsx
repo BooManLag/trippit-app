@@ -17,11 +17,11 @@ const ChecklistPage: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Query checklist items based on authentication status
+      // Query checklist items for either authenticated user or anonymous items
       const { data: items, error } = await supabase
         .from('checklist_items')
         .select('*')
-        .eq(user ? 'user_id' : 'user_id', user ? user.id : null)
+        .eq(user ? 'user_id' : 'is_default', user ? user.id : true)
         .order('created_at');
 
       if (error) throw error;
@@ -161,29 +161,64 @@ const ChecklistPage: React.FC = () => {
 
   return (
     <Layout title="Pre-Trip Checklist">
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Your Travel Checklist</h2>
-          <span className="text-sm font-medium text-blue-500">
-            {completedCount}/{totalCount} completed
+      <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="pixel-text text-2xl text-white">YOUR TRAVEL CHECKLIST</h2>
+          <span className="pixel-text text-sm text-blue-400">
+            {completedCount}/{totalCount}
           </span>
         </div>
 
         {categories.length > 0 ? (
-          categories.map(category => (
-            <ChecklistCategory
-              key={category.id}
-              name={category.name}
-              items={category.items}
-              onToggleItem={handleToggleItem}
-              onAddItem={handleAddItem}
-              onDeleteItem={handleDeleteItem}
-            />
-          ))
+          <div className="space-y-8">
+            {categories.map(category => (
+              <div key={category.id} className="pixel-card bg-gray-800/50 border-blue-500/10 p-6">
+                <h3 className="pixel-text text-lg text-blue-400 mb-4">
+                  {category.emoji} {category.name.split(' ')[1]}
+                </h3>
+                <div className="space-y-3">
+                  {category.items.map(item => (
+                    <div
+                      key={item.id}
+                      className="flex items-center bg-gray-800 border-2 border-blue-500/10 p-4 hover:border-blue-500/30 transition-colors"
+                    >
+                      <button
+                        onClick={() => handleToggleItem(item.id)}
+                        className={`flex items-center justify-center w-6 h-6 border-2 mr-4 transition-colors ${
+                          item.isCompleted
+                            ? 'bg-green-500 border-green-500'
+                            : 'border-gray-600 hover:border-green-500'
+                        }`}
+                      >
+                        {item.isCompleted && '✓'}
+                      </button>
+                      <span className={`outfit-text ${item.isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>
+                        {item.description}
+                      </span>
+                      {!item.isDefault && (
+                        <button
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="ml-auto text-red-500 hover:text-red-400 pixel-text"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => handleAddItem(category.name, '')}
+                  className="mt-4 text-blue-400 hover:text-blue-300 pixel-text text-sm flex items-center"
+                >
+                  + ADD ITEM
+                </button>
+              </div>
+            ))}
+          </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <p>No checklist items found.</p>
-            <p className="mt-2">Add items to help organize your trip preparations!</p>
+          <div className="text-center py-8">
+            <p className="pixel-text text-gray-400">NO CHECKLIST ITEMS FOUND</p>
+            <p className="outfit-text text-gray-500 mt-2">Add items to help organize your trip preparations!</p>
           </div>
         )}
       </div>

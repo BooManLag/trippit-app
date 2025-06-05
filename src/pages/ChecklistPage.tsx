@@ -16,8 +16,6 @@ const ChecklistPage: React.FC = () => {
   const loadChecklist = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Query checklist items for either authenticated user or anonymous items
       const { data: items, error } = await supabase
         .from('checklist_items')
         .select('*')
@@ -26,7 +24,6 @@ const ChecklistPage: React.FC = () => {
 
       if (error) throw error;
 
-      // Group items by category
       const groupedItems = (items || []).reduce((acc: CategoryType[], item) => {
         const existingCategory = acc.find(cat => cat.name === item.category);
         const checklistItem: ChecklistItem = {
@@ -61,21 +58,17 @@ const ChecklistPage: React.FC = () => {
 
   const handleToggleItem = async (id: string) => {
     try {
-      const item = categories
-        .flatMap(cat => cat.items)
-        .find(item => item.id === id);
-
+      const item = categories.flatMap(cat => cat.items).find(item => item.id === id);
       if (item) {
         const { error } = await supabase
           .from('checklist_items')
           .update({ is_completed: !item.isCompleted })
           .eq('id', id);
-
         if (error) throw error;
 
         setCategories(categories.map(category => ({
           ...category,
-          items: category.items.map(item => 
+          items: category.items.map(item =>
             item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
           )
         })));
@@ -88,7 +81,6 @@ const ChecklistPage: React.FC = () => {
   const handleAddItem = async (category: string, description: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       const { data: newItem, error } = await supabase
         .from('checklist_items')
         .insert({
@@ -129,7 +121,6 @@ const ChecklistPage: React.FC = () => {
         .from('checklist_items')
         .delete()
         .eq('id', id);
-
       if (error) throw error;
 
       setCategories(categories.map(category => ({
@@ -151,11 +142,10 @@ const ChecklistPage: React.FC = () => {
     );
   }
 
-  const completedCount = categories.reduce((total, cat) => 
+  const completedCount = categories.reduce((total, cat) =>
     total + cat.items.filter(item => item.isCompleted).length, 0
   );
-  
-  const totalCount = categories.reduce((total, cat) => 
+  const totalCount = categories.reduce((total, cat) =>
     total + cat.items.length, 0
   );
 
@@ -172,9 +162,9 @@ const ChecklistPage: React.FC = () => {
         {categories.length > 0 ? (
           <div className="space-y-8">
             {categories.map(category => (
-              <div key={category.id} className="pixel-card bg-gray-800/50 border-blue-500/10 p-6">
+              <div key={category.id} className="pixel-card bg-gray-800/60 border-blue-500/10 p-6">
                 <h3 className="pixel-text text-lg text-blue-400 mb-4">
-                  {category.emoji} {category.name.split(' ')[1]}
+                  {category.emoji} {category.name.split(' ').slice(1).join(' ')}
                 </h3>
                 <div className="space-y-3">
                   {category.items.map(item => (

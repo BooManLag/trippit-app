@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, isAuthenticated } from '../lib/supabase';
 import { MapPin, Loader2, PlusCircle } from 'lucide-react';
+import BackButton from '../components/BackButton';
 
 interface Trip {
   id: string;
@@ -16,17 +17,18 @@ const MyTripsPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchTrips = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+    const checkAuthAndFetchTrips = async () => {
+      const authenticated = await isAuthenticated();
+      if (!authenticated) {
         navigate('/');
         return;
       }
 
+      const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('trips')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user!.id)
         .order('start_date', { ascending: true });
 
       if (error) {
@@ -37,7 +39,7 @@ const MyTripsPage: React.FC = () => {
       setLoading(false);
     };
 
-    fetchTrips();
+    checkAuthAndFetchTrips();
   }, [navigate]);
 
   const today = new Date().toISOString().split('T')[0];
@@ -56,7 +58,10 @@ const MyTripsPage: React.FC = () => {
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="pixel-text text-2xl">MY TRIPS</h2>
+          <div className="flex items-center gap-4">
+            <BackButton to="/" />
+            <h2 className="pixel-text text-2xl">MY TRIPS</h2>
+          </div>
           <button
             onClick={() => navigate('/create-trip')}
             className="pixel-button-secondary flex items-center gap-2"

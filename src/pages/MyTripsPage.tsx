@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
 import { MapPin, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import BackButton from '../components/BackButton';
+import DeleteModal from '../components/DeleteModal';
 
 interface Trip {
   id: string;
@@ -14,6 +15,8 @@ interface Trip {
 const MyTripsPage: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchTrips = async () => {
@@ -45,18 +48,23 @@ const MyTripsPage: React.FC = () => {
     checkAuthAndFetchTrips();
   }, [navigate]);
 
-  const handleDeleteTrip = async (tripId: string) => {
-    if (window.confirm('Are you sure you want to delete this trip?')) {
-      const { error } = await supabase
-        .from('trips')
-        .delete()
-        .eq('id', tripId);
+  const handleDeleteClick = (tripId: string) => {
+    setTripToDelete(tripId);
+    setDeleteModalOpen(true);
+  };
 
-      if (error) {
-        console.error('Error deleting trip:', error);
-      } else {
-        await fetchTrips();
-      }
+  const handleConfirmDelete = async () => {
+    if (!tripToDelete) return;
+
+    const { error } = await supabase
+      .from('trips')
+      .delete()
+      .eq('id', tripToDelete);
+
+    if (error) {
+      console.error('Error deleting trip:', error);
+    } else {
+      await fetchTrips();
     }
   };
 
@@ -90,7 +98,7 @@ const MyTripsPage: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-48">
+          <div className="flex justify-center items-center h-[60vh]">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           </div>
         ) : trips.length > 0 ? (
@@ -112,7 +120,7 @@ const MyTripsPage: React.FC = () => {
                           </p>
                         </div>
                         <button
-                          onClick={() => handleDeleteTrip(trip.id)}
+                          onClick={() => handleDeleteClick(trip.id)}
                           className="text-red-500 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -141,7 +149,7 @@ const MyTripsPage: React.FC = () => {
                           </p>
                         </div>
                         <button
-                          onClick={() => handleDeleteTrip(trip.id)}
+                          onClick={() => handleDeleteClick(trip.id)}
                           className="text-red-500/50 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -154,8 +162,8 @@ const MyTripsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="text-center py-16 pixel-card bg-gray-900 border-2 border-blue-500/20">
-            <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+          <div className="flex flex-col items-center justify-center h-[60vh] pixel-card bg-gray-900 border-2 border-blue-500/20">
+            <MapPin className="w-12 h-12 text-blue-500 mb-4" />
             <h3 className="pixel-text text-lg text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
             <p className="outfit-text text-gray-500 mb-6">Create your first trip and begin your journey!</p>
             <button
@@ -166,6 +174,14 @@ const MyTripsPage: React.FC = () => {
             </button>
           </div>
         )}
+
+        <DeleteModal
+          isOpen={deleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="DELETE TRIP"
+          message="Are you sure you want to delete this trip? This action cannot be undone."
+        />
       </div>
     </div>
   );

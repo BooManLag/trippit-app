@@ -35,6 +35,15 @@ const TripDashboardPage: React.FC = () => {
     { id: '4', title: 'Learn basic phrases', completed: false }
   ]);
 
+  const groupedChecklist = checklistItems.reduce((acc, item) => {
+    const category = item.category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {} as Record<string, ChecklistItem[]>);
+
   const fetchChecklistItems = async (userId: string) => {
     const { data: items, error } = await supabase
       .from('checklist_items')
@@ -275,20 +284,62 @@ const TripDashboardPage: React.FC = () => {
                 VIEW ALL
               </button>
             </div>
-            <div className="text-center p-6 bg-gray-800 border border-blue-500/10">
-              <div className="pixel-text text-4xl text-yellow-400 mb-4">
+
+            {/* Checklist Progress */}
+            <div className="text-center p-4 bg-gray-800 border border-blue-500/10 mb-6">
+              <div className="pixel-text text-4xl text-yellow-400 mb-2">
                 {remainingTasks}
               </div>
               <p className="outfit-text text-gray-300">Tasks remaining</p>
-              <div className="mt-4 outfit-text text-sm text-gray-400">
+              <div className="mt-3 outfit-text text-sm text-gray-400">
                 {completedTasks} of {totalTasks} completed
               </div>
-              <div className="w-full bg-gray-700 h-2 mt-3 rounded-full overflow-hidden">
+              <div className="w-full bg-gray-700 h-2 mt-2 rounded-full overflow-hidden">
                 <div 
                   className="bg-green-500 h-full transition-all duration-300"
                   style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
                 />
               </div>
+            </div>
+
+            {/* Categorized Checklist */}
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {Object.entries(groupedChecklist).map(([category, items]) => (
+                <div key={category} className="bg-gray-800 p-4 border border-blue-500/10">
+                  <h4 className="pixel-text text-sm text-blue-400 mb-3">{category}</h4>
+                  <div className="space-y-2">
+                    {items.slice(0, 3).map(item => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2"
+                      >
+                        <button
+                          onClick={() => toggleChecklistItem(item.id)}
+                          className={`w-4 h-4 border ${
+                            item.is_completed
+                              ? 'bg-green-500 border-green-500'
+                              : 'border-gray-500'
+                          }`}
+                        />
+                        <span className={`outfit-text text-sm ${
+                          item.is_completed
+                            ? 'text-gray-500 line-through'
+                            : 'text-gray-300'
+                        }`}>
+                          {item.description}
+                        </span>
+                      </div>
+                    ))}
+                    {items.length > 3 && (
+                      <div className="text-right mt-2">
+                        <span className="outfit-text text-xs text-blue-400">
+                          +{items.length - 3} more
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

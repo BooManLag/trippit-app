@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ChecklistItem } from '../types';
 import { Loader2, ArrowLeft, PlusCircle, Trash2, CheckCircle2 } from 'lucide-react';
+import { defaultChecklist } from '../data/defaultChecklist';
+
+interface GroupedItems {
+  [category: string]: ChecklistItem[];
+}
 
 const ChecklistPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -10,6 +15,7 @@ const ChecklistPage: React.FC = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [newItem, setNewItem] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(defaultChecklist[0].name);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,7 +76,7 @@ const ChecklistPage: React.FC = () => {
         user_id: user!.id,
         trip_id: tripId,
         description: newItem.trim(),
-        category: '✨ Custom',
+        category: selectedCategory,
         is_completed: false,
         is_default: false
       })
@@ -82,14 +88,30 @@ const ChecklistPage: React.FC = () => {
     }
   };
 
+  const groupedItems = items.reduce<GroupedItems>((acc, item) => {
+    const category = item.category || '✨ Custom';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {});
+
+  const completedCount = items.filter(item => item.is_completed).length;
+
   return (
     <div className="min-h-screen bg-black text-white px-4 py-8">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate(-1)} className="text-blue-400 hover:text-blue-300">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h2 className="pixel-text text-xl">TRIP CHECKLIST</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="text-blue-400 hover:text-blue-300">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="pixel-text text-xl">TRIP CHECKLIST</h2>
+          </div>
+          <div className="pixel-text text-sm text-blue-400">
+            {completedCount}/{items.length}
+          </div>
         </div>
 
         {loading ? (
@@ -97,57 +119,86 @@ const ChecklistPage: React.FC = () => {
             <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-4">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between px-4 py-3 border ${
-                  item.is_completed
-                    ? 'bg-green-500/10 border-green-500/20'
-                    : 'bg-gray-800 border-blue-500/10'
-                }`}
-              >
-                <div
-                  onClick={() => toggleComplete(item)}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
-                  <CheckCircle2
-                    className={`w-5 h-5 ${
-                      item.is_completed ? 'text-green-400' : 'text-gray-500'
-                    }`}
-                  />
-                  <span
-                    className={`outfit-text ${
-                      item.is_completed ? 'line-through text-gray-400' : 'text-white'
-                    }`}
-                  >
-                    {item.description}
-                  </span>
+          <div className="space-y-8">
+            {defaultChecklist.map(category => {
+              const categoryItems = groupedItems[category.name] || [];
+              return (
+                <div key={category.id} className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
+                  <h3 className="pixel-text text-lg text-blue-400 mb-4">
+                    {category.emoji} {category.name.split(' ').slice(1).join(' ')}
+                  </h3>
+                  <div className="space-y-3">
+                    {categoryItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between px-4 py-3 border ${
+                          item.is_completed
+                            ? 'bg-green-500/10 border-green-500/20'
+                            : 'bg-gray-800 border-blue-500/10'
+                        }`}
+                      >
+                        <div
+                          onClick={() => toggleComplete(item)}
+                          className="flex items-center gap-3 cursor-pointer flex-1"
+                        >
+                          <CheckCircle2
+                            className={`w-5 h-5 ${
+                              item.is_completed ? 'text-green-400' : 'text-gray-500'
+                            }`}
+                          />
+                          <span
+                            className={`outfit-text ${
+                              item.is_completed ? 'line-through text-gray-400' : 'text-white'
+                            }`}
+                          >
+                            {item.description}
+                          </span>
+                        </div>
+                        {!item.is_default && (
+                          <button onClick={() => deleteItem(item.id)} className="text-red-500">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="text-red-500">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Add new item */}
-        <div className="mt-8">
-          <div className="flex items-center gap-3">
-            <input
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="Add a new task..."
-              className="w-full px-4 py-3 bg-gray-900 border border-blue-500/20 text-white rounded-none outline-none"
-            />
-            <button
-              onClick={addItem}
-              className="pixel-button-primary flex items-center gap-2"
+        <div className="mt-8 pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
+          <h3 className="pixel-text text-lg text-blue-400 mb-4">ADD NEW ITEM</h3>
+          <div className="space-y-4">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none"
             >
-              <PlusCircle className="w-4 h-4" />
-              Add
-            </button>
+              {defaultChecklist.map(category => (
+                <option key={category.id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex items-center gap-3">
+              <input
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                placeholder="Add a new task..."
+                className="w-full px-4 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none"
+                onKeyPress={(e) => e.key === 'Enter' && addItem()}
+              />
+              <button
+                onClick={addItem}
+                className="pixel-button-primary flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Add
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -81,8 +81,8 @@ const MyTripsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+    <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
+      <div className="w-full max-w-3xl">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
             <BackButton to="/" />
@@ -162,7 +162,7 @@ const MyTripsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <div className="flex flex-col items-center justify-center h-[60vh] bg-gray-900 border-2 border-blue-500/20 rounded text-center px-6">
             <MapPin className="w-12 h-12 text-blue-500 mb-4" />
             <h3 className="pixel-text text-lg text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
             <p className="outfit-text text-gray-500 mb-6">Create your first trip and begin your journey!</p>

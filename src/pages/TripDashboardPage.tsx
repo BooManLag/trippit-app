@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
-import { mockTips } from '../data/mockData';
 import TipCard from '../components/TipCard';
-import { ChecklistItem } from '../types';
+import { ChecklistItem, Tip } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 
 interface TripDetails {
@@ -27,6 +26,8 @@ const TripDashboardPage: React.FC = () => {
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [tripCount, setTripCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [loadingTips, setLoadingTips] = useState(true);
+  const [tips, setTips] = useState<Tip[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [bucketListGoals, setBucketListGoals] = useState<BucketListGoal[]>([
     { id: '1', title: 'Visit the main attractions', completed: false },
@@ -35,20 +36,28 @@ const TripDashboardPage: React.FC = () => {
     { id: '4', title: 'Learn basic phrases', completed: false }
   ]);
 
-  const fetchChecklistItems = async (userId: string) => {
-    const { data: items, error } = await supabase
-      .from('checklist_items')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('trip_id', tripId);
-    
-    if (error) {
-      console.error('Error fetching checklist items:', error);
-      return;
-    }
-    
-    if (items) {
-      setChecklistItems(items);
+  const fetchRedditTips = async (city: string, country: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ city, country }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch tips');
+
+      const tips = await response.json();
+      setTips(tips);
+    } catch (error) {
+      console.error('Error fetching Reddit tips:', error);
+    } finally {
+      setLoadingTips(false);
     }
   };
 
@@ -69,19 +78,9 @@ const TripDashboardPage: React.FC = () => {
 
         if (tripData) {
           setTrip(tripData);
+          const [city, country] = tripData.destination.split(', ');
+          fetchRedditTips(city, country);
         }
-
-        const allDefaultItems = defaultChecklist.flatMap(category => 
-          category.items.map(item => ({
-            id: crypto.randomUUID(),
-            description: item.description,
-            category: category.name,
-            trip_id: tripId,
-            user_id: user.id,
-            is_completed: false,
-            is_default: true
-          }))
-        );
 
         const { data: existingItems } = await supabase
           .from('checklist_items')
@@ -89,21 +88,7 @@ const TripDashboardPage: React.FC = () => {
           .eq('user_id', user.id)
           .eq('trip_id', tripId);
 
-        if (!existingItems || existingItems.length === 0) {
-          const { data: insertedItems, error: insertError } = await supabase
-            .from('checklist_items')
-            .insert(allDefaultItems)
-            .select();
-
-          if (insertError) {
-            console.error('Error inserting checklist items:', insertError);
-            return;
-          }
-
-          if (insertedItems) {
-            setChecklistItems(insertedItems);
-          }
-        } else {
+        if (existingItems) {
           setChecklistItems(existingItems);
         }
 
@@ -122,34 +107,6 @@ const TripDashboardPage: React.FC = () => {
 
     fetchTripDetails();
   }, [tripId, navigate]);
-
-  const toggleChecklistItem = async (itemId: string) => {
-    const item = checklistItems.find(i => i.id === itemId);
-    if (!item) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    setChecklistItems(items =>
-      items.map(i => i.id === itemId ? { ...i, is_completed: !i.is_completed } : i)
-    );
-
-    const { error } = await supabase
-      .from('checklist_items')
-      .update({ is_completed: !item.is_completed })
-      .eq('id', itemId)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error updating checklist item:', error);
-      setChecklistItems(items =>
-        items.map(i => i.id === itemId ? { ...i, is_completed: item.is_completed } : i)
-      );
-      return;
-    }
-
-    await fetchChecklistItems(user.id);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -173,18 +130,6 @@ const TripDashboardPage: React.FC = () => {
     if (days > 0) return `${days} days until your trip!`;
     if (days === 0) return 'Your trip starts today!';
     return 'Trip in progress';
-  };
-
-  const getRelevantTips = () => {
-    if (!trip) return [];
-    const [city, country] = trip.destination.split(', ');
-    return mockTips
-      .filter(tip => 
-        tip.location === 'Global' || 
-        tip.location === country || 
-        tip.location?.includes(city)
-      )
-      .slice(0, 3);
   };
 
   const toggleBucketListGoal = (id: string) => {
@@ -304,7 +249,7 @@ const TripDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-6 w-6 text-yellow-400" />
-              <h3 className="pixel-text text-lg">CITY TIPS</h3>
+              <h3 className="pixel-text text-lg">REDDIT TIPS</h3>
             </div>
             <button 
               onClick={() => navigate(`/tips?tripId=${tripId}`)}
@@ -314,11 +259,22 @@ const TripDashboardPage: React.FC = () => {
               <ChevronRight className="h-4 w-4 ml-1" />
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {getRelevantTips().map(tip => (
-              <TipCard key={tip.id} tip={tip} />
-            ))}
-          </div>
+          
+          {loadingTips ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            </div>
+          ) : tips.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tips.slice(0, 4).map(tip => (
+                <TipCard key={tip.id} tip={tip} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-8 bg-gray-800 border border-blue-500/10">
+              <p className="outfit-text text-gray-400">No tips found for this destination yet.</p>
+            </div>
+          )}
         </div>
 
         <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">

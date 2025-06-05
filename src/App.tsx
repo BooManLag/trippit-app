@@ -22,7 +22,7 @@ function App() {
         <Route path="/checklist" element={<ChecklistPage />} />
         <Route path="/bucket-list" element={<BucketListPage />} />
         {/* Redirect /trips to /my-trips for better UX */}
-        <Route path="/trips" element={<Navigate to="/my-trips" replace />} />
+        <Route path="/trips" element={<Navigate to="/my-trips\" replace />} />
       </Routes>
     </Router>
   );

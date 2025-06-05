@@ -58,9 +58,13 @@ const TripDashboardPage: React.FC = () => {
         // Initialize checklist items from default checklist if not exists
         const allDefaultItems = defaultChecklist.flatMap(category => 
           category.items.map(item => ({
-            ...item,
+            id: crypto.randomUUID(), // Generate a proper UUID for each item
+            description: item.description,
+            category: category.name,
             trip_id: tripId,
-            user_id: user.id
+            user_id: user.id,
+            is_completed: false,
+            is_default: true
           }))
         );
 

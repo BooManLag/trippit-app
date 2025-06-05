@@ -280,6 +280,7 @@ const TripDashboardPage: React.FC = () => {
                 />
               </div>
             </div>
+          </div>
 
           <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
             <div className="flex items-center gap-3 mb-6">

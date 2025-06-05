@@ -35,15 +35,6 @@ const TripDashboardPage: React.FC = () => {
     { id: '4', title: 'Learn basic phrases', completed: false }
   ]);
 
-  const groupedChecklist = checklistItems.reduce((acc, item) => {
-    const category = item.category;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(item);
-    return acc;
-  }, {} as Record<string, ChecklistItem[]>);
-
   const fetchChecklistItems = async (userId: string) => {
     const { data: items, error } = await supabase
       .from('checklist_items')
@@ -70,7 +61,6 @@ const TripDashboardPage: React.FC = () => {
           return;
         }
 
-        // Fetch trip details
         const { data: tripData } = await supabase
           .from('trips')
           .select('*')
@@ -81,7 +71,6 @@ const TripDashboardPage: React.FC = () => {
           setTrip(tripData);
         }
 
-        // Initialize checklist items from default checklist if not exists
         const allDefaultItems = defaultChecklist.flatMap(category => 
           category.items.map(item => ({
             id: crypto.randomUUID(),
@@ -94,7 +83,6 @@ const TripDashboardPage: React.FC = () => {
           }))
         );
 
-        // Fetch existing checklist items for this trip
         const { data: existingItems } = await supabase
           .from('checklist_items')
           .select('*')
@@ -102,7 +90,6 @@ const TripDashboardPage: React.FC = () => {
           .eq('trip_id', tripId);
 
         if (!existingItems || existingItems.length === 0) {
-          // If no items exist for this trip, insert default items
           const { data: insertedItems, error: insertError } = await supabase
             .from('checklist_items')
             .insert(allDefaultItems)
@@ -120,7 +107,6 @@ const TripDashboardPage: React.FC = () => {
           setChecklistItems(existingItems);
         }
 
-        // Get total trip count for user
         const { count } = await supabase
           .from('trips')
           .select('*', { count: 'exact' })
@@ -144,7 +130,6 @@ const TripDashboardPage: React.FC = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Optimistically update the UI
     setChecklistItems(items =>
       items.map(i => i.id === itemId ? { ...i, is_completed: !i.is_completed } : i)
     );
@@ -157,14 +142,12 @@ const TripDashboardPage: React.FC = () => {
 
     if (error) {
       console.error('Error updating checklist item:', error);
-      // Revert the optimistic update if there was an error
       setChecklistItems(items =>
         items.map(i => i.id === itemId ? { ...i, is_completed: item.is_completed } : i)
       );
       return;
     }
 
-    // Refresh the checklist items to ensure we have the latest state
     await fetchChecklistItems(user.id);
   };
 
@@ -237,7 +220,6 @@ const TripDashboardPage: React.FC = () => {
           <h2 className="pixel-text text-2xl">TRIP DASHBOARD</h2>
         </div>
 
-        {/* Trip Summary Card */}
         <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
           <div className="flex items-center gap-4 mb-6">
             <Trophy className="h-12 w-12 text-yellow-400" />
@@ -268,9 +250,7 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Two Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Left Column: Checklist Summary */}
           <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -285,7 +265,6 @@ const TripDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Checklist Progress */}
             <div className="text-center p-4 bg-gray-800 border border-blue-500/10 mb-6">
               <div className="pixel-text text-4xl text-yellow-400 mb-2">
                 {remainingTasks}
@@ -302,48 +281,32 @@ const TripDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Categorized Checklist */}
-            <div className="space-y-4 max-h-[400px] overflow-y-auto">
-              {Object.entries(groupedChecklist).map(([category, items]) => (
-                <div key={category} className="bg-gray-800 p-4 border border-blue-500/10">
-                  <h4 className="pixel-text text-sm text-blue-400 mb-3">{category}</h4>
-                  <div className="space-y-2">
-                    {items.slice(0, 3).map(item => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2"
-                      >
-                        <button
-                          onClick={() => toggleChecklistItem(item.id)}
-                          className={`w-4 h-4 border ${
-                            item.is_completed
-                              ? 'bg-green-500 border-green-500'
-                              : 'border-gray-500'
-                          }`}
-                        />
-                        <span className={`outfit-text text-sm ${
-                          item.is_completed
-                            ? 'text-gray-500 line-through'
-                            : 'text-gray-300'
-                        }`}>
-                          {item.description}
-                        </span>
-                      </div>
-                    ))}
-                    {items.length > 3 && (
-                      <div className="text-right mt-2">
-                        <span className="outfit-text text-xs text-blue-400">
-                          +{items.length - 3} more
-                        </span>
-                      </div>
-                    )}
-                  </div>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {checklistItems.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 bg-gray-800 p-3 border border-blue-500/10"
+                >
+                  <button
+                    onClick={() => toggleChecklistItem(item.id)}
+                    className={`w-4 h-4 border ${
+                      item.is_completed
+                        ? 'bg-green-500 border-green-500'
+                        : 'border-gray-500'
+                    }`}
+                  />
+                  <span className={`outfit-text text-sm ${
+                    item.is_completed
+                      ? 'text-gray-500 line-through'
+                      : 'text-gray-300'
+                  }`}>
+                    {item.description}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right Column: Game Card */}
           <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
             <div className="flex items-center gap-3 mb-6">
               <Gamepad2 className="h-6 w-6 text-yellow-500" />
@@ -362,7 +325,6 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* City Tips Section */}
         <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -384,7 +346,6 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bucket List Goals */}
         <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
           <div className="flex items-center gap-3 mb-6">
             <Star className="h-6 w-6 text-yellow-400" />

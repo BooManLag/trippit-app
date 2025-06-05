@@ -1,23 +1,6 @@
+
 /*
-  # Add Checklist Feature
-
-  1. New Tables
-    - checklist_items: Store user's checklist items
-      - id (uuid, primary key)
-      - user_id (uuid, references users)
-      - category (text)
-      - description (text)
-      - is_completed (boolean)
-      - is_default (boolean)
-      - created_at (timestamp)
-
-  2. Security
-    - Enable RLS on checklist_items table
-    - Add policy for authenticated users to manage their items
-
-  3. Default Items
-    - Create function to generate default checklist items
-    - Add trigger to create defaults for new users
+  Supabase Schema: Checklist Feature + Auto Default Items for Tripp'it
 */
 
 -- Create checklist_items table
@@ -33,7 +16,7 @@ CREATE TABLE IF NOT EXISTS checklist_items (
 
 ALTER TABLE checklist_items ENABLE ROW LEVEL SECURITY;
 
--- Add RLS policies
+-- RLS Policy
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies 
@@ -49,13 +32,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Create function to insert default checklist items
+-- Default Checklist Item Seeder
 CREATE OR REPLACE FUNCTION create_default_checklist_items(p_user_id uuid)
 RETURNS void AS $$
 BEGIN
-  -- Essentials
   INSERT INTO checklist_items (user_id, category, description, is_default)
   VALUES
+    -- Essentials
     (p_user_id, '📄 Essentials', 'Passport (valid at least 6 months)', true),
     (p_user_id, '📄 Essentials', 'Visa (if required)', true),
     (p_user_id, '📄 Essentials', 'Flight tickets (downloaded + printed)', true),
@@ -63,31 +46,22 @@ BEGIN
     (p_user_id, '📄 Essentials', 'Itinerary saved offline', true),
     (p_user_id, '📄 Essentials', 'Travel insurance confirmation', true),
     (p_user_id, '📄 Essentials', 'Local currency or travel card', true),
-    (p_user_id, '📄 Essentials', 'Emergency contacts list', true);
-
-  -- Packing
-  INSERT INTO checklist_items (user_id, category, description, is_default)
-  VALUES
+    (p_user_id, '📄 Essentials', 'Emergency contacts list', true),
+    -- Packing
     (p_user_id, '🧳 Packing', 'Clothes (based on weather)', true),
     (p_user_id, '🧳 Packing', 'Toiletries', true),
     (p_user_id, '🧳 Packing', 'Medication + prescriptions', true),
     (p_user_id, '🧳 Packing', 'Chargers + power bank', true),
     (p_user_id, '🧳 Packing', 'Adapter (check plug type)', true),
     (p_user_id, '🧳 Packing', 'Reusable water bottle', true),
-    (p_user_id, '🧳 Packing', 'Travel pillow or blanket', true);
-
-  -- Smart Prep
-  INSERT INTO checklist_items (user_id, category, description, is_default)
-  VALUES
+    (p_user_id, '🧳 Packing', 'Travel pillow or blanket', true),
+    -- Smart Prep
     (p_user_id, '🧠 Smart Prep', 'Download offline maps (Google Maps, Maps.me)', true),
     (p_user_id, '🧠 Smart Prep', 'Translate key phrases in local language', true),
     (p_user_id, '🧠 Smart Prep', 'Screenshot/print booking confirmations', true),
     (p_user_id, '🧠 Smart Prep', 'Check baggage limits', true),
-    (p_user_id, '🧠 Smart Prep', 'Inform your bank of travel (to avoid card blocks)', true);
-
-  -- Digital Tools
-  INSERT INTO checklist_items (user_id, category, description, is_default)
-  VALUES
+    (p_user_id, '🧠 Smart Prep', 'Inform your bank of travel (to avoid card blocks)', true),
+    -- Digital Tools
     (p_user_id, '📱 Digital Tools', 'SIM card or eSIM setup', true),
     (p_user_id, '📱 Digital Tools', 'Installed must-have apps (e.g. Grab, Google Translate, XE, etc.)', true),
     (p_user_id, '📱 Digital Tools', 'Backup important docs to cloud or USB', true),
@@ -95,17 +69,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger to add default items for new users
+-- Create Trigger for New Users
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  -- Create default checklist items for the new user
   PERFORM create_default_checklist_items(NEW.id);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger if it doesn't exist
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger 

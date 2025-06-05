@@ -36,11 +36,16 @@ const TripDashboardPage: React.FC = () => {
   ]);
 
   const fetchChecklistItems = async (userId: string) => {
-    const { data: items } = await supabase
+    const { data: items, error } = await supabase
       .from('checklist_items')
       .select('*')
       .eq('user_id', userId)
       .eq('trip_id', tripId);
+    
+    if (error) {
+      console.error('Error fetching checklist items:', error);
+      return;
+    }
     
     if (items) {
       setChecklistItems(items);
@@ -89,10 +94,15 @@ const TripDashboardPage: React.FC = () => {
 
         if (!existingItems || existingItems.length === 0) {
           // If no items exist for this trip, insert default items
-          const { data: insertedItems } = await supabase
+          const { data: insertedItems, error: insertError } = await supabase
             .from('checklist_items')
             .insert(allDefaultItems)
             .select();
+
+          if (insertError) {
+            console.error('Error inserting checklist items:', insertError);
+            return;
+          }
 
           if (insertedItems) {
             setChecklistItems(insertedItems);
@@ -125,14 +135,28 @@ const TripDashboardPage: React.FC = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Optimistically update the UI
+    setChecklistItems(items =>
+      items.map(i => i.id === itemId ? { ...i, is_completed: !i.is_completed } : i)
+    );
+
     const { error } = await supabase
       .from('checklist_items')
       .update({ is_completed: !item.is_completed })
-      .eq('id', itemId);
+      .eq('id', itemId)
+      .eq('user_id', user.id);
 
-    if (!error) {
-      await fetchChecklistItems(user.id);
+    if (error) {
+      console.error('Error updating checklist item:', error);
+      // Revert the optimistic update if there was an error
+      setChecklistItems(items =>
+        items.map(i => i.id === itemId ? { ...i, is_completed: item.is_completed } : i)
+      );
+      return;
     }
+
+    // Refresh the checklist items to ensure we have the latest state
+    await fetchChecklistItems(user.id);
   };
 
   const formatDate = (dateString: string) => {

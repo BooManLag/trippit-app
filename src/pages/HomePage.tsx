@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
-import { MapPin, Compass } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,20 +9,21 @@ const HomePage: React.FC = () => {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    navigate('/my-trips');
+    navigate('/create-trip');
   };
 
-  const handleMyTrips = async () => {
+  const handlePlanTrip = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setShowAuthModal(true);
     } else {
-      navigate('/my-trips');
+      navigate('/create-trip');
     }
   };
 
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* Hero Section */}
       <main className="container mx-auto px-4 py-12 max-w-2xl text-center">
         <h1 className="pixel-text text-4xl mb-8 leading-relaxed">
           MAKE EVERY<br />TRIP COUNT.
@@ -37,13 +37,20 @@ const HomePage: React.FC = () => {
           Tripp'it helps first-time travelers prepare smarter and laugh through their mistakes.
         </p>
 
-        <div className="space-y-4 mb-16">
+        {/* CTA Buttons */}
+        <div className="space-y-6 mb-16">
           <button
-            onClick={handleMyTrips}
-            className="pixel-button-primary w-full max-w-md flex items-center justify-center gap-2"
+            onClick={() => navigate('/game')}
+            className="pixel-button-primary w-full max-w-md"
           >
-            <Compass className="w-5 h-5" />
-            MY TRIPS
+            🧭 TRY A SCENARIO
+          </button>
+
+          <button
+            onClick={handlePlanTrip}
+            className="pixel-button-secondary w-full max-w-md"
+          >
+            ✈️ PLAN MY TRIP
           </button>
         </div>
 
@@ -78,9 +85,39 @@ const HomePage: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* How It Works */}
+        <section className="mb-16">
+          <h2 className="pixel-text text-2xl mb-8">HOW IT WORKS</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+            {[
+              "Choose your destination and trip dates",
+              "Discover tips and bucket list goals",
+              "Survive your trip and earn badges",
+              "Reflect, share, and prepare for the next one"
+            ].map((step, index) => (
+              <div key={index} className="flex items-start pixel-card">
+                <span className="pixel-text text-yellow-400 mr-4">{index + 1}.</span>
+                <p className="outfit-text text-gray-300">{step}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
+      {/* Footer */}
       <footer className="border-t border-gray-800 py-8 text-center">
+        <nav className="mb-4">
+          {["About", "Contact", "Terms"].map((link, index) => (
+            <a
+              key={index}
+              href={`/${link.toLowerCase()}`}
+              className="pixel-text text-gray-400 hover:text-white mx-4 text-xs"
+            >
+              {link}
+            </a>
+          ))}
+        </nav>
         <p className="outfit-text text-gray-600 text-sm">
           © Tripp'it 2025 – Travel with a twist.
         </p>
@@ -93,6 +130,6 @@ const HomePage: React.FC = () => {
       />
     </div>
   );
-}
+};
 
 export default HomePage;

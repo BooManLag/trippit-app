@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle } from 'lucide-react';
 import BackButton from '../components/BackButton';
 
 interface Trip {
@@ -42,23 +42,6 @@ const MyTripsPage: React.FC = () => {
     checkAuthAndFetchTrips();
   }, [navigate]);
 
-  const handleDeleteTrip = async (tripId: string) => {
-    if (!window.confirm('Are you sure you want to delete this trip?')) {
-      return;
-    }
-
-    const { error } = await supabase
-      .from('trips')
-      .delete()
-      .eq('id', tripId);
-
-    if (error) {
-      console.error('Error deleting trip:', error);
-    } else {
-      setTrips(trips.filter(trip => trip.id !== tripId));
-    }
-  };
-
   const today = new Date().toISOString().split('T')[0];
   const upcoming = trips.filter(trip => trip.start_date >= today);
   const past = trips.filter(trip => trip.end_date < today);
@@ -81,10 +64,10 @@ const MyTripsPage: React.FC = () => {
           </div>
           <button
             onClick={() => navigate('/create-trip')}
-            className="pixel-button-secondary flex items-center gap-2 text-sm"
+            className="pixel-button-secondary flex items-center gap-2"
           >
             <PlusCircle className="w-4 h-4" />
-            NEW
+            NEW TRIP
           </button>
         </div>
 
@@ -101,25 +84,13 @@ const MyTripsPage: React.FC = () => {
                   {upcoming.map(trip => (
                     <div
                       key={trip.id}
-                      className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all group"
+                      onClick={() => navigate(`/trip/${trip.id}`)}
+                      className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20 cursor-pointer hover:border-blue-500/40 transition-all"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="pixel-text text-yellow-400 mb-2">{trip.destination}</h4>
-                          <p className="outfit-text text-gray-400">
-                            {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTrip(trip.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <h4 className="pixel-text text-yellow-400 mb-2">{trip.destination}</h4>
+                      <p className="outfit-text text-gray-400">
+                        {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -133,25 +104,13 @@ const MyTripsPage: React.FC = () => {
                   {past.map(trip => (
                     <div
                       key={trip.id}
-                      className="pixel-card bg-gray-900/50 p-6 border-2 border-blue-500/10 hover:border-blue-500/20 transition-all group"
+                      onClick={() => navigate(`/trip/${trip.id}`)}
+                      className="pixel-card bg-gray-900/50 p-6 border-2 border-blue-500/10 cursor-pointer hover:border-blue-500/20 transition-all"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="pixel-text text-gray-400 mb-2">{trip.destination}</h4>
-                          <p className="outfit-text text-gray-500">
-                            {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTrip(trip.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <h4 className="pixel-text text-gray-400 mb-2">{trip.destination}</h4>
+                      <p className="outfit-text text-gray-500">
+                        {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -161,14 +120,13 @@ const MyTripsPage: React.FC = () => {
         ) : (
           <div className="text-center py-16 pixel-card bg-gray-900 border-2 border-blue-500/20">
             <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            <h3 className="pixel-text text-lg text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
-            <p className="outfit-text text-gray-500 mb-6">Create a trip to begin your journey</p>
+            <h3 className="pixel-text text-lg text-gray-300 mb-2">NO TRIPS YET</h3>
+            <p className="outfit-text text-gray-500 mb-6">Start planning your next adventure!</p>
             <button
               onClick={() => navigate('/create-trip')}
-              className="pixel-button-primary inline-flex items-center gap-2"
+              className="pixel-button-primary"
             >
-              <PlusCircle className="w-4 h-4" />
-              CREATE TRIP
+              CREATE FIRST TRIP
             </button>
           </div>
         )}

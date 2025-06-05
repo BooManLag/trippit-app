@@ -274,34 +274,12 @@ const TripDashboardPage: React.FC = () => {
                 {completedTasks} of {totalTasks} completed
               </div>
               <div className="w-full bg-gray-700 h-2 mt-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-green-500 h-full transition-all duration-300"
+                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
+                />
               </div>
             </div>
-
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {checklistItems.map(item => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-2 bg-gray-800 p-3 border border-blue-500/10"
-                >
-                  <button
-                    onClick={() => toggleChecklistItem(item.id)}
-                    className={`w-4 h-4 border ${
-                      item.is_completed
-                        ? 'bg-green-500 border-green-500'
-                        : 'border-gray-500'
-                    }`}
-                  />
-                  <span className={`outfit-text text-sm ${
-                    item.is_completed
-                      ? 'text-gray-500 line-through'
-                      : 'text-gray-300'
-                  }`}>
-                    {item.description}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
             <div className="flex items-center gap-3 mb-6">

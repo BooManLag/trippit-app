@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2 } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import TipCard from '../components/TipCard';
 import { ChecklistItem, Tip } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
+import { mockTips } from '../data/mockData';
 
 interface TripDetails {
   id: string;
@@ -147,6 +148,10 @@ const TripDashboardPage: React.FC = () => {
     return { totalTasks, completedTasks, remainingTasks };
   };
 
+  const getRelevantTips = () => {
+    return mockTips.slice(0, 4);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -249,7 +254,7 @@ const TripDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-6 w-6 text-yellow-400" />
-              <h3 className="pixel-text text-lg">REDDIT TIPS</h3>
+              <h3 className="pixel-text text-lg">CITY TIPS</h3>
             </div>
             <button 
               onClick={() => navigate(`/tips?tripId=${tripId}`)}
@@ -259,22 +264,11 @@ const TripDashboardPage: React.FC = () => {
               <ChevronRight className="h-4 w-4 ml-1" />
             </button>
           </div>
-          
-          {loadingTips ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-            </div>
-          ) : tips.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tips.slice(0, 4).map(tip => (
-                <TipCard key={tip.id} tip={tip} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center p-8 bg-gray-800 border border-blue-500/10">
-              <p className="outfit-text text-gray-400">No tips found for this destination yet.</p>
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {getRelevantTips().map(tip => (
+              <TipCard key={tip.id} tip={tip} />
+            ))}
+          </div>
         </div>
 
         <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">

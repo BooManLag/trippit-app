@@ -35,6 +35,18 @@ const TripDashboardPage: React.FC = () => {
     { id: '4', title: 'Learn basic phrases', completed: false }
   ]);
 
+  const fetchChecklistItems = async (userId: string) => {
+    const { data: items } = await supabase
+      .from('checklist_items')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('trip_id', tripId);
+    
+    if (items) {
+      setChecklistItems(items);
+    }
+  };
+
   useEffect(() => {
     const fetchTripDetails = async () => {
       try {
@@ -58,7 +70,7 @@ const TripDashboardPage: React.FC = () => {
         // Initialize checklist items from default checklist if not exists
         const allDefaultItems = defaultChecklist.flatMap(category => 
           category.items.map(item => ({
-            id: crypto.randomUUID(), // Generate a proper UUID for each item
+            id: crypto.randomUUID(),
             description: item.description,
             category: category.name,
             trip_id: tripId,
@@ -105,6 +117,23 @@ const TripDashboardPage: React.FC = () => {
 
     fetchTripDetails();
   }, [tripId, navigate]);
+
+  const toggleChecklistItem = async (itemId: string) => {
+    const item = checklistItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('checklist_items')
+      .update({ is_completed: !item.is_completed })
+      .eq('id', itemId);
+
+    if (!error) {
+      await fetchChecklistItems(user.id);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

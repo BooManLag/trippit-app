@@ -170,7 +170,7 @@ const MyTripsPage: React.FC = () => {
               onClick={() => navigate('/create-trip')}
               className="pixel-button-primary"
             >
-              CREATE FIRST TRIP
+            CREATE FIRST TRIP
             </button>
           </div>
         )}

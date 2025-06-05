@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Pause } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import DeleteModal from '../components/DeleteModal';
 
@@ -84,8 +84,8 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
-  const handlePlayTrip = (trip: Trip) => {
-    navigate('/checklist', { state: { tripId: trip.id } });
+  const handlePlayTrip = (tripId: string) => {
+    navigate(`/trip/${tripId}`);
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -166,7 +166,7 @@ const MyTripsPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => handlePlayTrip(trip)}
+                            onClick={() => handlePlayTrip(trip.id)}
                             className="text-green-500 hover:text-green-400 transition-colors"
                           >
                             {trip.status === 'in_progress' ? (

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
 import { MapPin, Loader2, PlusCircle, Trash2 } from 'lucide-react';
-import BackButton from '../components/BackButton';
 import DeleteModal from '../components/DeleteModal';
 
 interface Trip {
@@ -81,22 +80,29 @@ const MyTripsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
+    <div className="min-h-screen bg-black text-white px-4 py-8 flex flex-col items-center">
       <div className="w-full max-w-3xl">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-4">
-            <BackButton to="/" />
-            <h2 className="pixel-text text-2xl">MY TRIPS</h2>
-          </div>
+
+        {/* Header */}
+        <div className="relative flex items-center justify-center mb-10">
+          <button
+            onClick={() => navigate('/')}
+            className="absolute left-0 pixel-button-primary"
+          >
+            ← BACK
+          </button>
+
+          <h2 className="pixel-text text-2xl text-center">MY TRIPS</h2>
+
           <button
             onClick={() => navigate('/create-trip')}
-            className="pixel-button-secondary flex items-center gap-2"
+            className="absolute right-0 pixel-button-primary"
           >
-            <PlusCircle className="w-4 h-4" />
-            NEW TRIP
+            ⊕ NEW TRIP
           </button>
         </div>
 
+        {/* Content */}
         {loading ? (
           <div className="flex justify-center items-center h-[60vh]">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -162,16 +168,22 @@ const MyTripsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] bg-gray-900 border-2 border-blue-500/20 rounded text-center px-6">
-            <MapPin className="w-12 h-12 text-blue-500 mb-4" />
-            <h3 className="pixel-text text-lg text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
-            <p className="outfit-text text-gray-500 mb-6">Create your first trip and begin your journey!</p>
-            <button
-              onClick={() => navigate('/create-trip')}
-              className="pixel-button-primary"
-            >
-              CREATE FIRST TRIP
-            </button>
+          <div className="flex flex-col items-center justify-center h-[60vh] w-full">
+            <div className="pixel-card w-full max-w-md mx-auto bg-gray-900 text-center border-2 border-blue-500/20 px-6 py-10 rounded">
+              <MapPin className="w-10 h-10 text-blue-500 mb-4 mx-auto" />
+              <h3 className="pixel-text text-lg text-white mb-2">
+                START YOUR FIRST ADVENTURE
+              </h3>
+              <p className="outfit-text text-gray-400">
+                Create your first trip and begin your journey!
+              </p>
+              <button
+                onClick={() => navigate('/create-trip')}
+                className="pixel-button-primary mt-6"
+              >
+                CREATE FIRST TRIP
+              </button>
+            </div>
           </div>
         )}
 

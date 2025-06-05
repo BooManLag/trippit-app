@@ -8,7 +8,7 @@ import TripCreatedPage from './pages/TripCreatedPage';
 import MyTripsPage from './pages/MyTripsPage';
 import GamePage from './pages/GamePage';
 import TipsPage from './pages/TipsPage';
-import BadgesPage from './pages/BadgesPage';
+import ChecklistPage from './pages/ChecklistPage';
 import BucketListPage from './pages/BucketListPage';
 
 function App() {
@@ -21,7 +21,7 @@ function App() {
         <Route path="/my-trips" element={<MyTripsPage />} />
         <Route path="/game" element={<GamePage />} />
         <Route path="/tips" element={<TipsPage />} />
-        <Route path="/badges" element={<BadgesPage />} />
+        <Route path="/checklist" element={<ChecklistPage />} />
         <Route path="/bucket-list" element={<BucketListPage />} />
       </Routes>
     </Router>

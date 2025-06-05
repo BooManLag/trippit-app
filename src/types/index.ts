@@ -13,14 +13,6 @@ export interface Tip {
   location?: string;
 }
 
-export interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-}
-
 export interface Scenario {
   id: string;
   title: string;
@@ -34,7 +26,21 @@ export interface Choice {
   text: string;
   outcome: string;
   tipId?: string;
-  badgeId?: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  category: string;
+  description: string;
+  isCompleted: boolean;
+  isDefault?: boolean;
+}
+
+export interface ChecklistCategory {
+  id: string;
+  name: string;
+  emoji: string;
+  items: ChecklistItem[];
 }
 
 export interface BucketListItem {
@@ -48,7 +54,7 @@ export interface User {
   id: string;
   name: string;
   trips: Trip[];
-  badges: Badge[];
+  checklist: ChecklistItem[];
   bucketList: BucketListItem[];
 }
 
@@ -98,6 +104,35 @@ export interface Database {
           destination?: string;
           start_date?: string;
           end_date?: string;
+          created_at?: string;
+        };
+      };
+      checklist_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          description: string;
+          is_completed: boolean;
+          is_default: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category: string;
+          description: string;
+          is_completed?: boolean;
+          is_default?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: string;
+          description?: string;
+          is_completed?: boolean;
+          is_default?: boolean;
           created_at?: string;
         };
       };

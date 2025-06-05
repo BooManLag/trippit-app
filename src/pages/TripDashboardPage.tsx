@@ -6,6 +6,7 @@ import BackButton from '../components/BackButton';
 import { mockTips } from '../data/mockData';
 import TipCard from '../components/TipCard';
 import { ChecklistItem } from '../types';
+import { defaultChecklist } from '../data/defaultChecklist';
 
 interface TripDetails {
   id: string;
@@ -54,14 +55,34 @@ const TripDashboardPage: React.FC = () => {
           setTrip(tripData);
         }
 
-        // Fetch checklist items
-        const { data: checklistData } = await supabase
+        // Initialize checklist items from default checklist if not exists
+        const allDefaultItems = defaultChecklist.flatMap(category => 
+          category.items.map(item => ({
+            ...item,
+            trip_id: tripId,
+            user_id: user.id
+          }))
+        );
+
+        // Fetch existing checklist items for this trip
+        const { data: existingItems } = await supabase
           .from('checklist_items')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .eq('trip_id', tripId);
 
-        if (checklistData) {
-          setChecklistItems(checklistData);
+        if (!existingItems || existingItems.length === 0) {
+          // If no items exist for this trip, insert default items
+          const { data: insertedItems } = await supabase
+            .from('checklist_items')
+            .insert(allDefaultItems)
+            .select();
+
+          if (insertedItems) {
+            setChecklistItems(insertedItems);
+          }
+        } else {
+          setChecklistItems(existingItems);
         }
 
         // Get total trip count for user

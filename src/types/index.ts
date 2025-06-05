@@ -32,8 +32,10 @@ export interface ChecklistItem {
   id: string;
   category: string;
   description: string;
-  isCompleted: boolean;
-  isDefault?: boolean;
+  is_completed: boolean;
+  is_default?: boolean;
+  trip_id?: string;
+  user_id?: string;
 }
 
 export interface ChecklistCategory {
@@ -116,6 +118,7 @@ export interface Database {
           is_completed: boolean;
           is_default: boolean;
           created_at: string;
+          trip_id: string | null;
         };
         Insert: {
           id?: string;
@@ -125,6 +128,7 @@ export interface Database {
           is_completed?: boolean;
           is_default?: boolean;
           created_at?: string;
+          trip_id?: string | null;
         };
         Update: {
           id?: string;
@@ -134,6 +138,7 @@ export interface Database {
           is_completed?: boolean;
           is_default?: boolean;
           created_at?: string;
+          trip_id?: string | null;
         };
       };
     };

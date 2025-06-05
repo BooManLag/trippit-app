@@ -42,18 +42,18 @@ const ChecklistCategory: React.FC<ChecklistCategoryProps> = ({
               <button
                 onClick={() => onToggleItem(item.id)}
                 className={`flex items-center justify-center w-5 h-5 rounded border mr-3 transition-colors ${
-                  item.isCompleted
+                  item.is_completed
                     ? 'bg-green-500 border-green-500'
                     : 'border-gray-300 hover:border-green-500'
                 }`}
               >
-                {item.isCompleted && <Check className="w-4 h-4 text-white" />}
+                {item.is_completed && <Check className="w-4 h-4 text-white" />}
               </button>
-              <span className={item.isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'}>
+              <span className={item.is_completed ? 'text-gray-500 line-through' : 'text-gray-800'}>
                 {item.description}
               </span>
             </div>
-            {!item.isDefault && (
+            {!item.is_default && (
               <button
                 onClick={() => onDeleteItem(item.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600"

@@ -32,7 +32,7 @@ const ChecklistPage: React.FC = () => {
     setCategories(categories.map(cat => ({
       ...cat,
       items: cat.items.map(i =>
-        i.id === id ? { ...i, isCompleted: !i.isCompleted } : i
+        i.id === id ? { ...i, is_completed: !i.is_completed } : i
       )
     })));
     setHasChanges(true);
@@ -48,8 +48,8 @@ const ChecklistPage: React.FC = () => {
               id: tempId,
               category,
               description,
-              isCompleted: false,
-              isDefault: false
+              is_completed: false,
+              is_default: false
             }]
           }
         : cat
@@ -86,7 +86,7 @@ const ChecklistPage: React.FC = () => {
     navigate(-1);
   };
 
-  const completedCount = categories.reduce((sum, c) => sum + c.items.filter(i => i.isCompleted).length, 0);
+  const completedCount = categories.reduce((sum, c) => sum + c.items.filter(i => i.is_completed).length, 0);
   const totalCount = categories.reduce((sum, c) => sum + c.items.length, 0);
 
   return (
@@ -120,10 +120,10 @@ const ChecklistPage: React.FC = () => {
                       <button
                         onClick={() => handleToggleItem(item.id)}
                         className={`w-6 h-6 flex items-center justify-center border-2 mr-4 ${
-                          item.isCompleted ? 'bg-green-500 border-green-500' : 'border-gray-500 hover:border-green-500'
+                          item.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-500 hover:border-green-500'
                         }`}
                       >
-                        {item.isCompleted && '✓'}
+                        {item.is_completed && '✓'}
                       </button>
                       {editingItem === item.id ? (
                         <form
@@ -163,12 +163,12 @@ const ChecklistPage: React.FC = () => {
                             setEditingItem(item.id);
                             setEditText(item.description);
                           }}
-                          className={`flex-1 cursor-pointer ${item.isCompleted ? 'line-through text-gray-500' : 'text-white'}`}
+                          className={`flex-1 cursor-pointer ${item.is_completed ? 'line-through text-gray-500' : 'text-white'}`}
                         >
                           {item.description}
                         </span>
                       )}
-                      {!item.isDefault && (
+                      {!item.is_default && (
                         <button
                           onClick={() => handleDeleteItem(item.id)}
                           className="ml-auto text-red-400 hover:text-red-300 pixel-text"

@@ -8,13 +8,9 @@ export interface Trip {
 
 export interface Tip {
   id: string;
-  title: string;
+  category: 'Safety' | 'Budget' | 'Language' | 'Culture' | 'Food' | 'Transport';
   content: string;
-  url: string;
-  subreddit: string;
-  score: number;
-  numComments?: number;
-  created: number;
+  location?: string;
 }
 
 export interface Scenario {

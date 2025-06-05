@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Loader2, Mail } from 'lucide-react';
+import { X, Loader2, Mail, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -14,6 +14,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   const [isSignUp, setIsSignUp] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   if (!isOpen) return null;
 
@@ -32,7 +33,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           }
         });
         if (error) throw error;
-        onSuccess();
+        setShowConfirmation(true);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -47,6 +48,42 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
       setLoading(false);
     }
   };
+
+  if (showConfirmation) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="pixel-card max-w-md w-full relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-500/20 mb-4">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            </div>
+            <h2 className="pixel-text text-2xl mb-2">CHECK YOUR EMAIL</h2>
+            <p className="outfit-text text-gray-400 mb-4">
+              We've sent a confirmation link to:
+            </p>
+            <p className="outfit-text text-lg mb-4">{email}</p>
+            <p className="outfit-text text-gray-400">
+              Please click the link to verify your email address and activate your account.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsSignUp(false)}
+            className="pixel-button-primary w-full"
+          >
+            SIGN IN INSTEAD
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

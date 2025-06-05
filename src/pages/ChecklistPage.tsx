@@ -1,11 +1,32 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { defaultChecklist } from '../data/defaultChecklist';
 import { ChecklistItem, ChecklistCategory as CategoryType } from '../types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
+import BackButton from '../components/BackButton';
 
 const ChecklistPage: React.FC = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<CategoryType[]>(defaultChecklist);
   const [loading, setLoading] = useState(false);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Save to localStorage whenever categories change
+  useEffect(() => {
+    if (hasChanges) {
+      localStorage.setItem('tripChecklist', JSON.stringify(categories));
+    }
+  }, [categories, hasChanges]);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedChecklist = localStorage.getItem('tripChecklist');
+    if (savedChecklist) {
+      setCategories(JSON.parse(savedChecklist));
+    }
+  }, []);
 
   const handleToggleItem = (id: string) => {
     setCategories(categories.map(cat => ({
@@ -14,6 +35,7 @@ const ChecklistPage: React.FC = () => {
         i.id === id ? { ...i, isCompleted: !i.isCompleted } : i
       )
     })));
+    setHasChanges(true);
   };
 
   const handleAddItem = (category: string, description: string) => {
@@ -32,6 +54,7 @@ const ChecklistPage: React.FC = () => {
           }
         : cat
     ));
+    setHasChanges(true);
   };
 
   const handleDeleteItem = (id: string) => {
@@ -39,6 +62,28 @@ const ChecklistPage: React.FC = () => {
       ...cat,
       items: cat.items.filter(i => i.id !== id)
     })));
+    setHasChanges(true);
+  };
+
+  const handleEditItem = (id: string, newDescription: string) => {
+    setCategories(categories.map(cat => ({
+      ...cat,
+      items: cat.items.map(i =>
+        i.id === id ? { ...i, description: newDescription } : i
+      )
+    })));
+    setEditingItem(null);
+    setEditText('');
+    setHasChanges(true);
+  };
+
+  const handleBack = () => {
+    if (hasChanges) {
+      if (window.confirm('Do you want to save your changes before leaving?')) {
+        localStorage.setItem('tripChecklist', JSON.stringify(categories));
+      }
+    }
+    navigate(-1);
   };
 
   const completedCount = categories.reduce((sum, c) => sum + c.items.filter(i => i.isCompleted).length, 0);
@@ -48,7 +93,10 @@ const ChecklistPage: React.FC = () => {
     <div className="min-h-screen w-full bg-black px-4 py-10 text-white">
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="pixel-text text-2xl">YOUR TRAVEL CHECKLIST</h2>
+          <div className="flex items-center gap-4">
+            <BackButton onClick={handleBack} />
+            <h2 className="pixel-text text-2xl">YOUR TRAVEL CHECKLIST</h2>
+          </div>
           <span className="pixel-text text-sm text-blue-400">{completedCount}/{totalCount}</span>
         </div>
 
@@ -77,9 +125,49 @@ const ChecklistPage: React.FC = () => {
                       >
                         {item.isCompleted && '✓'}
                       </button>
-                      <span className={`outfit-text ${item.isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>
-                        {item.description}
-                      </span>
+                      {editingItem === item.id ? (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleEditItem(item.id, editText);
+                          }}
+                          className="flex-1 flex gap-2"
+                        >
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="flex-1 bg-gray-700 text-white px-3 py-1 rounded outline-none"
+                            autoFocus
+                          />
+                          <button
+                            type="submit"
+                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingItem(null);
+                              setEditText('');
+                            }}
+                            className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setEditingItem(item.id);
+                            setEditText(item.description);
+                          }}
+                          className={`flex-1 cursor-pointer ${item.isCompleted ? 'line-through text-gray-500' : 'text-white'}`}
+                        >
+                          {item.description}
+                        </span>
+                      )}
                       {!item.isDefault && (
                         <button
                           onClick={() => handleDeleteItem(item.id)}
@@ -92,7 +180,11 @@ const ChecklistPage: React.FC = () => {
                   ))}
                 </div>
                 <button
-                  onClick={() => handleAddItem(category.name, 'New item')}
+                  onClick={() => {
+                    setEditingItem('new');
+                    setEditText('');
+                    handleAddItem(category.name, 'New item');
+                  }}
                   className="mt-4 text-blue-400 hover:text-blue-300 pixel-text text-sm"
                 >
                   + ADD ITEM

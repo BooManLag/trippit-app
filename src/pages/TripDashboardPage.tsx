@@ -272,13 +272,6 @@ const TripDashboardPage: React.FC = () => {
               <p className="outfit-text text-gray-300">Tasks remaining</p>
               <div className="mt-3 outfit-text text-sm text-gray-400">
                 {completedTasks} of {totalTasks} completed
-              </div>
-              <div className="w-full bg-gray-700 h-2 mt-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-green-500 h-full transition-all duration-300"
-                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
-                />
-              </div>
             </div>
 
             <div className="space-y-2 max-h-[400px] overflow-y-auto">

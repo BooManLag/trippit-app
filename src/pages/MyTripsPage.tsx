@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import BackButton from '../components/BackButton';
 
 interface Trip {
@@ -16,6 +16,22 @@ const MyTripsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const fetchTrips = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('start_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching trips:', error);
+    } else {
+      setTrips(data || []);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     const checkAuthAndFetchTrips = async () => {
       const authenticated = await isAuthenticated();
@@ -23,24 +39,26 @@ const MyTripsPage: React.FC = () => {
         navigate('/');
         return;
       }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('start_date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching trips:', error);
-      } else {
-        setTrips(data || []);
-      }
-      setLoading(false);
+      fetchTrips();
     };
 
     checkAuthAndFetchTrips();
   }, [navigate]);
+
+  const handleDeleteTrip = async (tripId: string) => {
+    if (window.confirm('Are you sure you want to delete this trip?')) {
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId);
+
+      if (error) {
+        console.error('Error deleting trip:', error);
+      } else {
+        await fetchTrips();
+      }
+    }
+  };
 
   const today = new Date().toISOString().split('T')[0];
   const upcoming = trips.filter(trip => trip.start_date >= today);
@@ -84,13 +102,22 @@ const MyTripsPage: React.FC = () => {
                   {upcoming.map(trip => (
                     <div
                       key={trip.id}
-                      onClick={() => navigate(`/trip/${trip.id}`)}
-                      className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20 cursor-pointer hover:border-blue-500/40 transition-all"
+                      className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all"
                     >
-                      <h4 className="pixel-text text-yellow-400 mb-2">{trip.destination}</h4>
-                      <p className="outfit-text text-gray-400">
-                        {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
-                      </p>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="pixel-text text-yellow-400 mb-2">{trip.destination}</h4>
+                          <p className="outfit-text text-gray-400">
+                            {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteTrip(trip.id)}
+                          className="text-red-500 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -104,13 +131,22 @@ const MyTripsPage: React.FC = () => {
                   {past.map(trip => (
                     <div
                       key={trip.id}
-                      onClick={() => navigate(`/trip/${trip.id}`)}
-                      className="pixel-card bg-gray-900/50 p-6 border-2 border-blue-500/10 cursor-pointer hover:border-blue-500/20 transition-all"
+                      className="pixel-card bg-gray-900/50 p-6 border-2 border-blue-500/10 hover:border-blue-500/20 transition-all"
                     >
-                      <h4 className="pixel-text text-gray-400 mb-2">{trip.destination}</h4>
-                      <p className="outfit-text text-gray-500">
-                        {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
-                      </p>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="pixel-text text-gray-400 mb-2">{trip.destination}</h4>
+                          <p className="outfit-text text-gray-500">
+                            {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteTrip(trip.id)}
+                          className="text-red-500/50 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -120,8 +156,8 @@ const MyTripsPage: React.FC = () => {
         ) : (
           <div className="text-center py-16 pixel-card bg-gray-900 border-2 border-blue-500/20">
             <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            <h3 className="pixel-text text-lg text-gray-300 mb-2">NO TRIPS YET</h3>
-            <p className="outfit-text text-gray-500 mb-6">Start planning your next adventure!</p>
+            <h3 className="pixel-text text-lg text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
+            <p className="outfit-text text-gray-500 mb-6">Create your first trip and begin your journey!</p>
             <button
               onClick={() => navigate('/create-trip')}
               className="pixel-button-primary"

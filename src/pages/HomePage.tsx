@@ -9,7 +9,7 @@ const HomePage: React.FC = () => {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    navigate('/create-trip');
+    navigate('/my-trips');
   };
 
   const handlePlanTrip = async () => {
@@ -17,13 +17,12 @@ const HomePage: React.FC = () => {
     if (!user) {
       setShowAuthModal(true);
     } else {
-      navigate('/create-trip');
+      navigate('/my-trips');
     }
   };
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Hero Section */}
       <main className="container mx-auto px-4 py-12 max-w-2xl text-center">
         <h1 className="pixel-text text-4xl mb-8 leading-relaxed">
           MAKE EVERY<br />TRIP COUNT.
@@ -37,7 +36,6 @@ const HomePage: React.FC = () => {
           Tripp'it helps first-time travelers prepare smarter and laugh through their mistakes.
         </p>
 
-        {/* CTA Buttons */}
         <div className="space-y-6 mb-16">
           <button
             onClick={() => navigate('/game')}
@@ -54,7 +52,6 @@ const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
           {[
             {
@@ -86,7 +83,6 @@ const HomePage: React.FC = () => {
           ))}
         </div>
 
-        {/* How It Works */}
         <section className="mb-16">
           <h2 className="pixel-text text-2xl mb-8">HOW IT WORKS</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
@@ -105,7 +101,6 @@ const HomePage: React.FC = () => {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-gray-800 py-8 text-center">
         <nav className="mb-4">
           {["About", "Contact", "Terms"].map((link, index) => (

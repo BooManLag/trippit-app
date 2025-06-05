@@ -15,11 +15,13 @@ const ChecklistPage: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Query based on authentication status
+      // Query for either user-specific items or default items
       const { data: items, error } = await supabase
         .from('checklist_items')
         .select('*')
-        .eq(user ? 'user_id' : 'is_default', user ? user.id : true)
+        .or(user 
+          ? `user_id.eq.${user.id},is_default.eq.true` 
+          : 'is_default.eq.true,user_id.is.null')
         .order('created_at');
 
       if (error) throw error;

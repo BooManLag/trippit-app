@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Pause } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import DeleteModal from '../components/DeleteModal';
 
@@ -10,6 +10,7 @@ interface Trip {
   destination: string;
   start_date: string;
   end_date: string;
+  status?: 'not_started' | 'in_progress' | 'completed';
 }
 
 const MyTripsPage: React.FC = () => {
@@ -30,7 +31,22 @@ const MyTripsPage: React.FC = () => {
     if (error) {
       console.error('Error fetching trips:', error);
     } else {
-      setTrips(data || []);
+      // Add status based on dates
+      const tripsWithStatus = (data || []).map(trip => {
+        const startDate = new Date(trip.start_date);
+        const endDate = new Date(trip.end_date);
+        const today = new Date();
+
+        let status: Trip['status'] = 'not_started';
+        if (today > endDate) {
+          status = 'completed';
+        } else if (today >= startDate && today <= endDate) {
+          status = 'in_progress';
+        }
+
+        return { ...trip, status };
+      });
+      setTrips(tripsWithStatus);
     }
     setLoading(false);
   };
@@ -68,6 +84,10 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
+  const handlePlayTrip = (trip: Trip) => {
+    navigate('/checklist', { state: { tripId: trip.id } });
+  };
+
   const today = new Date().toISOString().split('T')[0];
   const upcoming = trips.filter(trip => trip.start_date >= today);
   const past = trips.filter(trip => trip.end_date < today);
@@ -78,6 +98,28 @@ const MyTripsPage: React.FC = () => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const getStatusColor = (status: Trip['status']) => {
+    switch (status) {
+      case 'in_progress':
+        return 'text-green-400';
+      case 'completed':
+        return 'text-blue-400';
+      default:
+        return 'text-yellow-400';
+    }
+  };
+
+  const getStatusText = (status: Trip['status']) => {
+    switch (status) {
+      case 'in_progress':
+        return 'IN PROGRESS';
+      case 'completed':
+        return 'COMPLETED';
+      default:
+        return 'NOT STARTED';
+    }
   };
 
   return (
@@ -118,13 +160,28 @@ const MyTripsPage: React.FC = () => {
                           <p className="outfit-text text-gray-400">
                             {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                           </p>
+                          <p className={`outfit-text text-sm mt-2 ${getStatusColor(trip.status)}`}>
+                            {getStatusText(trip.status)}
+                          </p>
                         </div>
-                        <button
-                          onClick={() => handleDeleteClick(trip.id)}
-                          className="text-red-500 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handlePlayTrip(trip)}
+                            className="text-green-500 hover:text-green-400 transition-colors"
+                          >
+                            {trip.status === 'in_progress' ? (
+                              <Play className="w-5 h-5 fill-current" />
+                            ) : (
+                              <Play className="w-5 h-5" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(trip.id)}
+                            className="text-red-500 hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -146,6 +203,9 @@ const MyTripsPage: React.FC = () => {
                           <h4 className="pixel-text text-gray-400 mb-2">{trip.destination}</h4>
                           <p className="outfit-text text-gray-500">
                             {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
+                          </p>
+                          <p className="outfit-text text-sm mt-2 text-blue-400">
+                            COMPLETED
                           </p>
                         </div>
                         <button
@@ -170,7 +230,7 @@ const MyTripsPage: React.FC = () => {
               onClick={() => navigate('/create-trip')}
               className="pixel-button-primary"
             >
-            CREATE FIRST TRIP
+              CREATE FIRST TRIP
             </button>
           </div>
         )}

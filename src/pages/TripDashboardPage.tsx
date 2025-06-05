@@ -272,6 +272,9 @@ const TripDashboardPage: React.FC = () => {
               <p className="outfit-text text-gray-300">Tasks remaining</p>
               <div className="mt-3 outfit-text text-sm text-gray-400">
                 {completedTasks} of {totalTasks} completed
+              </div>
+              <div className="w-full bg-gray-700 h-2 mt-2 rounded-full overflow-hidden">
+              </div>
             </div>
 
             <div className="space-y-2 max-h-[400px] overflow-y-auto">

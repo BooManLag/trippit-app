@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { mockTips } from '../data/mockData';
 import TipCard from '../components/TipCard';
+import { ChecklistItem } from '../types';
 
 interface TripDetails {
   id: string;
@@ -13,12 +14,25 @@ interface TripDetails {
   end_date: string;
 }
 
+interface BucketListGoal {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 const TripDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tripId } = useParams();
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [tripCount, setTripCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [bucketListGoals, setBucketListGoals] = useState<BucketListGoal[]>([
+    { id: '1', title: 'Visit the main attractions', completed: false },
+    { id: '2', title: 'Try local cuisine', completed: false },
+    { id: '3', title: 'Take iconic photos', completed: false },
+    { id: '4', title: 'Learn basic phrases', completed: false }
+  ]);
 
   useEffect(() => {
     const fetchTripDetails = async () => {
@@ -38,6 +52,16 @@ const TripDashboardPage: React.FC = () => {
 
         if (tripData) {
           setTrip(tripData);
+        }
+
+        // Fetch checklist items
+        const { data: checklistData } = await supabase
+          .from('checklist_items')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (checklistData) {
+          setChecklistItems(checklistData);
         }
 
         // Get total trip count for user
@@ -81,7 +105,6 @@ const TripDashboardPage: React.FC = () => {
     return 'Trip in progress';
   };
 
-  // Get relevant tips based on destination
   const getRelevantTips = () => {
     if (!trip) return [];
     const [city, country] = trip.destination.split(', ');
@@ -94,6 +117,14 @@ const TripDashboardPage: React.FC = () => {
       .slice(0, 3);
   };
 
+  const toggleBucketListGoal = (id: string) => {
+    setBucketListGoals(goals =>
+      goals.map(goal =>
+        goal.id === id ? { ...goal, completed: !goal.completed } : goal
+      )
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -104,7 +135,7 @@ const TripDashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-5xl">
         <div className="flex items-center gap-4 mb-8">
           <BackButton to="/my-trips" />
           <h2 className="pixel-text text-2xl">TRIP DASHBOARD</h2>
@@ -141,6 +172,53 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Left Column: Checklist */}
+          <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <CheckSquare className="h-6 w-6 text-green-500" />
+                <h3 className="pixel-text text-lg">CHECKLIST</h3>
+              </div>
+              <button 
+                onClick={() => navigate(`/checklist?tripId=${tripId}`)}
+                className="pixel-text text-sm text-blue-400 hover:text-blue-300"
+              >
+                VIEW ALL
+              </button>
+            </div>
+            <div className="space-y-3">
+              {checklistItems.slice(0, 5).map(item => (
+                <div key={item.id} className="flex items-center p-3 bg-gray-800 border border-blue-500/10">
+                  <div className={`w-5 h-5 border-2 ${item.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-500'} mr-3`} />
+                  <span className={`outfit-text ${item.is_completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                    {item.description}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column: Game Card */}
+          <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
+            <div className="flex items-center gap-3 mb-6">
+              <Gamepad2 className="h-6 w-6 text-yellow-500" />
+              <h3 className="pixel-text text-lg">WHERE'D I GO?</h3>
+            </div>
+            <p className="outfit-text text-gray-400 mb-6">
+              Practice handling travel scenarios and learn from experienced travelers!
+            </p>
+            <button
+              onClick={() => navigate(`/game?tripId=${tripId}`)}
+              className="pixel-button-primary w-full flex items-center justify-center gap-2"
+            >
+              <Gamepad2 className="w-5 h-5" />
+              PLAY GAME
+            </button>
+          </div>
+        </div>
+
         {/* City Tips Section */}
         <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
           <div className="flex items-center justify-between mb-6">
@@ -156,36 +234,43 @@ const TripDashboardPage: React.FC = () => {
               <ChevronRight className="h-4 w-4 ml-1" />
             </button>
           </div>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {getRelevantTips().map(tip => (
               <TipCard key={tip.id} tip={tip} />
             ))}
           </div>
         </div>
 
-        {/* Action Cards */}
-        <div className="grid grid-cols-1 gap-6">
-          <button
-            onClick={() => navigate(`/game?tripId=${tripId}`)}
-            className="pixel-card flex items-center p-6 hover:bg-gray-800/50 transition-all"
-          >
-            <Gamepad2 className="h-8 w-8 text-yellow-500 mr-4" />
-            <div className="text-left">
-              <h4 className="pixel-text text-lg mb-2">WHERE'D I GO?</h4>
-              <p className="outfit-text text-gray-400">Practice handling travel scenarios</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate(`/checklist?tripId=${tripId}`)}
-            className="pixel-card flex items-center p-6 hover:bg-gray-800/50 transition-all"
-          >
-            <CheckSquare className="h-8 w-8 text-green-500 mr-4" />
-            <div className="text-left">
-              <h4 className="pixel-text text-lg mb-2">TRIP CHECKLIST</h4>
-              <p className="outfit-text text-gray-400">Track your trip preparation progress</p>
-            </div>
-          </button>
+        {/* Bucket List Goals */}
+        <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
+          <div className="flex items-center gap-3 mb-6">
+            <Star className="h-6 w-6 text-yellow-400" />
+            <h3 className="pixel-text text-lg">BUCKET LIST GOALS</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bucketListGoals.map(goal => (
+              <button
+                key={goal.id}
+                onClick={() => toggleBucketListGoal(goal.id)}
+                className={`p-4 border ${
+                  goal.completed 
+                    ? 'bg-green-500/10 border-green-500/20' 
+                    : 'bg-gray-800 border-blue-500/20'
+                } hover:border-blue-500/40 transition-colors`}
+              >
+                <div className="flex items-center">
+                  <div className={`w-5 h-5 border-2 ${
+                    goal.completed ? 'bg-green-500 border-green-500' : 'border-gray-500'
+                  } mr-3`} />
+                  <span className={`outfit-text text-left ${
+                    goal.completed ? 'text-gray-400 line-through' : 'text-white'
+                  }`}>
+                    {goal.title}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

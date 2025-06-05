@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
-import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { MapPin, Calendar, Search, Loader2, ArrowLeft } from 'lucide-react';
+import { supabase, isAuthenticated } from '../lib/supabase';
 import countries from '../data/countries.min.json';
+import BackButton from '../components/BackButton';
 
 interface Location {
   city: string;
@@ -24,23 +25,24 @@ const CreateTripPage: React.FC = () => {
   const [isFirstTrip, setIsFirstTrip] = useState(false);
 
   useEffect(() => {
-    const checkFirstTrip = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+    const checkAuthAndFirstTrip = async () => {
+      const authenticated = await isAuthenticated();
+      if (!authenticated) {
         navigate('/');
         return;
       }
 
+      const { data: { user } } = await supabase.auth.getUser();
       const { data: trips } = await supabase
         .from('trips')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', user!.id)
         .limit(1);
 
       setIsFirstTrip(!trips || trips.length === 0);
     };
 
-    checkFirstTrip();
+    checkAuthAndFirstTrip();
   }, [navigate]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
-import { MapPin, Calendar, Search, Loader2, ArrowLeft } from 'lucide-react';
+import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
 import { supabase, isAuthenticated } from '../lib/supabase';
 import countries from '../data/countries.min.json';
 import BackButton from '../components/BackButton';
@@ -22,27 +22,17 @@ const CreateTripPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isFirstTrip, setIsFirstTrip] = useState(false);
 
   useEffect(() => {
-    const checkAuthAndFirstTrip = async () => {
+    const checkAuth = async () => {
       const authenticated = await isAuthenticated();
       if (!authenticated) {
         navigate('/');
         return;
       }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: trips } = await supabase
-        .from('trips')
-        .select('id')
-        .eq('user_id', user!.id)
-        .limit(1);
-
-      setIsFirstTrip(!trips || trips.length === 0);
     };
 
-    checkAuthAndFirstTrip();
+    checkAuth();
   }, [navigate]);
 
   useEffect(() => {
@@ -96,14 +86,7 @@ const CreateTripPage: React.FC = () => {
 
       if (error) throw error;
       
-      navigate('/trip-created', {
-        state: {
-          destination: `${selectedLocation.city}, ${selectedLocation.country}`,
-          startDate,
-          endDate,
-          isFirstTrip
-        }
-      });
+      navigate('/my-trips');
     } catch (error) {
       console.error('Error creating trip:', error);
     }
@@ -115,19 +98,9 @@ const CreateTripPage: React.FC = () => {
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
-          <div className="text-center mb-8">
-            <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            {isFirstTrip ? (
-              <>
-                <h2 className="pixel-text text-2xl mb-2">YOUR FIRST ADVENTURE!</h2>
-                <p className="outfit-text text-gray-400">Let's make it memorable</p>
-              </>
-            ) : (
-              <>
-                <h2 className="pixel-text text-2xl mb-2">PLAN YOUR ADVENTURE</h2>
-                <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
-              </>
-            )}
+          <div className="flex justify-between items-center mb-8">
+            <BackButton to="/my-trips" />
+            <h2 className="pixel-text text-2xl">PLAN YOUR TRIP</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -207,22 +180,13 @@ const CreateTripPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-between pt-6">
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="pixel-button-secondary bg-gray-700 hover:bg-gray-600"
-              >
-                CANCEL
-              </button>
-              <button
-                type="submit"
-                disabled={!selectedLocation || !startDate || !endDate}
-                className="pixel-button-primary bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
-              >
-                {isFirstTrip ? 'START ADVENTURE' : 'CREATE TRIP'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={!selectedLocation || !startDate || !endDate}
+              className="pixel-button-primary w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
+            >
+              CREATE TRIP
+            </button>
           </form>
         </div>
       </div>

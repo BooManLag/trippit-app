@@ -1,175 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { defaultChecklist } from '../data/defaultChecklist';
 import { ChecklistItem, ChecklistCategory as CategoryType } from '../types';
 import { Loader2 } from 'lucide-react';
 
 const ChecklistPage: React.FC = () => {
-  const [categories, setCategories] = useState<CategoryType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryType[]>(defaultChecklist);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadChecklist();
-  }, []);
-
-  const loadChecklist = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Query for either user-specific items or default items
-      const { data: items, error } = await supabase
-        .from('checklist_items')
-        .select('*')
-        .or(user 
-          ? `user_id.eq.${user.id},is_default.eq.true` 
-          : 'is_default.eq.true,user_id.is.null')
-        .order('created_at');
-
-      if (error) throw error;
-
-      // Group items by category
-      const grouped = (items || []).reduce((acc: CategoryType[], item) => {
-        const existing = acc.find(c => c.name === item.category);
-        const entry: ChecklistItem = {
-          id: item.id,
-          category: item.category,
-          description: item.description,
-          isCompleted: item.is_completed,
-          isDefault: item.is_default
-        };
-        
-        if (existing) {
-          existing.items.push(entry);
-        } else {
-          acc.push({
-            id: item.category,
-            name: item.category,
-            emoji: item.category.split(' ')[0],
-            items: [entry]
-          });
-        }
-        return acc;
-      }, []);
-
-      setCategories(grouped);
-    } catch (err) {
-      console.error('Error loading checklist:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleToggleItem = (id: string) => {
+    setCategories(categories.map(cat => ({
+      ...cat,
+      items: cat.items.map(i =>
+        i.id === id ? { ...i, isCompleted: !i.isCompleted } : i
+      )
+    })));
   };
 
-  const handleToggleItem = async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // For anonymous users, just update the state
-      setCategories(categories.map(cat => ({
-        ...cat,
-        items: cat.items.map(i =>
-          i.id === id ? { ...i, isCompleted: !i.isCompleted } : i
-        )
-      })));
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('checklist_items')
-        .update({ is_completed: !categories.flatMap(c => c.items).find(i => i.id === id)?.isCompleted })
-        .eq('id', id);
-      if (error) throw error;
-
-      setCategories(categories.map(cat => ({
-        ...cat,
-        items: cat.items.map(i =>
-          i.id === id ? { ...i, isCompleted: !i.isCompleted } : i
-        )
-      })));
-    } catch (err) {
-      console.error('Toggle error:', err);
-    }
+  const handleAddItem = (category: string, description: string) => {
+    const tempId = Math.random().toString(36).substring(7);
+    setCategories(categories.map(cat =>
+      cat.name === category
+        ? {
+            ...cat,
+            items: [...cat.items, {
+              id: tempId,
+              category,
+              description,
+              isCompleted: false,
+              isDefault: false
+            }]
+          }
+        : cat
+    ));
   };
 
-  const handleAddItem = async (category: string, description = 'New item') => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // For anonymous users, just update the state with a temporary ID
-      const tempId = Math.random().toString(36).substring(7);
-      setCategories(categories.map(cat =>
-        cat.name === category
-          ? {
-              ...cat,
-              items: [...cat.items, {
-                id: tempId,
-                category,
-                description,
-                isCompleted: false,
-                isDefault: false
-              }]
-            }
-          : cat
-      ));
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('checklist_items')
-        .insert({
-          user_id: user.id,
-          category,
-          description,
-          is_completed: false,
-          is_default: false
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setCategories(categories.map(cat =>
-        cat.name === category
-          ? {
-              ...cat,
-              items: [...cat.items, {
-                id: data.id,
-                category: data.category,
-                description: data.description,
-                isCompleted: data.is_completed,
-                isDefault: data.is_default
-              }]
-            }
-          : cat
-      ));
-    } catch (err) {
-      console.error('Add error:', err);
-    }
-  };
-
-  const handleDeleteItem = async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // For anonymous users, just update the state
-      setCategories(categories.map(cat => ({
-        ...cat,
-        items: cat.items.filter(i => i.id !== id)
-      })));
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('checklist_items')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-
-      setCategories(categories.map(cat => ({
-        ...cat,
-        items: cat.items.filter(i => i.id !== id)
-      })));
-    } catch (err) {
-      console.error('Delete error:', err);
-    }
+  const handleDeleteItem = (id: string) => {
+    setCategories(categories.map(cat => ({
+      ...cat,
+      items: cat.items.filter(i => i.id !== id)
+    })));
   };
 
   const completedCount = categories.reduce((sum, c) => sum + c.items.filter(i => i.isCompleted).length, 0);
@@ -223,7 +92,7 @@ const ChecklistPage: React.FC = () => {
                   ))}
                 </div>
                 <button
-                  onClick={() => handleAddItem(category.name)}
+                  onClick={() => handleAddItem(category.name, 'New item')}
                   className="mt-4 text-blue-400 hover:text-blue-300 pixel-text text-sm"
                 >
                   + ADD ITEM

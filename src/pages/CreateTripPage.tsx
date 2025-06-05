@@ -21,6 +21,27 @@ const CreateTripPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isFirstTrip, setIsFirstTrip] = useState(false);
+
+  useEffect(() => {
+    const checkFirstTrip = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/');
+        return;
+      }
+
+      const { data: trips } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      setIsFirstTrip(!trips || trips.length === 0);
+    };
+
+    checkFirstTrip();
+  }, [navigate]);
 
   useEffect(() => {
     if (debouncedSearch.length < 2) {
@@ -58,12 +79,14 @@ const CreateTripPage: React.FC = () => {
     if (!selectedLocation) return;
 
     try {
-      // Get the current user if they're logged in
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Create the trip with optional user_id
+      if (!user) {
+        navigate('/');
+        return;
+      }
+
       const { error } = await supabase.from('trips').insert({
-        user_id: user?.id || null, // Use null for anonymous trips
+        user_id: user.id,
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
         end_date: endDate,
@@ -71,12 +94,12 @@ const CreateTripPage: React.FC = () => {
 
       if (error) throw error;
       
-      // Navigate to success page with trip details
       navigate('/trip-created', {
         state: {
           destination: `${selectedLocation.city}, ${selectedLocation.country}`,
           startDate,
-          endDate
+          endDate,
+          isFirstTrip
         }
       });
     } catch (error) {
@@ -92,8 +115,17 @@ const CreateTripPage: React.FC = () => {
         <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
           <div className="text-center mb-8">
             <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            <h2 className="pixel-text text-2xl mb-2">PLAN YOUR ADVENTURE</h2>
-            <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
+            {isFirstTrip ? (
+              <>
+                <h2 className="pixel-text text-2xl mb-2">YOUR FIRST ADVENTURE!</h2>
+                <p className="outfit-text text-gray-400">Let's make it memorable</p>
+              </>
+            ) : (
+              <>
+                <h2 className="pixel-text text-2xl mb-2">PLAN YOUR ADVENTURE</h2>
+                <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
+              </>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -186,7 +218,7 @@ const CreateTripPage: React.FC = () => {
                 disabled={!selectedLocation || !startDate || !endDate}
                 className="pixel-button-primary bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
               >
-                CREATE TRIP
+                {isFirstTrip ? 'START ADVENTURE' : 'CREATE TRIP'}
               </button>
             </div>
           </form>

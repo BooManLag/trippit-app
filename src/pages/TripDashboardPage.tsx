@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
+import { mockTips } from '../data/mockData';
+import TipCard from '../components/TipCard';
 
 interface TripDetails {
   id: string;
@@ -79,6 +81,19 @@ const TripDashboardPage: React.FC = () => {
     return 'Trip in progress';
   };
 
+  // Get relevant tips based on destination
+  const getRelevantTips = () => {
+    if (!trip) return [];
+    const [city, country] = trip.destination.split(', ');
+    return mockTips
+      .filter(tip => 
+        tip.location === 'Global' || 
+        tip.location === country || 
+        tip.location?.includes(city)
+      )
+      .slice(0, 3);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -95,6 +110,7 @@ const TripDashboardPage: React.FC = () => {
           <h2 className="pixel-text text-2xl">TRIP DASHBOARD</h2>
         </div>
 
+        {/* Trip Summary Card */}
         <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
           <div className="flex items-center gap-4 mb-6">
             <Trophy className="h-12 w-12 text-yellow-400" />
@@ -125,6 +141,29 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
+        {/* City Tips Section */}
+        <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Lightbulb className="h-6 w-6 text-yellow-400" />
+              <h3 className="pixel-text text-lg">CITY TIPS</h3>
+            </div>
+            <button 
+              onClick={() => navigate(`/tips?tripId=${tripId}`)}
+              className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
+            >
+              View All
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            {getRelevantTips().map(tip => (
+              <TipCard key={tip.id} tip={tip} />
+            ))}
+          </div>
+        </div>
+
+        {/* Action Cards */}
         <div className="grid grid-cols-1 gap-6">
           <button
             onClick={() => navigate(`/game?tripId=${tripId}`)}
@@ -134,17 +173,6 @@ const TripDashboardPage: React.FC = () => {
             <div className="text-left">
               <h4 className="pixel-text text-lg mb-2">WHERE'D I GO?</h4>
               <p className="outfit-text text-gray-400">Practice handling travel scenarios</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate(`/tips?tripId=${tripId}`)}
-            className="pixel-card flex items-center p-6 hover:bg-gray-800/50 transition-all"
-          >
-            <MapPin className="h-8 w-8 text-blue-500 mr-4" />
-            <div className="text-left">
-              <h4 className="pixel-text text-lg mb-2">CITY MODE</h4>
-              <p className="outfit-text text-gray-400">Get location-specific tips and advice</p>
             </div>
           </button>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, Calendar, ThumbsUp, Gamepad2, BookMarked, Award } from 'lucide-react';
+import { MapPin, Calendar, ThumbsUp, Gamepad2, BookMarked, CheckSquare } from 'lucide-react';
 
 interface LocationState {
   destination: string;
@@ -52,10 +52,21 @@ const TripCreatedPage: React.FC = () => {
           
           <div className="grid grid-cols-1 gap-4 mb-8">
             <button
+              onClick={() => navigate('/checklist')}
+              className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
+            >
+              <CheckSquare className="h-6 w-6 text-green-500 mr-3" />
+              <div className="text-left">
+                <h4 className="outfit-text font-semibold">Pre-Trip Checklist</h4>
+                <p className="outfit-text text-sm text-gray-400">Stay organized with our travel checklist</p>
+              </div>
+            </button>
+
+            <button
               onClick={() => navigate('/game')}
               className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
             >
-              <Gamepad2 className="h-6 w-6 text-green-500 mr-3" />
+              <Gamepad2 className="h-6 w-6 text-yellow-500 mr-3" />
               <div className="text-left">
                 <h4 className="outfit-text font-semibold">Try Travel Scenarios</h4>
                 <p className="outfit-text text-sm text-gray-400">Practice handling travel situations</p>
@@ -66,21 +77,10 @@ const TripCreatedPage: React.FC = () => {
               onClick={() => navigate('/tips')}
               className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
             >
-              <BookMarked className="h-6 w-6 text-yellow-500 mr-3" />
+              <BookMarked className="h-6 w-6 text-purple-500 mr-3" />
               <div className="text-left">
                 <h4 className="outfit-text font-semibold">Browse Travel Tips</h4>
                 <p className="outfit-text text-sm text-gray-400">Learn from experienced travelers</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate('/badges')}
-              className="pixel-card flex items-center p-4 hover:bg-gray-800/50 transition-all"
-            >
-              <Award className="h-6 w-6 text-purple-500 mr-3" />
-              <div className="text-left">
-                <h4 className="outfit-text font-semibold">View Badges</h4>
-                <p className="outfit-text text-sm text-gray-400">Track your travel achievements</p>
               </div>
             </button>
           </div>

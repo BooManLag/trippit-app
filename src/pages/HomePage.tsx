@@ -1,8 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AuthModal from '../components/AuthModal';
+import { supabase } from '../lib/supabase';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    navigate('/create-trip');
+  };
+
+  const handlePlanTrip = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setShowAuthModal(true);
+    } else {
+      navigate('/create-trip');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -30,7 +47,7 @@ const HomePage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate('/create-trip')}
+            onClick={handlePlanTrip}
             className="pixel-button-secondary w-full max-w-md"
           >
             ✈️ PLAN MY TRIP
@@ -105,6 +122,12 @@ const HomePage: React.FC = () => {
           © Tripp'it 2025 – Travel with a twist.
         </p>
       </footer>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

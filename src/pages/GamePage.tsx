@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Trophy, Star, RotateCcw, Zap, Heart, Laugh } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Star, RotateCcw, Zap, Heart, Laugh, Gamepad2, Target } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
 import scenariosData from '../data/scenarios.json';
@@ -41,6 +41,11 @@ const GamePage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasShownSignUpPrompt, setHasShownSignUpPrompt] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -281,11 +286,20 @@ const GamePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute top-10 left-10 w-2 h-2 bg-red-500 rounded-full animate-pulse opacity-60"></div>
+          <div className="absolute top-32 right-20 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-40"></div>
+          <div className="absolute bottom-40 left-1/4 w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce opacity-50"></div>
+        </div>
+
+        <div className="max-w-6xl mx-auto relative z-10">
           <div className="flex items-center justify-center h-[60vh]">
-            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400 text-sm sm:text-base">GENERATING CHAOS...</span>
+            <div className="animate-bounce-in">
+              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-red-500 animate-spin mr-3" />
+              <span className="pixel-text text-red-400 text-sm sm:text-base">GENERATING CHAOS...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -293,17 +307,31 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6 sm:mb-8">
+    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8 lg:py-12 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-10 left-10 w-2 h-2 bg-red-500 rounded-full animate-pulse opacity-60"></div>
+        <div className="absolute top-32 right-20 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-40"></div>
+        <div className="absolute bottom-40 left-1/4 w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce opacity-50"></div>
+        <div className="absolute top-1/2 right-10 w-1 h-1 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+        <div className="absolute bottom-20 right-1/3 w-2 h-2 bg-pink-500 rounded-full animate-ping opacity-40"></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* Header */}
+        <div className={`flex items-center gap-4 mb-6 sm:mb-8 lg:mb-12 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <button 
             onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
-            className="text-blue-400 hover:text-blue-300"
+            className="text-blue-400 hover:text-blue-300 transition-colors hover:scale-110"
           >
             <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h2 className="pixel-text mobile-heading">WHERE'D I GO? 🎮</h2>
+            <div className="flex items-center gap-3 mb-2">
+              <Gamepad2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-pulse" />
+              <h2 className="pixel-text mobile-heading text-red-400 glow-text">WHERE'D I GO? 🎮</h2>
+              <Target className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-400 animate-float" />
+            </div>
             {trip && (
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
                 Survive the chaos in {trip.destination}!
@@ -311,68 +339,90 @@ const GamePage: React.FC = () => {
             )}
             {!trip && (
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">
-                Random travel disasters await!
+                Random travel disasters await your survival skills!
               </p>
             )}
           </div>
         </div>
 
         {/* Game Stats */}
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className={`pixel-card bg-gradient-to-br from-red-900/20 to-orange-900/20 mb-6 sm:mb-8 border-2 border-red-500/30 animate-slide-in-up delay-200`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-2">
-                <Trophy className="w-4 sm:w-5 h-4 sm:h-5 text-yellow-400" />
-                <span className="pixel-text text-yellow-400 text-sm sm:text-base">SURVIVAL SCORE: {score}/{scenarios.length}</span>
+                <Trophy className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-400 animate-pulse" />
+                <div>
+                  <div className="pixel-text text-yellow-400 text-lg sm:text-xl">
+                    {score}/{scenarios.length}
+                  </div>
+                  <div className="pixel-text text-xs text-gray-400">SURVIVAL SCORE</div>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <Star className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400" />
-                <span className="pixel-text text-blue-400 text-sm sm:text-base">CHAOS LEVEL: {Math.min(currentScenarioIndex + 1, scenarios.length)}/{scenarios.length}</span>
+                <Star className="w-5 sm:w-6 h-5 sm:h-6 text-blue-400 animate-float" />
+                <div>
+                  <div className="pixel-text text-blue-400 text-lg sm:text-xl">
+                    {Math.min(currentScenarioIndex + 1, scenarios.length)}/{scenarios.length}
+                  </div>
+                  <div className="pixel-text text-xs text-gray-400">CHAOS LEVEL</div>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="w-4 sm:w-5 h-4 sm:h-5 text-purple-400" />
-                <span className="pixel-text text-purple-400 text-sm sm:text-base">FUN METER: {completedScenarios > 0 ? '🔥' : '😴'}</span>
+                <Zap className="w-5 sm:w-6 h-5 sm:h-6 text-purple-400 animate-pulse" />
+                <div>
+                  <div className="pixel-text text-purple-400 text-lg sm:text-xl">
+                    {completedScenarios > 0 ? '🔥' : '😴'}
+                  </div>
+                  <div className="pixel-text text-xs text-gray-400">FUN METER</div>
+                </div>
               </div>
             </div>
             <button
               onClick={handleRestart}
-              className="pixel-button-secondary flex items-center justify-center gap-2 w-full sm:w-auto"
+              className="pixel-button-secondary flex items-center justify-center gap-2 w-full sm:w-auto hover-wiggle"
             >
-              <RotateCcw className="w-3 sm:w-4 h-3 sm:h-4" />
+              <RotateCcw className="w-4 h-4" />
               NEW CHAOS
             </button>
           </div>
           
-          <div className="w-full bg-gray-700 h-3 mt-4 rounded-full overflow-hidden">
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-700 h-4 rounded-full overflow-hidden">
             <div 
-              className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full transition-all duration-500"
+              className="bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 h-full transition-all duration-500 flex items-center justify-center"
               style={{ width: `${(completedScenarios / scenarios.length) * 100}%` }}
-            />
+            >
+              {completedScenarios > 0 && (
+                <span className="pixel-text text-xs text-black font-bold">
+                  {Math.round((completedScenarios / scenarios.length) * 100)}%
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Game Content */}
         {isGameCompleted ? (
-          <div className="pixel-card bg-gray-900 border-2 border-green-500/20 text-center">
-            <div className="text-4xl sm:text-6xl mb-4">🎉</div>
-            <h3 className="pixel-text text-lg sm:text-2xl text-green-400 mb-4">CHAOS SURVIVED!</h3>
-            <p className="outfit-text text-gray-300 mb-6 text-sm sm:text-base">
+          <div className={`pixel-card bg-gradient-to-br from-green-900/20 to-blue-900/20 border-2 border-green-500/30 text-center animate-bounce-in delay-300`}>
+            <div className="text-4xl sm:text-6xl mb-6 animate-float">🎉</div>
+            <h3 className="pixel-text text-lg sm:text-2xl text-green-400 mb-4 glow-text">CHAOS SURVIVED!</h3>
+            <p className="outfit-text text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base">
               You survived {score} out of {scenarios.length} travel disasters like a pro!
             </p>
             
             <div className="mb-6 sm:mb-8">
               {score === scenarios.length && (
-                <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 mb-4">
+                <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 mb-4 animate-pulse-glow">
                   <p className="pixel-text text-yellow-400 text-sm sm:text-base">🏆 PERFECT CHAOS MASTER! You're ready for anything!</p>
                 </div>
               )}
               {score >= scenarios.length * 0.7 && score < scenarios.length && (
-                <div className="pixel-card bg-green-500/10 border-green-500/20 mb-4">
+                <div className="pixel-card bg-green-500/10 border-green-500/20 mb-4 animate-pulse-glow">
                   <p className="pixel-text text-green-400 text-sm sm:text-base">⭐ CHAOS SURVIVOR! You've got solid travel instincts!</p>
                 </div>
               )}
               {score < scenarios.length * 0.7 && (
-                <div className="pixel-card bg-blue-500/10 border-blue-500/20 mb-4">
+                <div className="pixel-card bg-blue-500/10 border-blue-500/20 mb-4 animate-pulse-glow">
                   <p className="pixel-text text-blue-400 text-sm sm:text-base">📚 CHAOS APPRENTICE! Every disaster is a learning opportunity!</p>
                 </div>
               )}
@@ -381,26 +431,26 @@ const GamePage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={handleRestart}
-                className="pixel-button-primary w-full sm:w-auto"
+                className="pixel-button-primary w-full sm:w-auto hover-float"
               >
                 MORE CHAOS!
               </button>
               <button
                 onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')}
-                className="pixel-button-secondary w-full sm:w-auto"
+                className="pixel-button-secondary w-full sm:w-auto hover-wiggle"
               >
                 ESCAPE TO SAFETY
               </button>
             </div>
           </div>
         ) : (
-          <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <div className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-red-500/30 animate-slide-in-up delay-400`}>
             {!showOutcome ? (
               <div>
-                <div className="mb-6">
+                <div className="mb-6 sm:mb-8">
                   <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <span className="text-xl sm:text-2xl">{scenarios[currentScenarioIndex]?.emoji}</span>
-                    <span className="pixel-text text-xs sm:text-sm text-blue-400">
+                    <span className="text-2xl sm:text-3xl animate-bounce">{scenarios[currentScenarioIndex]?.emoji}</span>
+                    <span className="pixel-text text-xs sm:text-sm text-blue-400 glow-text">
                       {scenarios[currentScenarioIndex]?.category?.toUpperCase()}
                     </span>
                     <span className={`pixel-text text-xs sm:text-sm ${getFunLevelColor(scenarios[currentScenarioIndex]?.funLevel)}`}>
@@ -412,7 +462,7 @@ const GamePage: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <h3 className="pixel-text text-lg sm:text-xl text-yellow-400 mb-4 break-words">
+                  <h3 className="pixel-text text-lg sm:text-xl text-yellow-400 mb-4 break-words glow-text">
                     {scenarios[currentScenarioIndex]?.title}
                   </h3>
                   <p className="outfit-text text-gray-300 leading-relaxed text-sm sm:text-base">
@@ -421,13 +471,14 @@ const GamePage: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {scenarios[currentScenarioIndex]?.choices.map((choice) => (
+                  {scenarios[currentScenarioIndex]?.choices.map((choice, index) => (
                     <button
                       key={choice.id}
                       onClick={() => handleChoiceSelect(choice)}
-                      className="w-full text-left p-3 sm:p-4 bg-gray-800 border border-blue-500/20 hover:border-blue-500/40 hover:bg-gray-700 transition-all group"
+                      className={`w-full text-left p-3 sm:p-4 bg-gray-800 border border-red-500/20 hover:border-red-500/40 hover:bg-gray-700 transition-all group animate-slide-in-left`}
+                      style={{ animationDelay: `${index * 100 + 600}ms` }}
                     >
-                      <span className="outfit-text text-white text-sm sm:text-base break-words group-hover:text-blue-300 transition-colors">
+                      <span className="outfit-text text-white text-sm sm:text-base break-words group-hover:text-red-300 transition-colors">
                         {choice.text}
                       </span>
                     </button>
@@ -435,17 +486,17 @@ const GamePage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="text-center mb-6">
-                  <div className="text-3xl sm:text-4xl mb-4">
+              <div className="animate-slide-in-up">
+                <div className="text-center mb-6 sm:mb-8">
+                  <div className="text-4xl sm:text-5xl mb-4 animate-bounce">
                     {selectedChoice?.isCorrect ? '🎉' : '💥'}
                   </div>
-                  <h3 className="pixel-text text-lg sm:text-xl mb-2">
+                  <h3 className="pixel-text text-lg sm:text-xl mb-2 glow-text">
                     {selectedChoice?.isCorrect ? 'NAILED IT!' : 'PLOT TWIST!'}
                   </h3>
                 </div>
 
-                <div className="pixel-card bg-gray-800/50 border-gray-700 mb-6">
+                <div className="pixel-card bg-gray-800/50 border-gray-700 mb-6 sm:mb-8">
                   <p className="outfit-text text-gray-300 mb-4 text-sm sm:text-base break-words">
                     {selectedChoice?.outcome}
                   </p>
@@ -470,7 +521,7 @@ const GamePage: React.FC = () => {
                 <div className="text-center">
                   <button
                     onClick={handleContinue}
-                    className="pixel-button-primary w-full sm:w-auto"
+                    className="pixel-button-primary w-full sm:w-auto hover-float"
                   >
                     {currentScenarioIndex < scenarios.length - 1 ? 'BRING MORE CHAOS!' : 'FINISH THE MADNESS!'}
                   </button>

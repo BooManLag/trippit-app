@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Filter, Loader2, ExternalLink, ArrowLeft, Search } from 'lucide-react';
+import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface RedditTip {
@@ -25,6 +25,11 @@ const TipsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [trip, setTrip] = useState<any>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   useEffect(() => {
     const fetchTripAndTips = async () => {
@@ -101,7 +106,8 @@ const TipsPage: React.FC = () => {
       'Planning': '📋',
       'Mindset': '🧠',
       'Things to Do': '🎯',
-      'General': '💡'
+      'General': '💡',
+      'Weather': '🌤️'
     };
     return icons[category] || '💡';
   };
@@ -121,61 +127,82 @@ const TipsPage: React.FC = () => {
       'Planning': 'text-gray-400',
       'Mindset': 'text-emerald-400',
       'Things to Do': 'text-violet-400',
-      'General': 'text-blue-400'
+      'General': 'text-blue-400',
+      'Weather': 'text-sky-400'
     };
     return colors[category] || 'text-blue-400';
   };
 
   return (
-    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center gap-4 mb-6 sm:mb-8">
+    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8 lg:py-12 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-10 left-10 w-2 h-2 bg-yellow-500 rounded-full animate-pulse opacity-60"></div>
+        <div className="absolute top-32 right-20 w-1 h-1 bg-blue-400 rounded-full animate-ping opacity-40"></div>
+        <div className="absolute bottom-40 left-1/4 w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce opacity-50"></div>
+        <div className="absolute top-1/2 right-10 w-1 h-1 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+        <div className="absolute bottom-20 right-1/3 w-2 h-2 bg-pink-500 rounded-full animate-ping opacity-40"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Header */}
+        <div className={`flex items-center gap-4 mb-6 sm:mb-8 lg:mb-12 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <button 
             onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
-            className="text-blue-400 hover:text-blue-300"
+            className="text-blue-400 hover:text-blue-300 transition-colors hover:scale-110"
           >
             <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h2 className="pixel-text mobile-heading">CITY TIPS</h2>
+            <div className="flex items-center gap-3 mb-2">
+              <Lightbulb className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-400 animate-pulse" />
+              <h2 className="pixel-text mobile-heading text-yellow-400 glow-text">CITY WISDOM</h2>
+              <Globe className="w-6 sm:w-8 h-6 sm:h-8 text-blue-400 animate-float" />
+            </div>
             {trip && (
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
-                Real traveler advice for {trip.destination}
+                Real traveler insights for {trip.destination}
               </p>
             )}
           </div>
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+        <div className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 mb-6 sm:mb-8 border-2 border-yellow-500/30 animate-slide-in-up delay-200`}>
           <div className="flex flex-col gap-4">
             {/* Search */}
             <div className="flex-1 relative">
+              <label className="block pixel-text text-xs text-yellow-400 mb-2 glow-text">
+                🔍 SEARCH WISDOM
+              </label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search tips..."
-                className="w-full px-3 sm:px-4 pr-10 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none text-sm sm:text-base"
+                placeholder="Search for specific tips and advice..."
+                className="w-full px-4 pr-12 py-3 bg-gray-800 border border-yellow-500/20 text-white rounded-none outline-none text-sm sm:text-base hover:border-yellow-500/40 focus:border-yellow-500/60 transition-all"
               />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-blue-500" />
+              <Search className="absolute right-3 top-1/2 translate-y-1 w-5 h-5 text-yellow-500 animate-pulse" />
             </div>
 
             {/* Category Filter */}
             <div className="relative">
+              <label className="block pixel-text text-xs text-yellow-400 mb-2 glow-text">
+                📂 FILTER BY CATEGORY
+              </label>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors w-full sm:min-w-[160px] justify-between text-sm sm:text-base"
+                className="flex items-center gap-3 px-4 py-3 bg-gray-800 border border-yellow-500/20 text-white hover:border-yellow-500/40 transition-all w-full sm:min-w-[200px] justify-between text-sm sm:text-base"
               >
                 <div className="flex items-center gap-2">
-                  <Filter className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <Filter className="w-4 h-4" />
                   <span className="outfit-text">{filter}</span>
                 </div>
-                <span className="text-blue-400">▼</span>
+                <span className="text-yellow-400">▼</span>
               </button>
 
               {showDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-blue-500/20 z-10 max-h-60 overflow-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-yellow-500/20 z-10 max-h-60 overflow-auto animate-slide-in-up">
                   {categories.map(category => (
                     <button
                       key={category}
@@ -183,9 +210,9 @@ const TipsPage: React.FC = () => {
                         setFilter(category);
                         setShowDropdown(false);
                       }}
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm sm:text-base"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-all flex items-center gap-3 text-sm sm:text-base border-b border-gray-700 last:border-b-0"
                     >
-                      <span>{category !== 'All' ? getCategoryIcon(category) : '🌟'}</span>
+                      <span className="text-lg">{category !== 'All' ? getCategoryIcon(category) : '🌟'}</span>
                       <span className="outfit-text">{category}</span>
                     </button>
                   ))}
@@ -195,8 +222,9 @@ const TipsPage: React.FC = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="pixel-text text-xs sm:text-sm text-green-400">
-              🔥 {filteredTips.length} tips found
+            <span className="pixel-text text-xs sm:text-sm text-green-400 flex items-center gap-1">
+              <Star className="w-3 h-3" />
+              {filteredTips.length} tips found
             </span>
             <span className="pixel-text text-xs sm:text-sm text-blue-400">
               • Real traveler experiences
@@ -209,29 +237,37 @@ const TipsPage: React.FC = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex items-center justify-center py-8 sm:py-12">
-            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400 text-sm sm:text-base">GATHERING WISDOM...</span>
+          <div className="flex items-center justify-center py-12 sm:py-16">
+            <div className="animate-bounce-in">
+              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-yellow-500 animate-spin mr-3" />
+              <span className="pixel-text text-yellow-400 text-sm sm:text-base">GATHERING WISDOM...</span>
+            </div>
           </div>
         )}
 
         {/* Tips Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {filteredTips.map(tip => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          {filteredTips.map((tip, index) => (
             <div 
               key={tip.id} 
-              className="pixel-card bg-gray-900 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all"
+              className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 group animate-slide-in-up`}
+              style={{ animationDelay: `${index * 50 + 300}ms` }}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                  <span className="text-lg sm:text-2xl flex-shrink-0">{getCategoryIcon(tip.category)}</span>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-xl sm:text-2xl flex-shrink-0 animate-float" style={{ animationDelay: `${index * 100}ms` }}>
+                    {getCategoryIcon(tip.category)}
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <span className={`pixel-text text-xs sm:text-sm ${getCategoryColor(tip.category)} block`}>
+                    <span className={`pixel-text text-xs sm:text-sm ${getCategoryColor(tip.category)} block glow-text`}>
                       {tip.category}
                     </span>
-                    <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="pixel-text text-xs text-green-400">{tip.source}</span>
-                      <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
+                      <span className="pixel-text text-xs text-yellow-400 flex items-center gap-1">
+                        <Star className="w-3 h-3" />
+                        {tip.score}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -240,18 +276,18 @@ const TipsPage: React.FC = () => {
                     href={tip.reddit_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                    className="text-gray-500 hover:text-blue-400 transition-all duration-300 flex-shrink-0 hover:scale-110"
                   >
-                    <ExternalLink className="w-3 sm:w-4 h-3 sm:h-4" />
+                    <ExternalLink className="w-4 h-4" />
                   </a>
                 )}
               </div>
 
-              <h3 className="outfit-text font-semibold text-white mb-3 leading-tight text-sm sm:text-base break-words">
+              <h3 className="outfit-text font-semibold text-white mb-3 leading-tight text-sm sm:text-base break-words group-hover:text-yellow-300 transition-colors">
                 {tip.title}
               </h3>
 
-              <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed break-words">
+              <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed break-words group-hover:text-gray-200 transition-colors">
                 {tip.content}
               </p>
 
@@ -265,26 +301,26 @@ const TipsPage: React.FC = () => {
         </div>
 
         {filteredTips.length === 0 && !loading && (
-          <div className="text-center py-8 sm:py-12">
-            <div className="text-3xl sm:text-4xl mb-4">🔍</div>
-            <h3 className="pixel-text text-sm sm:text-lg text-gray-400 mb-2">NO TIPS FOUND</h3>
-            <p className="outfit-text text-gray-500 text-sm sm:text-base">
-              Try adjusting your search or filter criteria
+          <div className={`text-center py-12 sm:py-16 animate-bounce-in delay-500`}>
+            <div className="text-4xl sm:text-6xl mb-6 animate-float">🔍</div>
+            <h3 className="pixel-text text-lg sm:text-xl text-gray-400 mb-4 glow-text">NO WISDOM FOUND</h3>
+            <p className="outfit-text text-gray-500 text-sm sm:text-base max-w-md mx-auto">
+              Try adjusting your search or filter criteria to discover more travel insights
             </p>
           </div>
         )}
 
         {/* Attribution */}
         {redditTips.length > 0 && (
-          <div className="pixel-card bg-gray-900/30 mt-6 sm:mt-8 border border-gray-700">
+          <div className={`pixel-card bg-gray-900/30 mt-8 sm:mt-12 border border-gray-700 animate-slide-in-up delay-700`}>
             <div className="text-center">
               <p className="outfit-text text-gray-500 text-xs sm:text-sm">
-                💡 Tips sourced from travel communities • 
+                💡 Wisdom sourced from travel communities • 
                 <a 
                   href="https://reddit.com/r/travel" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 ml-1"
+                  className="text-blue-400 hover:text-blue-300 ml-1 transition-colors hover:underline"
                 >
                   Join the conversation
                 </a>

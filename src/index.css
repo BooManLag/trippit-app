@@ -13,38 +13,60 @@
 /* Custom Components */
 @layer components {
   .pixel-button {
-    @apply pixel-text px-4 sm:px-8 py-3 sm:py-4 rounded-none relative 
-           transition-all duration-200 
+    @apply pixel-text px-3 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 rounded-none relative 
+           transition-all duration-300 
            before:content-[''] before:absolute before:inset-0
            before:border-2 before:border-white/20
-           hover:translate-y-[-2px] text-sm sm:text-base;
+           hover:translate-y-[-2px] hover:scale-105 text-xs sm:text-sm lg:text-base
+           transform-gpu;
   }
 
   .pixel-button-primary {
     @apply pixel-button;
     background-color: theme('colors.primary');
+    box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
   }
   .pixel-button-primary:hover {
     background-color: theme('colors.primary-hover');
+    box-shadow: 0 8px 25px rgba(255, 59, 48, 0.5);
   }
 
   .pixel-button-secondary {
     @apply pixel-button;
     background-color: theme('colors.secondary');
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
   }
   .pixel-button-secondary:hover {
     background-color: theme('colors.secondary-hover');
+    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.5);
   }
 
   .pixel-card {
-    @apply bg-gray-900 p-4 sm:p-6 rounded-none border-2 border-white/20
-           transition-all duration-200 hover:border-white/40;
+    @apply bg-gray-900 p-3 sm:p-4 lg:p-6 rounded-none border-2 border-white/20
+           transition-all duration-300 hover:border-white/40 hover:scale-[1.02]
+           transform-gpu relative overflow-hidden;
+  }
+  
+  .pixel-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+  }
+  
+  .pixel-card:hover::before {
+    left: 100%;
   }
 
   .input-pixel {
     @apply bg-gray-800 border-2 border-blue-500/20 text-white rounded-none 
-           focus:outline-none focus:border-blue-500/50 transition-colors duration-200
-           px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base;
+           focus:outline-none focus:border-blue-500/50 transition-all duration-300
+           px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base
+           hover:border-blue-500/30 focus:scale-[1.02] transform-gpu;
   }
 }
 
@@ -72,18 +94,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   .mobile-text {
-    @apply text-sm sm:text-base;
+    @apply text-sm sm:text-base lg:text-lg;
   }
 
   .mobile-heading {
-    @apply text-lg sm:text-xl lg:text-2xl;
+    @apply text-lg sm:text-xl lg:text-2xl xl:text-3xl;
   }
 
   .mobile-grid {
-    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
   }
 
-  /* Fun animations */
+  /* Enhanced animations */
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-10px); }
@@ -104,6 +126,77 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     40%, 100% { transform: rotateZ(0); }
   }
 
+  @keyframes pulse-glow {
+    0%, 100% { 
+      box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+      transform: scale(1);
+    }
+    50% { 
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4);
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes slide-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes bounce-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
@@ -116,9 +209,55 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     animation: wiggle 1s ease-in-out;
   }
 
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-slide-in-up {
+    animation: slide-in-up 0.6s ease-out;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.6s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.6s ease-out;
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.6s ease-out;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: shimmer 2s infinite;
+  }
+
   .hover-wiggle:hover {
     animation: wiggle 0.5s ease-in-out;
   }
+
+  .hover-float:hover {
+    animation: float 2s ease-in-out infinite;
+  }
+
+  .hover-glow:hover {
+    animation: glow 1s ease-in-out infinite;
+  }
+
+  /* Staggered animation delays */
+  .delay-100 { animation-delay: 0.1s; }
+  .delay-200 { animation-delay: 0.2s; }
+  .delay-300 { animation-delay: 0.3s; }
+  .delay-400 { animation-delay: 0.4s; }
+  .delay-500 { animation-delay: 0.5s; }
+  .delay-600 { animation-delay: 0.6s; }
+  .delay-700 { animation-delay: 0.7s; }
+  .delay-800 { animation-delay: 0.8s; }
+  .delay-900 { animation-delay: 0.9s; }
+  .delay-1000 { animation-delay: 1s; }
 }
 
 /* Responsive font sizes for pixel text */
@@ -145,12 +284,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Enhanced button hover effects */
 .pixel-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .pixel-button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(1.02);
 }
 
 /* Glowing text effect */
@@ -178,3 +317,107 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .letter-6 { animation-delay: 0.6s; }
 .letter-7 { animation-delay: 0.7s; }
 .letter-8 { animation-delay: 0.8s; }
+
+/* Loading animations */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Focus styles for accessibility */
+.pixel-button:focus,
+.input-pixel:focus,
+button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+  .pixel-button,
+  button {
+    min-height: 44px; /* iOS recommended touch target */
+    min-width: 44px;
+  }
+  
+  .pixel-card {
+    margin-bottom: 1rem;
+  }
+  
+  /* Larger tap targets for mobile */
+  .mobile-tap-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .pixel-card {
+    border-width: 3px;
+  }
+  
+  .pixel-button {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .pixel-button,
+  button {
+    background: white !important;
+    color: black !important;
+    border: 2px solid black !important;
+  }
+  
+  .pixel-card {
+    border: 2px solid black !important;
+    background: white !important;
+    color: black !important;
+  }
+}

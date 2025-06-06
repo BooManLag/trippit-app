@@ -429,139 +429,145 @@ const BucketListPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Add Item Section */}
+        {/* Compact Controls Section - Add Item + Filter Buttons */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-green-500/20">
-          <h3 className="pixel-text text-green-400 mb-4 text-sm sm:text-base">ADD NEW BUCKET LIST ITEM</h3>
-          
-          {/* Predefined Items Dropdown */}
-          {availableItems.length > 0 && (
-            <div className="mb-4">
-              <label className="block pixel-text text-xs text-blue-400 mb-2">CHOOSE FROM CURATED LIST</label>
-              <div className="relative">
-                <button
-                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors text-sm sm:text-base"
-                >
-                  <span className="outfit-text">Select an experience... ({availableItems.length} available)</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
-                </button>
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            {/* Add Item Section */}
+            <div className="flex-1">
+              <h3 className="pixel-text text-green-400 mb-4 text-sm sm:text-base">ADD NEW BUCKET LIST ITEM</h3>
+              
+              {/* Predefined Items Dropdown */}
+              {availableItems.length > 0 && (
+                <div className="mb-4">
+                  <label className="block pixel-text text-xs text-blue-400 mb-2">CHOOSE FROM CURATED LIST</label>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                      className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors text-sm sm:text-base"
+                    >
+                      <span className="outfit-text">Select an experience... ({availableItems.length} available)</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                    </button>
 
-                {showCategoryDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-blue-500/20 z-10 max-h-80 overflow-auto">
-                    {availableItems.map((item, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          addPredefinedItem(item);
-                          setShowCategoryDropdown(false);
-                        }}
-                        className="w-full px-3 sm:px-4 py-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-lg flex-shrink-0">{getCategoryIcon(item.category)}</span>
-                          <div className="min-w-0 flex-1">
-                            <div className="outfit-text font-semibold text-white text-sm mb-1 break-words">
-                              {item.title}
+                    {showCategoryDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-blue-500/20 z-10 max-h-80 overflow-auto">
+                        {availableItems.map((item, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              addPredefinedItem(item);
+                              setShowCategoryDropdown(false);
+                            }}
+                            className="w-full px-3 sm:px-4 py-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-lg flex-shrink-0">{getCategoryIcon(item.category)}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="outfit-text font-semibold text-white text-sm mb-1 break-words">
+                                  {item.title}
+                                </div>
+                                <div className="outfit-text text-xs text-gray-400 mb-2 break-words">
+                                  {item.description}
+                                </div>
+                                <div className="pixel-text text-xs text-blue-400">
+                                  {item.category}
+                                </div>
+                              </div>
                             </div>
-                            <div className="outfit-text text-xs text-gray-400 mb-2 break-words">
-                              {item.description}
-                            </div>
-                            <div className="pixel-text text-xs text-blue-400">
-                              {item.category}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* Custom Item Option */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="pixel-button-secondary flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              {showAddForm ? 'CANCEL CUSTOM' : 'CREATE CUSTOM'}
-            </button>
-          </div>
-
-          {/* Custom Item Form */}
-          {showAddForm && (
-            <div className="mt-4 space-y-4 border-t border-gray-700 pt-4">
-              <div>
-                <label className="block pixel-text text-xs text-blue-400 mb-2">CUSTOM ITEM TITLE</label>
-                <input
-                  type="text"
-                  value={newItem.title}
-                  onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="What's your custom bucket list item?"
-                  className="w-full input-pixel"
-                  maxLength={100}
-                />
-              </div>
-              <div>
-                <label className="block pixel-text text-xs text-blue-400 mb-2">DESCRIPTION</label>
-                <textarea
-                  value={newItem.description}
-                  onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe your bucket list item..."
-                  className="w-full input-pixel h-20 resize-none"
-                  maxLength={200}
-                />
-              </div>
-              <div>
-                <label className="block pixel-text text-xs text-blue-400 mb-2">CATEGORY</label>
-                <select
-                  value={newItem.category}
-                  onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full input-pixel"
+              {/* Custom Item Option */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="pixel-button-secondary flex items-center justify-center gap-2"
                 >
-                  {categories.map(category => (
-                    <option key={category} value={category}>
-                      {getCategoryIcon(category)} {category}
-                    </option>
-                  ))}
-                </select>
+                  <Plus className="w-4 h-4" />
+                  {showAddForm ? 'CANCEL CUSTOM' : 'CREATE CUSTOM'}
+                </button>
               </div>
-              <button
-                onClick={addCustomItem}
-                disabled={!newItem.title.trim()}
-                className="pixel-button-primary w-full disabled:opacity-50"
-              >
-                ADD CUSTOM ITEM
-              </button>
-            </div>
-          )}
-        </div>
 
-        {/* Completion Filter */}
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowCompleted(false)}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${
-                !showCompleted
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              📋 TO DO ({totalCount - completedCount})
-            </button>
-            <button
-              onClick={() => setShowCompleted(true)}
-              className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${
-                showCompleted
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              ✅ COMPLETED ({completedCount})
-            </button>
+              {/* Custom Item Form */}
+              {showAddForm && (
+                <div className="mt-4 space-y-4 border-t border-gray-700 pt-4">
+                  <div>
+                    <label className="block pixel-text text-xs text-blue-400 mb-2">CUSTOM ITEM TITLE</label>
+                    <input
+                      type="text"
+                      value={newItem.title}
+                      onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="What's your custom bucket list item?"
+                      className="w-full input-pixel"
+                      maxLength={100}
+                    />
+                  </div>
+                  <div>
+                    <label className="block pixel-text text-xs text-blue-400 mb-2">DESCRIPTION</label>
+                    <textarea
+                      value={newItem.description}
+                      onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Describe your bucket list item..."
+                      className="w-full input-pixel h-20 resize-none"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div>
+                    <label className="block pixel-text text-xs text-blue-400 mb-2">CATEGORY</label>
+                    <select
+                      value={newItem.category}
+                      onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full input-pixel"
+                    >
+                      {categories.map(category => (
+                        <option key={category} value={category}>
+                          {getCategoryIcon(category)} {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={addCustomItem}
+                    disabled={!newItem.title.trim()}
+                    className="pixel-button-primary w-full disabled:opacity-50"
+                  >
+                    ADD CUSTOM ITEM
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Filter Buttons - Moved beside the add section */}
+            <div className="lg:ml-6 lg:min-w-[200px]">
+              <h3 className="pixel-text text-blue-400 mb-4 text-sm sm:text-base">VIEW ITEMS</h3>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setShowCompleted(false)}
+                  className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${
+                    !showCompleted
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  📋 TO DO ({totalCount - completedCount})
+                </button>
+                <button
+                  onClick={() => setShowCompleted(true)}
+                  className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${
+                    showCompleted
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  ✅ COMPLETED ({completedCount})
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

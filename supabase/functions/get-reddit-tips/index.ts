@@ -1,6 +1,6 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-reddit-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 interface RedditPost {
@@ -24,16 +24,18 @@ async function fetchTopPostsWithAuth(
   subredditName: string,
   searchQuery: string = '',
   limit: number = 10,
-  timeframe: string = 'month',
-  bearerToken?: string
+  timeframe: string = 'month'
 ): Promise<RedditPost[]> {
-  const cacheKey = `${subredditName}_${searchQuery}_${limit}_${timeframe}_${bearerToken ? 'auth' : 'noauth'}`;
+  const cacheKey = `${subredditName}_${searchQuery}_${limit}_${timeframe}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     console.log(`📦 Cache hit for ${cacheKey} - returning ${cached.data.length} posts`);
     return cached.data;
   }
 
+  // Get bearer token from environment
+  const bearerToken = Deno.env.get('REDDIT_BEARER_TOKEN');
+  
   // Use OAuth endpoints if we have a token, otherwise fall back to public API
   const baseUrl = bearerToken ? 'https://oauth.reddit.com' : 'https://api.reddit.com';
   
@@ -57,6 +59,9 @@ async function fetchTopPostsWithAuth(
 
     if (bearerToken) {
       headers['Authorization'] = `Bearer ${bearerToken}`;
+      console.log('🔑 Using bearer token from environment');
+    } else {
+      console.log('ℹ️ No bearer token found, using public API');
     }
 
     const response = await fetch(url, { headers });
@@ -385,13 +390,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check for Reddit bearer token
-    const bearerToken = req.headers.get('x-reddit-token');
+    // Check for Reddit bearer token in environment
+    const bearerToken = Deno.env.get('REDDIT_BEARER_TOKEN');
     
     if (bearerToken) {
-      console.log(`🔑 Using Reddit bearer token for enhanced access`);
+      console.log(`🔑 Using Reddit bearer token from environment for enhanced access`);
     } else {
-      console.log('ℹ️ No Reddit bearer token provided, using public API');
+      console.log('ℹ️ No Reddit bearer token in environment, using public API');
     }
 
     console.log(`🚀 Starting tip search for: ${city}, ${country} ${bearerToken ? '(authenticated)' : '(public)'}`);
@@ -427,14 +432,14 @@ Deno.serve(async (req) => {
     // Search in travel subreddits with city-specific queries
     for (const subreddit of ['travel', 'solotravel']) {
       for (const query of searchQueries.slice(0, 2)) {
-        fetchPromises.push(fetchTopPostsWithAuth(subreddit, query, 8, 'year', bearerToken));
+        fetchPromises.push(fetchTopPostsWithAuth(subreddit, query, 8, 'year'));
       }
     }
 
     // Search in location-specific subreddits
     const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking'].includes(s));
     for (const subreddit of locationSubreddits.slice(0, 2)) {
-      fetchPromises.push(fetchTopPostsWithAuth(subreddit, '', 10, 'year', bearerToken));
+      fetchPromises.push(fetchTopPostsWithAuth(subreddit, '', 10, 'year'));
     }
 
     console.log(`📡 Created ${fetchPromises.length} fetch requests`);

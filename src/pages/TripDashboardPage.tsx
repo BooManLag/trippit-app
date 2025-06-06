@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2, ExternalLink, Shield } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
-import RedditAuthModal from '../components/RedditAuthModal';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 
@@ -40,8 +39,6 @@ const TripDashboardPage: React.FC = () => {
   const [loadingTips, setLoadingTips] = useState(true);
   const [tips, setTips] = useState<RedditTip[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [showRedditAuth, setShowRedditAuth] = useState(false);
-  const [redditConnected, setRedditConnected] = useState(false);
   const [bucketListGoals, setBucketListGoals] = useState<BucketListGoal[]>([
     { id: '1', title: 'Visit the main attractions', completed: false },
     { id: '2', title: 'Try local cuisine', completed: false },
@@ -49,32 +46,19 @@ const TripDashboardPage: React.FC = () => {
     { id: '4', title: 'Learn basic phrases', completed: false }
   ]);
 
-  useEffect(() => {
-    // Check if user has Reddit session
-    const redditSession = localStorage.getItem('reddit_session');
-    setRedditConnected(!!redditSession);
-  }, []);
-
   const fetchRedditTips = async (city: string, country: string) => {
     try {
       setLoadingTips(true);
       
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-      };
-
-      // Add Reddit session token if available
-      const redditSession = localStorage.getItem('reddit_session');
-      if (redditSession) {
-        headers['x-reddit-session'] = redditSession;
-      }
-
+      // Bearer token is now handled server-side via environment variables
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
         {
           method: 'POST',
-          headers,
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({ city, country }),
         }
       );
@@ -163,16 +147,6 @@ const TripDashboardPage: React.FC = () => {
 
     fetchTripDetails();
   }, [tripId, navigate]);
-
-  const handleRedditAuthSuccess = () => {
-    setShowRedditAuth(false);
-    setRedditConnected(true);
-    // Refresh tips with authentication
-    if (trip) {
-      const [city, country] = trip.destination.split(', ');
-      fetchRedditTips(city, country);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -353,18 +327,6 @@ const TripDashboardPage: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-3">
-              {!redditConnected && (
-                <button
-                  onClick={() => {
-                    localStorage.setItem('reddit_auth_return_to', window.location.pathname);
-                    setShowRedditAuth(true);
-                  }}
-                  className="pixel-button-secondary text-sm bg-orange-600 hover:bg-orange-500 flex items-center gap-2"
-                >
-                  <Shield className="w-4 h-4" />
-                  ENHANCE
-                </button>
-              )}
               {showViewAll && (
                 <button 
                   onClick={() => navigate(`/tips?tripId=${tripId}`)}
@@ -376,26 +338,6 @@ const TripDashboardPage: React.FC = () => {
               )}
             </div>
           </div>
-
-          {!redditConnected && (
-            <div className="pixel-card bg-orange-900/20 p-4 mb-6 border border-orange-500/20">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-orange-400" />
-                <div className="flex-1">
-                  <h4 className="pixel-text text-sm text-orange-400">GET ENHANCED TIPS</h4>
-                  <p className="outfit-text text-sm text-gray-300 mt-1">
-                    Connect with Reddit to access detailed tips from real travelers
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowRedditAuth(true)}
-                  className="pixel-button-secondary text-sm bg-orange-600 hover:bg-orange-500"
-                >
-                  CONNECT
-                </button>
-              </div>
-            </div>
-          )}
 
           {loadingTips ? (
             <div className="flex items-center justify-center py-12">
@@ -487,12 +429,6 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <RedditAuthModal
-        isOpen={showRedditAuth}
-        onClose={() => setShowRedditAuth(false)}
-        onSuccess={handleRedditAuthSuccess}
-      />
     </div>
   );
 };

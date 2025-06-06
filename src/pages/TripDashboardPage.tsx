@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { ChecklistItem } from '../types';
@@ -423,9 +423,10 @@ const TripDashboardPage: React.FC = () => {
               )}
               <button
                 onClick={addRandomDare}
-                className="pixel-button-secondary text-xs px-3 py-1"
+                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1"
               >
-                + RANDOM DARE
+                <Zap className="w-3 h-3" />
+                RANDOM DARE
               </button>
             </div>
           </div>
@@ -445,7 +446,7 @@ const TripDashboardPage: React.FC = () => {
                 return (
                   <div 
                     key={userDare.id} 
-                    className={`pixel-card transition-all cursor-pointer ${
+                    className={`pixel-card transition-all cursor-pointer group ${
                       completed 
                         ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
                         : 'bg-gray-800 border-red-500/10 hover:border-red-500/30'
@@ -456,9 +457,9 @@ const TripDashboardPage: React.FC = () => {
                       {/* Checkbox */}
                       <div className="flex-shrink-0 mt-1">
                         {completed ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                          <CheckCircle2 className="w-5 h-5 text-green-400" />
                         ) : (
-                          <Circle className="w-4 h-4 text-red-500" />
+                          <Circle className="w-5 h-5 text-red-500 group-hover:text-red-400" />
                         )}
                       </div>
 
@@ -485,8 +486,15 @@ const TripDashboardPage: React.FC = () => {
                         )}
 
                         <div className="flex items-center justify-between mt-2">
-                          <span className="pixel-text text-xs text-gray-500">
-                            {completed ? 'DARE CONQUERED!' : 'DARE PENDING'}
+                          <span className="pixel-text text-xs">
+                            {completed ? (
+                              <span className="text-green-400 flex items-center gap-1">
+                                <Star className="w-3 h-3" />
+                                CONQUERED!
+                              </span>
+                            ) : (
+                              <span className="text-red-400">READY TO DARE?</span>
+                            )}
                           </span>
                         </div>
                       </div>

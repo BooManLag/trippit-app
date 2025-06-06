@@ -128,7 +128,6 @@ const MyTripsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 gap-4">
           <div className="flex items-center gap-4">
             <BackButton to="/" />
-            <h2 className="pixel-text mobile-heading">MY TRIPS</h2>
           </div>
           <button
             onClick={() => navigate('/create-trip')}

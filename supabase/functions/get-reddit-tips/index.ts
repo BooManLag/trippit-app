@@ -28,55 +28,58 @@ async function fetchTopPosts(
 ): Promise<RedditPost[]> {
   const cacheKey = `${subredditName}_${searchQuery}_${limit}_${timeframe}`;
   const cached = cache.get(cacheKey);
-  
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     console.log(`📦 Cache hit for ${cacheKey} - returning ${cached.data.length} posts`);
     return cached.data;
   }
 
+  let url: string;
+  if (searchQuery) {
+    // Search within subreddit via Reddit's public API
+    url =
+      `https://api.reddit.com/r/${encodeURIComponent(subredditName)}/search?` +
+      `q=${encodeURIComponent(searchQuery)}` +
+      `&restrict_sr=1&limit=${limit}&sort=relevance&t=${timeframe}`;
+  } else {
+    // Fetch top posts from subreddit via Reddit's public API
+    url =
+      `https://api.reddit.com/r/${encodeURIComponent(subredditName)}/top?` +
+      `limit=${limit}&t=${timeframe}`;
+  }
+
+  console.log(`🔍 Fetching from Reddit: ${url}`);
   try {
-    let url: string;
-    
-    if (searchQuery) {
-      // Search within subreddit
-      url = `https://www.reddit.com/r/${encodeURIComponent(subredditName)}/search.json?q=${encodeURIComponent(searchQuery)}&restrict_sr=on&limit=${limit}&sort=relevance&t=${timeframe}`;
-    } else {
-      // Get top posts from subreddit
-      url = `https://www.reddit.com/r/${encodeURIComponent(subredditName)}/top.json?limit=${limit}&t=${timeframe}`;
-    }
-    
-    console.log(`🔍 Fetching from: ${url}`);
-    
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Trippit/1.0 (Travel Tips Aggregator)',
-        'Accept': 'application/json'
-      }
+        // Reddit requires a descriptive User-Agent.
+        'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLaggg)',
+        'Accept': 'application/json',
+      },
     });
 
     console.log(`📡 Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
-      console.log(`❌ Failed to fetch from r/${subredditName}: ${response.status} ${response.statusText}`);
+      console.warn(`❌ Failed to fetch /r/${subredditName}: ${response.status} ${response.statusText}`);
       return [];
     }
 
-    const data = await response.json();
+    const json = await response.json();
     console.log(`📊 Raw response structure:`, {
-      hasData: !!data.data,
-      hasChildren: !!data.data?.children,
-      childrenCount: data.data?.children?.length || 0
+      hasData: !!json.data,
+      hasChildren: !!json.data?.children,
+      childrenCount: json.data?.children?.length || 0
     });
-    
-    if (!data.data?.children) {
-      console.log(`❌ No data.children from r/${subredditName}`);
+
+    if (!json.data?.children) {
+      console.warn(`❌ Unexpected JSON structure from /r/${subredditName}`, json);
       return [];
     }
 
-    const rawPosts = data.data.children.map((child: any) => ({
+    const rawPosts: RedditPost[] = (json.data.children as any[]).map((child) => ({
       ...child.data,
-      subreddit: subredditName
-    }) as RedditPost);
+      subreddit: subredditName,
+    }));
 
     console.log(`📝 Raw posts from r/${subredditName}: ${rawPosts.length}`);
 
@@ -91,31 +94,26 @@ async function fetchTopPosts(
       });
     }
 
-    const posts = rawPosts.filter((post: RedditPost) => {
-      // More lenient filtering for debugging
-      const hasContent = post.selftext && post.selftext.length >= 20; // Reduced from 50
-      const goodScore = post.score >= 1; // Reduced from 5
-      const notDeleted = !post.selftext.includes('[deleted]') && 
-                        !post.selftext.includes('[removed]') &&
-                        !post.title.includes('[deleted]') &&
-                        !post.title.includes('[removed]');
+    // Apply your "quality" filter (adjust thresholds as needed)
+    const posts = rawPosts.filter((post) => {
+      const hasContent = post.selftext && post.selftext.length >= 20; // More lenient
+      const goodScore  = post.score >= 1; // More lenient
+      const notDeleted = !post.selftext.includes('[deleted]') &&
+                         !post.selftext.includes('[removed]') &&
+                         !post.title.includes('[deleted]') &&
+                         !post.title.includes('[removed]');
       const notTooLong = post.selftext.length <= 5000;
-      const notBot = !post.author.toLowerCase().includes('bot');
-      
+      const notBot     = !post.author.toLowerCase().includes('bot');
       return hasContent && goodScore && notDeleted && notTooLong && notBot;
     });
 
     console.log(`✅ Filtered posts from r/${subredditName}: ${posts.length} (from ${rawPosts.length} raw)`);
 
-    // Cache the result
-    cache.set(cacheKey, {
-      data: posts,
-      timestamp: Date.now()
-    });
-
+    // Cache the filtered result
+    cache.set(cacheKey, { data: posts, timestamp: Date.now() });
     return posts;
-  } catch (error) {
-    console.error(`❌ Error fetching from r/${subredditName}:`, error);
+  } catch (err) {
+    console.error(`❌ Error during fetchTopPosts(${subredditName}):`, err);
     return [];
   }
 }

@@ -22,6 +22,49 @@ const subredditExistsCache = new Map<string, boolean>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const SUBREDDIT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
+// Country data - this would ideally be loaded from your countries.min.json
+// For now, we'll include the most common variations and aliases
+const COUNTRY_ALIASES: { [key: string]: string[] } = {
+  'united states': ['usa', 'america', 'us', 'unitedstates'],
+  'united kingdom': ['uk', 'britain', 'england', 'unitedkingdom', 'greatbritain'],
+  'united arab emirates': ['uae', 'emirates'],
+  'south korea': ['korea', 'southkorea'],
+  'north korea': ['northkorea'],
+  'czech republic': ['czechia', 'czechrepublic'],
+  'bosnia and herzegovina': ['bosnia', 'herzegovina'],
+  'trinidad and tobago': ['trinidad', 'tobago'],
+  'antigua and barbuda': ['antigua', 'barbuda'],
+  'saint kitts and nevis': ['saintkitts', 'nevis'],
+  'saint vincent and the grenadines': ['saintvincent', 'grenadines'],
+  'sao tome and principe': ['saotome', 'principe'],
+  'papua new guinea': ['papuanewguinea', 'png'],
+  'solomon islands': ['solomonislands'],
+  'marshall islands': ['marshallislands'],
+  'cook islands': ['cookislands'],
+  'faroe islands': ['faroeislands'],
+  'cayman islands': ['caymanislands'],
+  'virgin islands': ['virginislands'],
+  'turks and caicos': ['turksandcaicos'],
+  'new zealand': ['newzealand', 'nz'],
+  'south africa': ['southafrica'],
+  'saudi arabia': ['saudiarabia'],
+  'sri lanka': ['srilanka'],
+  'costa rica': ['costarica'],
+  'puerto rico': ['puertorico'],
+  'el salvador': ['elsalvador'],
+  'burkina faso': ['burkinafaso'],
+  'ivory coast': ['ivorycoast', 'cotedivoire'],
+  'sierra leone': ['sierraleone'],
+  'equatorial guinea': ['equatorialguinea'],
+  'central african republic': ['centralafricanrepublic', 'car'],
+  'democratic republic of congo': ['drc', 'congo', 'democraticrepublicofcongo'],
+  'republic of congo': ['congo', 'republicofcongo'],
+  'east timor': ['easttimor', 'timorleste'],
+  'north macedonia': ['macedonia', 'northmacedonia'],
+  'san marino': ['sanmarino'],
+  'vatican city': ['vatican', 'vaticancity']
+};
+
 // Throttling utility for controlled concurrency
 async function throttledFetch<T>(
   promises: Promise<T>[],
@@ -154,19 +197,31 @@ function generateOptimizedSearchTerms(city: string, country: string): string[][]
   ];
 }
 
+function getCountryVariations(country: string): string[] {
+  const countryLower = country.toLowerCase().trim();
+  const countryClean = countryLower.replace(/[^a-z\s]/g, '').replace(/\s+/g, '');
+  
+  // Check if we have predefined aliases for this country
+  const aliases = COUNTRY_ALIASES[countryLower] || [];
+  
+  // Create variations
+  const variations = new Set([
+    countryClean,
+    countryLower.replace(/\s+/g, ''), // Remove spaces
+    ...aliases
+  ]);
+  
+  // Filter out very short names (less than 3 characters) as they're likely to be too generic
+  return Array.from(variations).filter(name => name && name.length >= 2);
+}
+
 async function generateOptimizedSubreddits(city: string, country: string): Promise<string[]> {
   const baseSubreddits = ['travel', 'solotravel', 'backpacking', 'TravelHacks'];
   
   const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
-  const countryClean = country.toLowerCase().replace(/[^a-z]/g, '');
+  const countryVariations = getCountryVariations(country);
   
-  // Common country variations
-  const countryVariations = [
-    countryClean,
-    countryClean === 'unitedstates' ? 'usa' : null,
-    countryClean === 'unitedkingdom' ? 'uk' : null,
-    countryClean === 'unitedkingdom' ? 'unitedkingdom' : null,
-  ].filter(name => name && name.length > 2);
+  console.log(`Country variations for "${country}":`, countryVariations);
 
   // Check existence of location-specific subreddits in parallel
   const locationCandidates = [cityClean, ...countryVariations];
@@ -178,6 +233,8 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
     existenceChecks[index].status === 'fulfilled' && 
     (existenceChecks[index] as PromiseFulfilledResult<boolean>).value
   );
+
+  console.log(`Valid location subreddits:`, validLocationSubreddits);
 
   return [...baseSubreddits, ...validLocationSubreddits.slice(0, 2)];
 }

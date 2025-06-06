@@ -179,6 +179,34 @@ const TripDashboardPage: React.FC = () => {
     return { totalTasks, completedTasks, remainingTasks };
   };
 
+  // Get category icon for tips
+  const getCategoryIcon = (category: string) => {
+    const icons: { [key: string]: string } = {
+      'Documents': '📄',
+      'Safety': '🛡️',
+      'Budget': '💰',
+      'Culture': '🌍',
+      'Food': '🍽️',
+      'Transport': '🚌',
+      'Technology': '📱',
+      'Health': '💊',
+      'Packing': '🎒',
+      'Accommodation': '🏨',
+      'Planning': '📋',
+      'Mindset': '🧠',
+      'Things to Do': '🎯',
+      'General': '💡'
+    };
+    return icons[category] || '💡';
+  };
+
+  // Determine how many tips to show in preview
+  const getPreviewTipCount = () => {
+    if (tips.length === 0) return 0;
+    if (tips.length <= 6) return tips.length; // Show all if 6 or fewer
+    return 6; // Show 6 as preview if more available
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -188,6 +216,7 @@ const TripDashboardPage: React.FC = () => {
   }
 
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
+  const previewTipCount = getPreviewTipCount();
 
   return (
     <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
@@ -282,14 +311,21 @@ const TripDashboardPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <Lightbulb className="h-6 w-6 text-yellow-400" />
               <h3 className="pixel-text text-lg">REDDIT TRAVEL TIPS</h3>
+              {!loadingTips && tips.length > 0 && (
+                <span className="pixel-text text-sm text-green-400">
+                  {tips.length} tips found
+                </span>
+              )}
             </div>
-            <button 
-              onClick={() => navigate(`/tips?tripId=${tripId}`)}
-              className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
-            >
-              View All Reddit Tips
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </button>
+            {tips.length > previewTipCount && (
+              <button 
+                onClick={() => navigate(`/tips?tripId=${tripId}`)}
+                className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
+              >
+                View All {tips.length} Tips
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </button>
+            )}
           </div>
 
           {loadingTips ? (
@@ -299,13 +335,16 @@ const TripDashboardPage: React.FC = () => {
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {tips.slice(0, 4).map(tip => (
+              {tips.slice(0, previewTipCount).map(tip => (
                 <div key={tip.id} className="pixel-card bg-gray-800 p-4 border border-blue-500/10 hover:border-blue-500/30 transition-all">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="pixel-text text-xs text-green-400">{tip.source}</span>
-                      <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
-                      <span className="pixel-text text-xs text-blue-400">{tip.category}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{getCategoryIcon(tip.category)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="pixel-text text-xs text-green-400">{tip.source}</span>
+                        <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
+                        <span className="pixel-text text-xs text-blue-400">{tip.category}</span>
+                      </div>
                     </div>
                     <a 
                       href={tip.reddit_url} 
@@ -317,13 +356,24 @@ const TripDashboardPage: React.FC = () => {
                     </a>
                   </div>
                   <h4 className="outfit-text font-semibold text-white mb-2 text-sm">
-                    {tip.title.length > 60 ? `${tip.title.substring(0, 60)}...` : tip.title}
+                    {tip.title.length > 80 ? `${tip.title.substring(0, 80)}...` : tip.title}
                   </h4>
                   <p className="outfit-text text-gray-300 text-sm leading-relaxed">
-                    {tip.content.length > 150 ? `${tip.content.substring(0, 150)}...` : tip.content}
+                    {tip.content.length > 200 ? `${tip.content.substring(0, 200)}...` : tip.content}
                   </p>
                 </div>
               ))}
+              
+              {tips.length > previewTipCount && (
+                <div className="text-center pt-4">
+                  <button
+                    onClick={() => navigate(`/tips?tripId=${tripId}`)}
+                    className="pixel-button-secondary"
+                  >
+                    VIEW ALL {tips.length} REDDIT TIPS
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-12">

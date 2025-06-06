@@ -1,14 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import daresData from '../data/dares.json';
 
-interface BucketListItem {
+interface DareItem {
   id: string;
   title: string;
   description: string;
   category: string;
-  is_completed: boolean;
+  difficulty: string;
+  funLevel: string;
+  completed?: boolean;
+  completedAt?: string;
+}
+
+interface UserDare {
+  id: string;
+  user_id: string;
+  trip_id: string;
+  dare_id: string;
+  completed_at: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -18,210 +31,23 @@ const BucketListPage: React.FC = () => {
   const tripId = searchParams.get('tripId');
   
   const [trip, setTrip] = useState<any>(null);
-  const [bucketItems, setBucketItems] = useState<BucketListItem[]>([]);
+  const [userDares, setUserDares] = useState<UserDare[]>([]);
+  const [availableDares, setAvailableDares] = useState<DareItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [newItem, setNewItem] = useState({
-    title: '',
-    description: '',
-    category: 'Experience'
-  });
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = [
-    'Experience', 'Food & Drink', 'Culture', 'Sightseeing', 
-    'Adventure', 'Shopping', 'Nature', 'Nightlife', 'Photography',
-    'Local Life', 'Entertainment', 'Wellness'
-  ];
+  const categories = ['All', 'Food & Drink', 'Culture', 'Adventure', 'Photography', 'Local Life', 'Shopping', 'Entertainment', 'Experience', 'Nature', 'Wellness', 'Nightlife', 'Sightseeing'];
 
-  // 30+ predefined bucket list items that get randomized
-  const allBucketListItems = [
-    {
-      title: 'Eat Something Wildly Local (Without Googling First)',
-      description: 'Order the most mysterious-looking street food you can find. Embrace the unknown flavors!',
-      category: 'Food & Drink'
-    },
-    {
-      title: 'Learn & Use a Local Slang Phrase in Public',
-      description: 'Ask a local for a funny expression. Drop it into conversation at least once—bonus points for pronunciation!',
-      category: 'Culture'
-    },
-    {
-      title: 'Improvise a Local Dance Move on the Street',
-      description: 'Find a busy plaza, drop coins for street musicians, and bust out your best traditional dance attempt!',
-      category: 'Culture'
-    },
-    {
-      title: 'Make One "100% Tourist" Photo—Pridefully',
-      description: 'Pose in front of the biggest cliché landmark with goofy props or dramatic pose. No shame—only glory!',
-      category: 'Photography'
-    },
-    {
-      title: 'Challenge a Stranger to a Mini Talent Swap',
-      description: 'Teach someone a party trick, ask them to teach you something local—song snippet, hand gesture, etc.',
-      category: 'Local Life'
-    },
-    {
-      title: 'Use Public Transport in "Stealth Mode"',
-      description: 'Ride local transport without studying routes—just hop on and ask "is this going downtown?"',
-      category: 'Adventure'
-    },
-    {
-      title: 'Find & Photograph the Hackiest Tourist Souvenir',
-      description: 'Seek out the most bizarre magnet or keychain that screams "tourist." Wear/use it for a day!',
-      category: 'Shopping'
-    },
-    {
-      title: 'Crash a Local Gathering (Festival, Market, etc.)',
-      description: 'Spot a public festival or lively market—step in, join the circle, and participate for five minutes.',
-      category: 'Local Life'
-    },
-    {
-      title: 'Barter Like a Boss',
-      description: 'At a market stall, negotiate a discount on something you don\'t need. Aim for at least 20% off!',
-      category: 'Shopping'
-    },
-    {
-      title: 'Speak Only in Questions for 10 Minutes',
-      description: 'Challenge yourself to ask every sentence as a question and see how locals react.',
-      category: 'Culture'
-    },
-    {
-      title: 'Send a Postcard to Yourself with Tomorrow\'s Challenge',
-      description: 'Write "Try the spiciest local snack tomorrow!" and mail it. Hilarious reminder when it arrives home!',
-      category: 'Experience'
-    },
-    {
-      title: 'Attempt at Least One Local "Extreme" Activity',
-      description: 'Zip-lining? Sandboarding? Even if mild back home, try the local version!',
-      category: 'Adventure'
-    },
-    {
-      title: 'Learn One Traditional Toast & Down a Local Drink',
-      description: 'Ask for their classic "cheers" toast, sample their favorite beverage, perform it in native language.',
-      category: 'Food & Drink'
-    },
-    {
-      title: 'Perform a Random Act of "Tourist Kindness"',
-      description: 'Buy coffee for a stranger, help carry groceries, or feed pigeons—spread good tourist vibes!',
-      category: 'Experience'
-    },
-    {
-      title: 'Discover & Share a Local "Spooky Legend"',
-      description: 'Research a ghost story or urban legend. Whisper it dramatically to friends at night!',
-      category: 'Culture'
-    },
-    {
-      title: 'Get a Local to Teach You a Secret Greeting',
-      description: 'Learn a special handshake or greeting. Use it at least three times before leaving!',
-      category: 'Local Life'
-    },
-    {
-      title: 'Attempt Phrasebook Karaoke',
-      description: 'Find a popular local song, grab lyrics, and film yourself singing it—off-key encouraged!',
-      category: 'Entertainment'
-    },
-    {
-      title: 'Eat Dessert First—Local Style',
-      description: 'Order the sweetest street dessert as your very first bite of the day, then proceed normally.',
-      category: 'Food & Drink'
-    },
-    {
-      title: 'Snap a Selfie Mimicking a Local Icon',
-      description: 'Find a statue or mural, strike a pose that mimics it, embrace the cheesy matching moment.',
-      category: 'Photography'
-    },
-    {
-      title: 'Leave Your Mark (Respectfully)',
-      description: 'Use washable chalk to draw a tiny doodle on a permitted spot as your "tourist signature."',
-      category: 'Experience'
-    },
-    {
-      title: 'Master the Art of Local Coffee Ordering',
-      description: 'Learn exactly how locals order their morning coffee. Nail the pronunciation and etiquette.',
-      category: 'Food & Drink'
-    },
-    {
-      title: 'Find the Best Local Sunset/Sunrise Spot',
-      description: 'Ask three different locals for their favorite golden hour location. Visit the most recommended.',
-      category: 'Nature'
-    },
-    {
-      title: 'Attend a Local Sports Event or Match',
-      description: 'Experience the passion of local sports culture—even if you don\'t understand the rules!',
-      category: 'Entertainment'
-    },
-    {
-      title: 'Navigate Using Only Landmark Directions',
-      description: 'Ask for directions using only landmarks ("turn left at the big tree") instead of street names.',
-      category: 'Adventure'
-    },
-    {
-      title: 'Try a Local Wellness or Spa Tradition',
-      description: 'Experience traditional baths, massage styles, or wellness practices unique to the region.',
-      category: 'Wellness'
-    },
-    {
-      title: 'Photograph 5 Different Local Door Styles',
-      description: 'Capture the unique architectural personality of the place through its diverse doorways.',
-      category: 'Photography'
-    },
-    {
-      title: 'Learn to Cook One Local Dish',
-      description: 'Take a cooking class or convince a local to teach you their family recipe.',
-      category: 'Food & Drink'
-    },
-    {
-      title: 'Experience Local Nightlife Like a Resident',
-      description: 'Ask locals where THEY go for fun at night—avoid tourist traps, find authentic spots.',
-      category: 'Nightlife'
-    },
-    {
-      title: 'Collect Sounds of the City',
-      description: 'Record 1-minute audio clips of unique local sounds—markets, music, street calls, nature.',
-      category: 'Experience'
-    },
-    {
-      title: 'Find the Oldest Thing in the City',
-      description: 'Hunt down the most ancient building, tree, or artifact. Learn its story.',
-      category: 'Culture'
-    },
-    {
-      title: 'Master Local Public Transport Etiquette',
-      description: 'Learn the unwritten rules—where to stand, how to pay, what\'s considered polite.',
-      category: 'Local Life'
-    },
-    {
-      title: 'Discover a Hidden Local Gem',
-      description: 'Find a place that\'s not in guidebooks but locals love—ask "where do you go to relax?"',
-      category: 'Sightseeing'
-    },
-    {
-      title: 'Experience Local Weather Like a Pro',
-      description: 'Learn how locals dress and behave in their typical weather. Adapt your style accordingly.',
-      category: 'Local Life'
-    },
-    {
-      title: 'Find the Best Local Viewpoint',
-      description: 'Discover where locals go for the best city views—not necessarily the most famous tourist spot.',
-      category: 'Nature'
-    },
-    {
-      title: 'Learn a Traditional Local Game',
-      description: 'Find locals playing cards, board games, or street games. Ask them to teach you!',
-      category: 'Entertainment'
-    }
-  ];
-
-  // Function to get randomized bucket list items (max 10)
-  const getRandomizedBucketItems = () => {
-    const shuffled = [...allBucketListItems].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 10);
+  // Get random dares from JSON
+  const getRandomDares = (count: number = 10) => {
+    const shuffled = [...daresData].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
   };
 
   useEffect(() => {
-    const fetchBucketList = async () => {
+    const fetchDares = async () => {
       if (!tripId) {
         navigate('/');
         return;
@@ -244,111 +70,104 @@ const BucketListPage: React.FC = () => {
 
         setTrip(tripData);
 
-        // Fetch user's bucket list items for this trip
+        // Fetch user's dares for this trip
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           navigate('/');
           return;
         }
 
-        const { data: items, error } = await supabase
-          .from('bucket_list_items')
+        const { data: userDareData, error } = await supabase
+          .from('user_bucket_progress')
           .select('*')
           .eq('user_id', user.id)
           .eq('trip_id', tripId)
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching bucket list:', error);
+          console.error('Error fetching user dares:', error);
           return;
         }
 
-        setBucketItems(items || []);
+        setUserDares(userDareData || []);
+
+        // Get random available dares that user hasn't added yet
+        const usedDareIds = (userDareData || []).map(ud => ud.dare_id);
+        const available = daresData.filter(dare => !usedDareIds.includes(dare.id));
+        setAvailableDares(available);
 
       } catch (error) {
-        console.error('Error fetching bucket list:', error);
+        console.error('Error fetching dares:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBucketList();
+    fetchDares();
   }, [tripId, navigate]);
 
-  const toggleItemCompletion = async (item: BucketListItem) => {
+  const addDare = async (dare: DareItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('user_bucket_progress')
+      .insert({
+        user_id: user.id,
+        trip_id: tripId,
+        dare_id: dare.id,
+        completed_at: null,
+        notes: null
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setUserDares(prev => [data, ...prev]);
+      setAvailableDares(prev => prev.filter(d => d.id !== dare.id));
+    }
+  };
+
+  const toggleDareCompletion = async (userDare: UserDare) => {
+    const isCompleting = !userDare.completed_at;
+    
     const { error } = await supabase
-      .from('bucket_list_items')
-      .update({ is_completed: !item.is_completed })
-      .eq('id', item.id);
+      .from('user_bucket_progress')
+      .update({ 
+        completed_at: isCompleting ? new Date().toISOString() : null 
+      })
+      .eq('id', userDare.id);
 
     if (!error) {
-      setBucketItems(prev => 
-        prev.map(i => 
-          i.id === item.id 
-            ? { ...i, is_completed: !i.is_completed }
-            : i
+      setUserDares(prev => 
+        prev.map(ud => 
+          ud.id === userDare.id 
+            ? { ...ud, completed_at: isCompleting ? new Date().toISOString() : null }
+            : ud
         )
       );
     }
   };
 
-  const deleteItem = async (itemId: string) => {
+  const deleteDare = async (userDareId: string, dareId: string) => {
     const { error } = await supabase
-      .from('bucket_list_items')
+      .from('user_bucket_progress')
       .delete()
-      .eq('id', itemId);
+      .eq('id', userDareId);
 
     if (!error) {
-      setBucketItems(prev => prev.filter(item => item.id !== itemId));
+      setUserDares(prev => prev.filter(ud => ud.id !== userDareId));
+      // Add the dare back to available dares
+      const dare = daresData.find(d => d.id === dareId);
+      if (dare) {
+        setAvailableDares(prev => [...prev, dare]);
+      }
     }
   };
 
-  const addPredefinedItem = async (bucketItem: typeof allBucketListItems[0]) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('bucket_list_items')
-      .insert({
-        user_id: user.id,
-        trip_id: tripId,
-        title: bucketItem.title,
-        description: bucketItem.description,
-        category: bucketItem.category,
-        is_completed: false
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      setBucketItems(prev => [data, ...prev]);
-    }
-  };
-
-  const addCustomItem = async () => {
-    if (!newItem.title.trim()) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('bucket_list_items')
-      .insert({
-        user_id: user.id,
-        trip_id: tripId,
-        title: newItem.title.trim(),
-        description: newItem.description.trim(),
-        category: newItem.category,
-        is_completed: false
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      setBucketItems(prev => [data, ...prev]);
-      setNewItem({ title: '', description: '', category: 'Experience' });
-      setShowAddForm(false);
-    }
+  const shuffleAvailableDares = () => {
+    const shuffled = [...availableDares].sort(() => Math.random() - 0.5);
+    setAvailableDares(shuffled);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -369,18 +188,43 @@ const BucketListPage: React.FC = () => {
     return icons[category] || '✨';
   };
 
-  // Filter out predefined items that are already added
-  const availableItems = getRandomizedBucketItems().filter(item => 
-    !bucketItems.some(bucketItem => bucketItem.title === item.title)
-  );
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'Easy': return 'text-green-400';
+      case 'Medium': return 'text-yellow-400';
+      case 'Hard': return 'text-red-400';
+      default: return 'text-blue-400';
+    }
+  };
 
-  const filteredItems = bucketItems.filter(item => {
-    const matchesCompletion = showCompleted ? item.is_completed : !item.is_completed;
-    return matchesCompletion;
+  const getFunLevelEmoji = (funLevel: string) => {
+    switch (funLevel) {
+      case 'mild': return '😊';
+      case 'spicy': return '🌶️';
+      case 'chaotic': return '🤪';
+      default: return '😄';
+    }
+  };
+
+  // Get dares with completion status
+  const daresWithStatus = userDares.map(userDare => {
+    const dare = daresData.find(d => d.id === userDare.dare_id);
+    return {
+      ...dare,
+      userDareId: userDare.id,
+      completed: !!userDare.completed_at,
+      completedAt: userDare.completed_at
+    };
+  }).filter(Boolean);
+
+  const filteredDares = daresWithStatus.filter(dare => {
+    const matchesCompletion = showCompleted ? dare.completed : !dare.completed;
+    const matchesCategory = selectedCategory === 'All' || dare.category === selectedCategory;
+    return matchesCompletion && matchesCategory;
   });
 
-  const completedCount = bucketItems.filter(item => item.is_completed).length;
-  const totalCount = bucketItems.length;
+  const completedCount = daresWithStatus.filter(dare => dare.completed).length;
+  const totalCount = daresWithStatus.length;
 
   return (
     <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
@@ -393,29 +237,29 @@ const BucketListPage: React.FC = () => {
             <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h2 className="pixel-text mobile-heading">BUCKET LIST</h2>
+            <h2 className="pixel-text mobile-heading">DARE BUCKET LIST</h2>
             {trip && (
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
-                Epic experiences for {trip.destination}
+                Epic dares for {trip.destination}
               </p>
             )}
           </div>
         </div>
 
         {/* Progress Stats */}
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-red-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-2">
                 <Trophy className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-400" />
                 <span className="pixel-text text-yellow-400 text-sm sm:text-base">
-                  {completedCount}/{totalCount} COMPLETED
+                  {completedCount}/{totalCount} CONQUERED
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Target className="w-5 sm:w-6 h-5 sm:h-6 text-blue-400" />
-                <span className="pixel-text text-blue-400 text-sm sm:text-base">
-                  {Math.round((completedCount / Math.max(totalCount, 1)) * 100)}% PROGRESS
+                <Target className="w-5 sm:w-6 h-5 sm:h-6 text-red-400" />
+                <span className="pixel-text text-red-400 text-sm sm:text-base">
+                  {Math.round((completedCount / Math.max(totalCount, 1)) * 100)}% DARED
                 </span>
               </div>
             </div>
@@ -423,138 +267,78 @@ const BucketListPage: React.FC = () => {
           
           <div className="w-full bg-gray-700 h-3 mt-4 rounded-full overflow-hidden">
             <div 
-              className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full transition-all duration-500"
+              className="bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 h-full transition-all duration-500"
               style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }}
             />
           </div>
         </div>
 
-        {/* Compact Controls Section - Add Item + Filter Buttons */}
+        {/* Controls Section */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-green-500/20">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            {/* Add Item Section */}
+            {/* Add Dare Section */}
             <div className="flex-1">
-              <h3 className="pixel-text text-green-400 mb-4 text-sm sm:text-base">ADD NEW BUCKET LIST ITEM</h3>
+              <h3 className="pixel-text text-green-400 mb-4 text-sm sm:text-base">ADD NEW DARE</h3>
               
-              {/* Predefined Items Dropdown */}
-              {availableItems.length > 0 && (
+              {/* Available Dares */}
+              {availableDares.length > 0 && (
                 <div className="mb-4">
-                  <label className="block pixel-text text-xs text-blue-400 mb-2">CHOOSE FROM CURATED LIST</label>
-                  <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="block pixel-text text-xs text-blue-400">CHOOSE A DARE</label>
                     <button
-                      onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                      className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors text-sm sm:text-base"
+                      onClick={shuffleAvailableDares}
+                      className="text-blue-400 hover:text-blue-300 transition-colors"
+                      title="Shuffle dares"
                     >
-                      <span className="outfit-text">Select an experience... ({availableItems.length} available)</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                      <Shuffle className="w-4 h-4" />
                     </button>
-
-                    {showCategoryDropdown && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-blue-500/20 z-10 max-h-80 overflow-auto">
-                        {availableItems.map((item, index) => (
-                          <button
-                            key={index}
-                            onClick={() => {
-                              addPredefinedItem(item);
-                              setShowCategoryDropdown(false);
-                            }}
-                            className="w-full px-3 sm:px-4 py-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
-                          >
-                            <div className="flex items-start gap-3">
-                              <span className="text-lg flex-shrink-0">{getCategoryIcon(item.category)}</span>
-                              <div className="min-w-0 flex-1">
-                                <div className="outfit-text font-semibold text-white text-sm mb-1 break-words">
-                                  {item.title}
-                                </div>
-                                <div className="outfit-text text-xs text-gray-400 mb-2 break-words">
-                                  {item.description}
-                                </div>
-                                <div className="pixel-text text-xs text-blue-400">
-                                  {item.category}
-                                </div>
-                              </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-auto">
+                    {availableDares.slice(0, 8).map((dare) => (
+                      <button
+                        key={dare.id}
+                        onClick={() => addDare(dare)}
+                        className="text-left p-3 bg-gray-800 border border-red-500/20 hover:border-red-500/40 hover:bg-gray-700 transition-all"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg flex-shrink-0">{getCategoryIcon(dare.category)}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="pixel-text text-xs text-red-400">{dare.category}</span>
+                              <span className={`pixel-text text-xs ${getDifficultyColor(dare.difficulty)}`}>
+                                {dare.difficulty}
+                              </span>
+                              <span className="text-xs">{getFunLevelEmoji(dare.funLevel)}</span>
                             </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                            <div className="outfit-text font-semibold text-white text-sm mb-1 break-words">
+                              {dare.title}
+                            </div>
+                            <div className="outfit-text text-xs text-gray-400 break-words">
+                              {dare.description.length > 80 ? `${dare.description.substring(0, 80)}...` : dare.description}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </div>
-              )}
-
-              {/* Custom Item Option */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="pixel-button-secondary flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  {showAddForm ? 'CANCEL CUSTOM' : 'CREATE CUSTOM'}
-                </button>
-              </div>
-
-              {/* Custom Item Form */}
-              {showAddForm && (
-                <div className="mt-4 space-y-4 border-t border-gray-700 pt-4">
-                  <div>
-                    <label className="block pixel-text text-xs text-blue-400 mb-2">CUSTOM ITEM TITLE</label>
-                    <input
-                      type="text"
-                      value={newItem.title}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="What's your custom bucket list item?"
-                      className="w-full input-pixel"
-                      maxLength={100}
-                    />
-                  </div>
-                  <div>
-                    <label className="block pixel-text text-xs text-blue-400 mb-2">DESCRIPTION</label>
-                    <textarea
-                      value={newItem.description}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe your bucket list item..."
-                      className="w-full input-pixel h-20 resize-none"
-                      maxLength={200}
-                    />
-                  </div>
-                  <div>
-                    <label className="block pixel-text text-xs text-blue-400 mb-2">CATEGORY</label>
-                    <select
-                      value={newItem.category}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full input-pixel"
-                    >
-                      {categories.map(category => (
-                        <option key={category} value={category}>
-                          {getCategoryIcon(category)} {category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={addCustomItem}
-                    disabled={!newItem.title.trim()}
-                    className="pixel-button-primary w-full disabled:opacity-50"
-                  >
-                    ADD CUSTOM ITEM
-                  </button>
                 </div>
               )}
             </div>
 
-            {/* Filter Buttons - Moved beside the add section */}
+            {/* Filter Buttons */}
             <div className="lg:ml-6 lg:min-w-[200px]">
-              <h3 className="pixel-text text-blue-400 mb-4 text-sm sm:text-base">VIEW ITEMS</h3>
-              <div className="flex flex-col gap-2">
+              <h3 className="pixel-text text-blue-400 mb-4 text-sm sm:text-base">VIEW DARES</h3>
+              <div className="flex flex-col gap-2 mb-4">
                 <button
                   onClick={() => setShowCompleted(false)}
                   className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${
                     !showCompleted
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-red-500 text-white'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                   }`}
                 >
-                  📋 TO DO ({totalCount - completedCount})
+                  🎯 TO DARE ({totalCount - completedCount})
                 </button>
                 <button
                   onClick={() => setShowCompleted(true)}
@@ -564,8 +348,23 @@ const BucketListPage: React.FC = () => {
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                   }`}
                 >
-                  ✅ COMPLETED ({completedCount})
+                  🏆 CONQUERED ({completedCount})
                 </button>
+              </div>
+
+              {/* Category Filter */}
+              <div className="relative">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-blue-500/20 text-white text-xs"
+                >
+                  {categories.map(category => (
+                    <option key={category} value={category}>
+                      {category !== 'All' ? getCategoryIcon(category) : '🌟'} {category}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -574,65 +373,67 @@ const BucketListPage: React.FC = () => {
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-8 sm:py-12">
-            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400 text-sm sm:text-base">LOADING BUCKET LIST...</span>
+            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-spin mr-3" />
+            <span className="pixel-text text-red-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
           </div>
         )}
 
-        {/* Bucket List Items - Compact Checklist Style */}
+        {/* Dares Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filteredItems.map(item => {
-            const completed = item.is_completed;
+          {filteredDares.map(dare => {
+            const completed = dare.completed;
             return (
               <div 
-                key={item.id} 
+                key={dare.userDareId} 
                 className={`pixel-card transition-all group ${
                   completed 
                     ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
-                    : 'bg-gray-900 border-blue-500/20 hover:border-blue-500/40'
+                    : 'bg-gray-900 border-red-500/20 hover:border-red-500/40'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   {/* Checkbox */}
                   <div 
                     className="flex-shrink-0 mt-1 cursor-pointer"
-                    onClick={() => toggleItemCompletion(item)}
+                    onClick={() => toggleDareCompletion({ id: dare.userDareId, dare_id: dare.id, completed_at: dare.completedAt } as UserDare)}
                   >
                     {completed ? (
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
                     ) : (
-                      <Circle className="w-5 h-5 text-blue-500 hover:text-blue-400" />
+                      <Circle className="w-5 h-5 text-red-500 hover:text-red-400" />
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{getCategoryIcon(item.category)}</span>
-                      <span className="pixel-text text-xs text-blue-400">{item.category}</span>
-                      {completed && <span className="pixel-text text-xs text-green-400">COMPLETED!</span>}
+                      <span className="text-lg">{getCategoryIcon(dare.category)}</span>
+                      <span className="pixel-text text-xs text-red-400">{dare.category}</span>
+                      <span className={`pixel-text text-xs ${getDifficultyColor(dare.difficulty)}`}>
+                        {dare.difficulty}
+                      </span>
+                      <span className="text-xs">{getFunLevelEmoji(dare.funLevel)}</span>
+                      {completed && <span className="pixel-text text-xs text-green-400">CONQUERED!</span>}
                     </div>
 
                     <h3 className={`outfit-text font-semibold mb-2 leading-tight text-sm break-words ${
                       completed ? 'text-gray-400 line-through' : 'text-white'
                     }`}>
-                      {item.title}
+                      {dare.title}
                     </h3>
 
-                    {item.description && (
-                      <p className={`outfit-text text-xs leading-relaxed break-words mb-3 ${
-                        completed ? 'text-gray-500' : 'text-gray-300'
-                      }`}>
-                        {item.description}
-                      </p>
-                    )}
+                    <p className={`outfit-text text-xs leading-relaxed break-words mb-3 ${
+                      completed ? 'text-gray-500' : 'text-gray-300'
+                    }`}>
+                      {dare.description}
+                    </p>
 
                     <div className="flex items-center justify-between">
                       <span className="pixel-text text-xs text-gray-500">
-                        {completed ? 'COMPLETED!' : 'PENDING'}
+                        {completed ? 'DARE CONQUERED!' : 'DARE PENDING'}
                       </span>
                       <button
-                        onClick={() => deleteItem(item.id)}
+                        onClick={() => deleteDare(dare.userDareId, dare.id)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-400 p-1"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -645,31 +446,31 @@ const BucketListPage: React.FC = () => {
           })}
         </div>
 
-        {filteredItems.length === 0 && !loading && (
+        {filteredDares.length === 0 && !loading && (
           <div className="text-center py-8 sm:py-12">
             <div className="text-3xl sm:text-4xl mb-4">
-              {showCompleted ? '🎉' : '🎯'}
+              {showCompleted ? '🏆' : '🎯'}
             </div>
             <h3 className="pixel-text text-sm sm:text-lg text-gray-400 mb-2">
-              {showCompleted ? 'NO COMPLETED ITEMS YET' : 'ALL ITEMS COMPLETED!'}
+              {showCompleted ? 'NO CONQUERED DARES YET' : 'ALL DARES CONQUERED!'}
             </h3>
             <p className="outfit-text text-gray-500 text-sm sm:text-base">
               {showCompleted 
-                ? 'Start checking off items to see your progress here'
-                : 'Amazing! You\'ve completed all your bucket list items'
+                ? 'Start conquering dares to see your victories here'
+                : 'Amazing! You\'ve conquered all your dares'
               }
             </p>
           </div>
         )}
 
         {/* Motivational Footer */}
-        {bucketItems.length > 0 && (
+        {totalCount > 0 && (
           <div className="pixel-card bg-gray-900/30 mt-6 sm:mb-8 border border-gray-700">
             <div className="text-center">
               <p className="outfit-text text-gray-500 text-xs sm:text-sm">
-                🎯 {completedCount > 0 ? `You've completed ${completedCount} items!` : 'Ready for adventure?'} • 
-                <span className="text-blue-400 ml-1">
-                  {totalCount - completedCount > 0 ? `${totalCount - completedCount} items await` : 'You are a travel legend!'}
+                🎯 {completedCount > 0 ? `You've conquered ${completedCount} dares!` : 'Ready for adventure?'} • 
+                <span className="text-red-400 ml-1">
+                  {totalCount - completedCount > 0 ? `${totalCount - completedCount} dares await` : 'You are a dare legend!'}
                 </span>
               </p>
             </div>

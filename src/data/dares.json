@@ -1,0 +1,322 @@
+[
+  {
+    "id": "dare_1",
+    "title": "Eat Something Wildly Local (Without Googling First)",
+    "description": "Order the most mysterious-looking street food you can find. Embrace the unknown flavors!",
+    "category": "Food & Drink",
+    "difficulty": "Easy",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_2",
+    "title": "Learn & Use a Local Slang Phrase in Public",
+    "description": "Ask a local for a funny expression. Drop it into conversation at least once—bonus points for pronunciation!",
+    "category": "Culture",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_3",
+    "title": "Improvise a Local Dance Move on the Street",
+    "description": "Find a busy plaza, drop coins for street musicians, and bust out your best traditional dance attempt!",
+    "category": "Culture",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_4",
+    "title": "Make One \"100% Tourist\" Photo—Pridefully",
+    "description": "Pose in front of the biggest cliché landmark with goofy props or dramatic pose. No shame—only glory!",
+    "category": "Photography",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_5",
+    "title": "Challenge a Stranger to a Mini Talent Swap",
+    "description": "Teach someone a party trick, ask them to teach you something local—song snippet, hand gesture, etc.",
+    "category": "Local Life",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_6",
+    "title": "Use Public Transport in \"Stealth Mode\"",
+    "description": "Ride local transport without studying routes—just hop on and ask \"is this going downtown?\"",
+    "category": "Adventure",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_7",
+    "title": "Find & Photograph the Hackiest Tourist Souvenir",
+    "description": "Seek out the most bizarre magnet or keychain that screams \"tourist.\" Wear/use it for a day!",
+    "category": "Shopping",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_8",
+    "title": "Crash a Local Gathering (Festival, Market, etc.)",
+    "description": "Spot a public festival or lively market—step in, join the circle, and participate for five minutes.",
+    "category": "Local Life",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_9",
+    "title": "Barter Like a Boss",
+    "description": "At a market stall, negotiate a discount on something you don't need. Aim for at least 20% off!",
+    "category": "Shopping",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_10",
+    "title": "Speak Only in Questions for 10 Minutes",
+    "description": "Challenge yourself to ask every sentence as a question and see how locals react.",
+    "category": "Culture",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_11",
+    "title": "Send a Postcard to Yourself with Tomorrow's Challenge",
+    "description": "Write \"Try the spiciest local snack tomorrow!\" and mail it. Hilarious reminder when it arrives home!",
+    "category": "Experience",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_12",
+    "title": "Attempt at Least One Local \"Extreme\" Activity",
+    "description": "Zip-lining? Sandboarding? Even if mild back home, try the local version!",
+    "category": "Adventure",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_13",
+    "title": "Learn One Traditional Toast & Down a Local Drink",
+    "description": "Ask for their classic \"cheers\" toast, sample their favorite beverage, perform it in native language.",
+    "category": "Food & Drink",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_14",
+    "title": "Perform a Random Act of \"Tourist Kindness\"",
+    "description": "Buy coffee for a stranger, help carry groceries, or feed pigeons—spread good tourist vibes!",
+    "category": "Experience",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_15",
+    "title": "Discover & Share a Local \"Spooky Legend\"",
+    "description": "Research a ghost story or urban legend. Whisper it dramatically to friends at night!",
+    "category": "Culture",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_16",
+    "title": "Get a Local to Teach You a Secret Greeting",
+    "description": "Learn a special handshake or greeting. Use it at least three times before leaving!",
+    "category": "Local Life",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_17",
+    "title": "Attempt Phrasebook Karaoke",
+    "description": "Find a popular local song, grab lyrics, and film yourself singing it—off-key encouraged!",
+    "category": "Entertainment",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_18",
+    "title": "Eat Dessert First—Local Style",
+    "description": "Order the sweetest street dessert as your very first bite of the day, then proceed normally.",
+    "category": "Food & Drink",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_19",
+    "title": "Snap a Selfie Mimicking a Local Icon",
+    "description": "Find a statue or mural, strike a pose that mimics it, embrace the cheesy matching moment.",
+    "category": "Photography",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_20",
+    "title": "Leave Your Mark (Respectfully)",
+    "description": "Use washable chalk to draw a tiny doodle on a permitted spot as your \"tourist signature.\"",
+    "category": "Experience",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_21",
+    "title": "Master the Art of Local Coffee Ordering",
+    "description": "Learn exactly how locals order their morning coffee. Nail the pronunciation and etiquette.",
+    "category": "Food & Drink",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_22",
+    "title": "Find the Best Local Sunset/Sunrise Spot",
+    "description": "Ask three different locals for their favorite golden hour location. Visit the most recommended.",
+    "category": "Nature",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_23",
+    "title": "Attend a Local Sports Event or Match",
+    "description": "Experience the passion of local sports culture—even if you don't understand the rules!",
+    "category": "Entertainment",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_24",
+    "title": "Navigate Using Only Landmark Directions",
+    "description": "Ask for directions using only landmarks (\"turn left at the big tree\") instead of street names.",
+    "category": "Adventure",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_25",
+    "title": "Try a Local Wellness or Spa Tradition",
+    "description": "Experience traditional baths, massage styles, or wellness practices unique to the region.",
+    "category": "Wellness",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_26",
+    "title": "Photograph 5 Different Local Door Styles",
+    "description": "Capture the unique architectural personality of the place through its diverse doorways.",
+    "category": "Photography",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_27",
+    "title": "Learn to Cook One Local Dish",
+    "description": "Take a cooking class or convince a local to teach you their family recipe.",
+    "category": "Food & Drink",
+    "difficulty": "Hard",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_28",
+    "title": "Experience Local Nightlife Like a Resident",
+    "description": "Ask locals where THEY go for fun at night—avoid tourist traps, find authentic spots.",
+    "category": "Nightlife",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_29",
+    "title": "Collect Sounds of the City",
+    "description": "Record 1-minute audio clips of unique local sounds—markets, music, street calls, nature.",
+    "category": "Experience",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_30",
+    "title": "Find the Oldest Thing in the City",
+    "description": "Hunt down the most ancient building, tree, or artifact. Learn its story.",
+    "category": "Culture",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_31",
+    "title": "Master Local Public Transport Etiquette",
+    "description": "Learn the unwritten rules—where to stand, how to pay, what's considered polite.",
+    "category": "Local Life",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_32",
+    "title": "Discover a Hidden Local Gem",
+    "description": "Find a place that's not in guidebooks but locals love—ask \"where do you go to relax?\"",
+    "category": "Sightseeing",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_33",
+    "title": "Experience Local Weather Like a Pro",
+    "description": "Learn how locals dress and behave in their typical weather. Adapt your style accordingly.",
+    "category": "Local Life",
+    "difficulty": "Easy",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_34",
+    "title": "Find the Best Local Viewpoint",
+    "description": "Discover where locals go for the best city views—not necessarily the most famous tourist spot.",
+    "category": "Nature",
+    "difficulty": "Medium",
+    "funLevel": "mild"
+  },
+  {
+    "id": "dare_35",
+    "title": "Learn a Traditional Local Game",
+    "description": "Find locals playing cards, board games, or street games. Ask them to teach you!",
+    "category": "Entertainment",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_36",
+    "title": "Create Your Own Walking Tour",
+    "description": "Pick a theme (street art, doors, food stalls) and create a self-guided tour. Share it with others!",
+    "category": "Adventure",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_37",
+    "title": "Have a Conversation Using Only Gestures",
+    "description": "Find someone who doesn't speak your language and have a 5-minute conversation using only hand gestures.",
+    "category": "Culture",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_38",
+    "title": "Find the Weirdest Local Flavor",
+    "description": "Discover the most unusual local flavor combination (ice cream, chips, drinks) and try it!",
+    "category": "Food & Drink",
+    "difficulty": "Medium",
+    "funLevel": "spicy"
+  },
+  {
+    "id": "dare_39",
+    "title": "Become a Local News Story",
+    "description": "Do something so wonderfully touristy that locals take photos of YOU. Embrace the fame!",
+    "category": "Experience",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  },
+  {
+    "id": "dare_40",
+    "title": "Start a Trend",
+    "description": "Introduce something from your home culture to locals—a dance, phrase, or custom. See if it catches on!",
+    "category": "Culture",
+    "difficulty": "Hard",
+    "funLevel": "chaotic"
+  }
+]

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
+import daresData from '../data/dares.json';
 
 interface TripDetails {
   id: string;
@@ -13,12 +14,13 @@ interface TripDetails {
   end_date: string;
 }
 
-interface BucketListItem {
+interface UserDare {
   id: string;
-  title: string;
-  description: string;
-  category: string;
-  is_completed: boolean;
+  user_id: string;
+  trip_id: string;
+  dare_id: string;
+  completed_at: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -40,9 +42,9 @@ const TripDashboardPage: React.FC = () => {
   const [tripCount, setTripCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
-  const [loadingBucketList, setLoadingBucketList] = useState(true);
+  const [loadingDares, setLoadingDares] = useState(true);
   const [tips, setTips] = useState<RedditTip[]>([]);
-  const [bucketItems, setBucketItems] = useState<BucketListItem[]>([]);
+  const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
 
   const fetchRedditTips = async (city: string, country: string) => {
@@ -73,68 +75,48 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  const fetchBucketList = async (userId: string, tripId: string, destination: string) => {
+  const fetchUserDares = async (userId: string, tripId: string) => {
     try {
-      setLoadingBucketList(true);
+      setLoadingDares(true);
       
-      // Fetch user's bucket list items for this trip
-      const { data: items, error } = await supabase
-        .from('bucket_list_items')
+      // Fetch user's dares for this trip
+      const { data: userDareData, error } = await supabase
+        .from('user_bucket_progress')
         .select('*')
         .eq('user_id', userId)
         .eq('trip_id', tripId)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching bucket list:', error);
+        console.error('Error fetching user dares:', error);
         return;
       }
 
-      // If no items exist, create default ones
-      if (!items || items.length === 0) {
-        const { error: createError } = await supabase.rpc('create_default_bucket_list_items', {
-          p_destination: destination,
-          p_trip_id: tripId,
-          p_user_id: userId
-        });
-
-        if (!createError) {
-          // Fetch the newly created items
-          const { data: newItems } = await supabase
-            .from('bucket_list_items')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('trip_id', tripId)
-            .order('created_at', { ascending: false });
-
-          setBucketItems(newItems || []);
-        } else {
-          console.error('Error creating default bucket list items:', createError);
-          setBucketItems([]);
-        }
-      } else {
-        setBucketItems(items);
-      }
+      setUserDares(userDareData || []);
     } catch (error) {
-      console.error('Error fetching bucket list:', error);
-      setBucketItems([]);
+      console.error('Error fetching user dares:', error);
+      setUserDares([]);
     } finally {
-      setLoadingBucketList(false);
+      setLoadingDares(false);
     }
   };
 
-  const toggleBucketItem = async (item: BucketListItem) => {
+  const toggleDare = async (userDare: UserDare) => {
+    const isCompleting = !userDare.completed_at;
+    
     const { error } = await supabase
-      .from('bucket_list_items')
-      .update({ is_completed: !item.is_completed })
-      .eq('id', item.id);
+      .from('user_bucket_progress')
+      .update({ 
+        completed_at: isCompleting ? new Date().toISOString() : null 
+      })
+      .eq('id', userDare.id);
 
     if (!error) {
-      setBucketItems(prev => 
-        prev.map(i => 
-          i.id === item.id 
-            ? { ...i, is_completed: !i.is_completed }
-            : i
+      setUserDares(prev => 
+        prev.map(ud => 
+          ud.id === userDare.id 
+            ? { ...ud, completed_at: isCompleting ? new Date().toISOString() : null }
+            : ud
         )
       );
     }
@@ -164,9 +146,9 @@ const TripDashboardPage: React.FC = () => {
         setTrip(tripData);
         const [city, country] = tripData.destination.split(', ');
         
-        // Fetch tips and bucket list in parallel
+        // Fetch tips and dares in parallel
         fetchRedditTips(city, country);
-        fetchBucketList(user.id, tripId!, tripData.destination);
+        fetchUserDares(user.id, tripId!);
 
         // Fetch existing checklist items
         const { data: existingItems } = await supabase
@@ -243,15 +225,15 @@ const TripDashboardPage: React.FC = () => {
     return { totalTasks, completedTasks, remainingTasks };
   };
 
-  const getBucketListSummary = () => {
-    const totalItems = bucketItems.length;
-    const completedItems = bucketItems.filter(item => item.is_completed).length;
-    const remainingItems = totalItems - completedItems;
-    return { totalItems, completedItems, remainingItems };
+  const getDaresSummary = () => {
+    const totalDares = userDares.length;
+    const completedDares = userDares.filter(dare => dare.completed_at).length;
+    const remainingDares = totalDares - completedDares;
+    return { totalDares, completedDares, remainingDares };
   };
 
-  const getIncompleteBucketItems = () => {
-    return bucketItems.filter(item => !item.is_completed).slice(0, 4);
+  const getIncompleteDares = () => {
+    return userDares.filter(userDare => !userDare.completed_at).slice(0, 4);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -279,7 +261,9 @@ const TripDashboardPage: React.FC = () => {
       'Nature': '🌿',
       'Experience': '✨',
       'Photography': '📸',
-      'Local Life': '🏠'
+      'Local Life': '🏠',
+      'Entertainment': '🎭',
+      'Wellness': '🧘'
     };
     return icons[category] || '💡';
   };
@@ -293,8 +277,8 @@ const TripDashboardPage: React.FC = () => {
   }
 
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
-  const { totalItems, completedItems, remainingItems } = getBucketListSummary();
-  const incompleteBucketItems = getIncompleteBucketItems();
+  const { totalDares, completedDares, remainingDares } = getDaresSummary();
+  const incompleteDares = getIncompleteDares();
 
   return (
     <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center">
@@ -386,46 +370,49 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Dare Bucket List Section - 2x2 Compact Cards */}
+        {/* Dare Bucket List Section */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-red-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
               <Target className="h-5 sm:h-6 w-5 sm:w-6 text-red-400" />
               <h3 className="pixel-text text-sm sm:text-lg">DARE BUCKET LIST</h3>
-              {!loadingBucketList && totalItems > 0 && (
+              {!loadingDares && totalDares > 0 && (
                 <span className="pixel-text text-xs sm:text-sm text-red-400">
-                  {completedItems}/{totalItems} conquered
+                  {completedDares}/{totalDares} conquered
                 </span>
               )}
             </div>
-            {totalItems > 4 && (
+            {totalDares > 4 && (
               <button
                 onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
                 className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
               >
-                VIEW ALL {totalItems}
+                VIEW ALL {totalDares}
               </button>
             )}
           </div>
 
-          {loadingBucketList ? (
+          {loadingDares ? (
             <div className="flex items-center justify-center py-8 sm:py-12">
               <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-spin mr-3" />
               <span className="pixel-text text-red-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
             </div>
-          ) : incompleteBucketItems.length > 0 ? (
+          ) : incompleteDares.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {incompleteBucketItems.map(item => {
-                const completed = item.is_completed;
+              {incompleteDares.map(userDare => {
+                const dare = daresData.find(d => d.id === userDare.dare_id);
+                if (!dare) return null;
+                
+                const completed = !!userDare.completed_at;
                 return (
                   <div 
-                    key={item.id} 
+                    key={userDare.id} 
                     className={`pixel-card transition-all cursor-pointer ${
                       completed 
                         ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
                         : 'bg-gray-800 border-red-500/10 hover:border-red-500/30'
                     }`}
-                    onClick={() => toggleBucketItem(item)}
+                    onClick={() => toggleDare(userDare)}
                   >
                     <div className="flex items-start gap-3">
                       {/* Checkbox */}
@@ -440,22 +427,22 @@ const TripDashboardPage: React.FC = () => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm">{getCategoryIcon(item.category)}</span>
-                          <span className="pixel-text text-xs text-red-400">{item.category}</span>
+                          <span className="text-sm">{getCategoryIcon(dare.category)}</span>
+                          <span className="pixel-text text-xs text-red-400">{dare.category}</span>
                           {completed && <span className="pixel-text text-xs text-green-400">CONQUERED!</span>}
                         </div>
 
                         <h4 className={`outfit-text font-semibold mb-1 leading-tight text-xs break-words ${
                           completed ? 'text-gray-400 line-through' : 'text-white'
                         }`}>
-                          {item.title}
+                          {dare.title}
                         </h4>
 
-                        {item.description && (
+                        {dare.description && (
                           <p className={`outfit-text text-xs leading-relaxed break-words mb-2 ${
                             completed ? 'text-gray-500' : 'text-gray-300'
                           }`}>
-                            {item.description.length > 60 ? `${item.description.substring(0, 60)}...` : item.description}
+                            {dare.description.length > 60 ? `${dare.description.substring(0, 60)}...` : dare.description}
                           </p>
                         )}
 
@@ -470,7 +457,7 @@ const TripDashboardPage: React.FC = () => {
                 );
               })}
             </div>
-          ) : totalItems > 0 ? (
+          ) : totalDares > 0 ? (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🏆</div>
               <h3 className="pixel-text text-red-400 mb-2 text-sm sm:text-base">ALL DARES CONQUERED!</h3>
@@ -490,13 +477,13 @@ const TripDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {totalItems > 4 && incompleteBucketItems.length > 0 && (
+          {totalDares > 4 && incompleteDares.length > 0 && (
             <div className="text-center mt-4">
               <button
                 onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
                 className="pixel-button-secondary"
               >
-                VIEW ALL {totalItems} DARES
+                VIEW ALL {totalDares} DARES
               </button>
             </div>
           )}

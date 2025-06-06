@@ -283,15 +283,13 @@ const TripDashboardPage: React.FC = () => {
               <Lightbulb className="h-6 w-6 text-yellow-400" />
               <h3 className="pixel-text text-lg">CITY TIPS</h3>
             </div>
-            {!loadingTips && tips.length > 4 && (
-              <button 
-                onClick={() => navigate(`/tips?tripId=${tripId}`)}
-                className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
-              >
-                View All
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </button>
-            )}
+            <button 
+              onClick={() => navigate(`/tips?tripId=${tripId}`)}
+              className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
+            >
+              View All
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </button>
           </div>
 
           {loadingTips ? (

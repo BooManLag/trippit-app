@@ -93,9 +93,11 @@ const TripDashboardPage: React.FC = () => {
       // If no items exist, create default ones
       if (!items || items.length === 0) {
         const { error: createError } = await supabase.rpc('create_default_bucket_list_items', {
-          p_destination: destination,
-          p_trip_id: tripId,
-          p_user_id: userId
+          payload: {
+            p_destination: destination,
+            p_trip_id: tripId,
+            p_user_id: userId
+          }
         });
 
         if (!createError) {

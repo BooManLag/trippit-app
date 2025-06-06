@@ -16,16 +16,73 @@ interface RedditPost {
   subreddit: string;
 }
 
-// Cache for storing results to avoid repeated API calls
+// Enhanced cache with normalized keys and subreddit existence tracking
 const cache = new Map<string, any>();
+const subredditExistsCache = new Map<string, boolean>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const SUBREDDIT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+// Throttling utility for controlled concurrency
+async function throttledFetch<T>(
+  promises: Promise<T>[],
+  batchSize: number = 3,
+  delayMs: number = 100
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = [];
+  
+  for (let i = 0; i < promises.length; i += batchSize) {
+    const batch = promises.slice(i, i + batchSize);
+    const batchResults = await Promise.allSettled(
+      batch.map(promise => 
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 6000)
+          )
+        ])
+      )
+    );
+    
+    results.push(...batchResults);
+    
+    // Small delay between batches to be respectful to Reddit's servers
+    if (i + batchSize < promises.length) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  
+  return results;
+}
+
+// Check if subreddit exists (cached for 24 hours)
+async function subredditExists(name: string): Promise<boolean> {
+  const cached = subredditExistsCache.get(name);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  try {
+    const response = await fetch(`https://www.reddit.com/r/${name}/about.json`, {
+      headers: { 'User-Agent': 'Trippit/1.0 (Travel Tips Aggregator)' }
+    });
+    
+    const exists = response.ok;
+    subredditExistsCache.set(name, exists);
+    return exists;
+  } catch {
+    subredditExistsCache.set(name, false);
+    return false;
+  }
+}
 
 async function fetchTopPosts(
   subredditName: string,
+  searchGroup: number,
   searchQuery: string = '',
-  limit: number = 10
+  limit: number = 8
 ): Promise<RedditPost[]> {
-  const cacheKey = `${subredditName}_${searchQuery}_${limit}`;
+  // Normalized cache key to prevent cache bloat
+  const cacheKey = `${subredditName}_group${searchGroup}_${limit}`;
   const cached = cache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -36,7 +93,6 @@ async function fetchTopPosts(
     let path: string;
     
     if (searchQuery) {
-      // Only search recent posts for faster results
       path = `https://www.reddit.com/r/${encodeURIComponent(
         subredditName.toLowerCase()
       )}/search.json?q=${encodeURIComponent(searchQuery)}&restrict_sr=on&limit=${limit}&sort=top&t=month`;
@@ -53,21 +109,28 @@ async function fetchTopPosts(
     });
 
     if (!res.ok) {
-      console.log(`Failed to fetch from ${path}: ${res.status}`);
       return [];
     }
 
     const json = await res.json();
     
-    if (!json.data || !json.data.children) {
-      console.log(`No data found for ${subredditName}`);
+    if (!json.data?.children) {
       return [];
     }
 
-    const posts = json.data.children.map((child: any) => ({
-      ...child.data,
-      subreddit: subredditName
-    }) as RedditPost);
+    const posts = json.data.children
+      .map((child: any) => ({
+        ...child.data,
+        subreddit: subredditName
+      }) as RedditPost)
+      .filter((post: RedditPost) => 
+        // Pre-filter for quality and relevance
+        post.score > 5 && 
+        post.selftext.length >= 50 && 
+        post.selftext.length <= 5000 && // Avoid extremely long posts
+        !post.selftext.toLowerCase().includes('[deleted]') &&
+        !post.selftext.toLowerCase().includes('[removed]')
+      );
 
     // Cache the result
     cache.set(cacheKey, {
@@ -82,139 +145,114 @@ async function fetchTopPosts(
   }
 }
 
-function generateOptimizedSearchTerms(city: string, country: string): string[] {
-  // Reduced to most effective search terms
+function generateOptimizedSearchTerms(city: string, country: string): string[][] {
+  // Group search terms for better cache key normalization
   return [
-    `${city} travel tips`,
-    `${city} travel guide`,
-    `visiting ${city}`,
-    `${city} advice`,
-    `${country} travel tips`,
-    `${city} food`,
-    `${city} budget`,
-    `${city} safety`
+    [`${city} travel tips`, `${city} travel guide`, `visiting ${city}`], // Group 0: City-focused
+    [`${city} advice`, `${country} travel tips`, `${city} food`], // Group 1: Mixed
+    [`${city} budget`, `${city} safety`, `${city} transport`] // Group 2: Specific categories
   ];
 }
 
-function generateOptimizedSubreddits(city: string, country: string): string[] {
-  // Focus on most active and relevant subreddits
-  const baseSubreddits = [
-    'travel',
-    'solotravel', 
-    'backpacking',
-    'TravelHacks'
-  ];
-
-  // Add location-specific subreddits if they exist
+async function generateOptimizedSubreddits(city: string, country: string): Promise<string[]> {
+  const baseSubreddits = ['travel', 'solotravel', 'backpacking', 'TravelHacks'];
+  
   const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
   const countryClean = country.toLowerCase().replace(/[^a-z]/g, '');
   
-  const locationSubreddits = [
-    cityClean,
+  // Common country variations
+  const countryVariations = [
     countryClean,
-    // Common variations
     countryClean === 'unitedstates' ? 'usa' : null,
     countryClean === 'unitedkingdom' ? 'uk' : null,
+    countryClean === 'unitedkingdom' ? 'unitedkingdom' : null,
   ].filter(name => name && name.length > 2);
 
-  return [...baseSubreddits, ...locationSubreddits.slice(0, 2)]; // Limit location subreddits
+  // Check existence of location-specific subreddits in parallel
+  const locationCandidates = [cityClean, ...countryVariations];
+  const existenceChecks = await Promise.allSettled(
+    locationCandidates.map(name => subredditExists(name))
+  );
+
+  const validLocationSubreddits = locationCandidates.filter((_, index) => 
+    existenceChecks[index].status === 'fulfilled' && 
+    (existenceChecks[index] as PromiseFulfilledResult<boolean>).value
+  );
+
+  return [...baseSubreddits, ...validLocationSubreddits.slice(0, 2)];
 }
 
 function categorizeTip(title: string, content: string): string {
   const text = `${title} ${content}`.toLowerCase();
   
-  if (text.includes('food') || text.includes('eat') || text.includes('restaurant') || text.includes('cuisine')) {
-    return 'Food';
-  }
-  if (text.includes('transport') || text.includes('metro') || text.includes('bus') || text.includes('taxi') || text.includes('getting around')) {
-    return 'Transport';
-  }
-  if (text.includes('budget') || text.includes('cheap') || text.includes('money') || text.includes('cost')) {
-    return 'Budget';
-  }
-  if (text.includes('culture') || text.includes('custom') || text.includes('etiquette') || text.includes('local')) {
-    return 'Culture';
-  }
-  if (text.includes('safety') || text.includes('safe') || text.includes('danger') || text.includes('avoid') || text.includes('scam')) {
-    return 'Safety';
-  }
-  if (text.includes('attraction') || text.includes('visit') || text.includes('see') || text.includes('do') || text.includes('activity')) {
-    return 'Things to Do';
-  }
-  if (text.includes('hotel') || text.includes('stay') || text.includes('accommodation')) {
-    return 'Accommodation';
-  }
-  if (text.includes('pack') || text.includes('bring') || text.includes('luggage')) {
-    return 'Packing';
-  }
-  if (text.includes('health') || text.includes('medical') || text.includes('vaccine')) {
-    return 'Health';
-  }
-  if (text.includes('phone') || text.includes('wifi') || text.includes('internet') || text.includes('app')) {
-    return 'Technology';
-  }
-  if (text.includes('document') || text.includes('passport') || text.includes('visa')) {
-    return 'Documents';
-  }
-  if (text.includes('plan') || text.includes('itinerary') || text.includes('book')) {
-    return 'Planning';
-  }
+  // Optimized categorization with most common categories first
+  if (text.includes('food') || text.includes('eat') || text.includes('restaurant')) return 'Food';
+  if (text.includes('transport') || text.includes('metro') || text.includes('bus') || text.includes('taxi')) return 'Transport';
+  if (text.includes('budget') || text.includes('cheap') || text.includes('money')) return 'Budget';
+  if (text.includes('safety') || text.includes('safe') || text.includes('scam')) return 'Safety';
+  if (text.includes('culture') || text.includes('custom') || text.includes('etiquette')) return 'Culture';
+  if (text.includes('attraction') || text.includes('visit') || text.includes('see') || text.includes('do')) return 'Things to Do';
+  if (text.includes('hotel') || text.includes('stay') || text.includes('accommodation')) return 'Accommodation';
+  if (text.includes('pack') || text.includes('bring') || text.includes('luggage')) return 'Packing';
+  if (text.includes('health') || text.includes('medical') || text.includes('vaccine')) return 'Health';
+  if (text.includes('phone') || text.includes('wifi') || text.includes('app')) return 'Technology';
+  if (text.includes('document') || text.includes('passport') || text.includes('visa')) return 'Documents';
+  if (text.includes('plan') || text.includes('itinerary') || text.includes('book')) return 'Planning';
   
   return 'General';
 }
 
 function extractTipsFromPost(post: RedditPost): any[] {
   const tips = [];
+  const content = `${post.title}\n\n${post.selftext}`;
   
-  // Skip posts that are too short or likely not helpful
-  if (post.selftext.length < 30) {
+  // Early quality check
+  if (post.selftext.length < 50 || post.score < 3) {
     return [];
   }
   
-  const content = `${post.title}\n\n${post.selftext}`;
-  
-  // Simplified tip extraction - focus on most common patterns
+  // Optimized regex patterns - most common first
   const tipPatterns = [
-    // Numbered lists
-    /(?:^|\n)\s*(\d+[\.\)]\s*.+?)(?=\n\s*\d+[\.\)]|\n\s*$|\n\n|$)/gm,
-    // Bullet points
-    /(?:^|\n)\s*([-\*•]\s*.+?)(?=\n\s*[-\*•]|\n\s*$|\n\n|$)/gm,
-    // Tip patterns
-    /(?:tip|advice|recommendation):\s*(.+?)(?=\n|$)/gim,
+    /(?:^|\n)\s*(\d+[\.\)]\s*.{20,250})(?=\n\s*\d+[\.\)]|\n\s*$|\n\n|$)/gm,
+    /(?:^|\n)\s*([-\*•]\s*.{20,250})(?=\n\s*[-\*•]|\n\s*$|\n\n|$)/gm,
+    /(?:tip|advice|recommendation):\s*(.{20,250})(?=\n|$)/gim,
   ];
 
-  tipPatterns.forEach(pattern => {
-    let match;
-    while ((match = pattern.exec(content)) !== null && tips.length < 5) { // Limit tips per post
-      let tipText = match[1].trim();
-      
-      // Clean up the tip text
-      tipText = tipText.replace(/^\d+[\.\)]\s*/, '');
-      tipText = tipText.replace(/^[-\*•]\s*/, '');
-      tipText = tipText.replace(/^(tip|advice|recommendation):\s*/i, '');
-      
-      if (tipText.length > 15 && tipText.length < 300 && 
-          !tipText.toLowerCase().includes('edit:') &&
-          !tipText.toLowerCase().includes('deleted')) {
+  // Process patterns efficiently
+  for (const pattern of tipPatterns) {
+    const matches = content.match(pattern);
+    if (matches && matches.length > 0) {
+      for (const match of matches.slice(0, 3)) { // Limit to 3 tips per pattern
+        let tipText = match.trim()
+          .replace(/^\d+[\.\)]\s*/, '')
+          .replace(/^[-\*•]\s*/, '')
+          .replace(/^(tip|advice|recommendation):\s*/i, '');
         
-        tips.push({
-          id: `${post.id}_${tips.length}`,
-          category: categorizeTip(post.title, tipText),
-          title: post.title.length > 80 ? post.title.substring(0, 80) + '...' : post.title,
-          content: tipText,
-          source: `r/${post.subreddit}`,
-          reddit_url: `https://reddit.com${post.permalink}`,
-          score: post.score,
-          created_at: new Date(post.created_utc * 1000).toISOString()
-        });
+        if (tipText.length > 20 && tipText.length < 300 && 
+            !tipText.toLowerCase().includes('edit:') &&
+            !tipText.toLowerCase().includes('deleted')) {
+          
+          tips.push({
+            id: `${post.id}_${tips.length}`,
+            category: categorizeTip(post.title, tipText),
+            title: post.title.length > 80 ? post.title.substring(0, 80) + '...' : post.title,
+            content: tipText,
+            source: `r/${post.subreddit}`,
+            reddit_url: `https://reddit.com${post.permalink}`,
+            score: post.score,
+            created_at: new Date(post.created_utc * 1000).toISOString()
+          });
+          
+          if (tips.length >= 3) break; // Limit tips per post
+        }
       }
+      if (tips.length > 0) break; // If we found tips with one pattern, don't try others
     }
-  });
+  }
 
-  // If no specific tips found but the post seems helpful, use the whole post
-  if (tips.length === 0 && post.selftext.length > 50 && post.selftext.length < 800 && post.score > 10) {
-    const helpfulKeywords = ['tip', 'advice', 'recommend', 'guide', 'experience', 'visit', 'travel'];
-    
+  // Fallback for helpful posts without explicit tip formatting
+  if (tips.length === 0 && post.selftext.length > 100 && post.selftext.length < 600 && post.score > 15) {
+    const helpfulKeywords = ['tip', 'advice', 'recommend', 'guide', 'experience'];
     const hasHelpfulContent = helpfulKeywords.some(keyword => 
       post.title.toLowerCase().includes(keyword) || post.selftext.toLowerCase().includes(keyword)
     );
@@ -224,7 +262,7 @@ function extractTipsFromPost(post: RedditPost): any[] {
         id: post.id,
         category: categorizeTip(post.title, post.selftext),
         title: post.title,
-        content: post.selftext.length > 400 ? post.selftext.substring(0, 400) + '...' : post.selftext,
+        content: post.selftext.length > 300 ? post.selftext.substring(0, 300) + '...' : post.selftext,
         source: `r/${post.subreddit}`,
         reddit_url: `https://reddit.com${post.permalink}`,
         score: post.score,
@@ -234,6 +272,26 @@ function extractTipsFromPost(post: RedditPost): any[] {
   }
 
   return tips;
+}
+
+// Enhanced deduplication with normalized content comparison
+function deduplicateTips(tips: any[]): any[] {
+  const seen = new Set<string>();
+  return tips.filter(tip => {
+    // Create normalized fingerprint
+    const normalized = tip.content
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 100);
+    
+    if (seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
 }
 
 Deno.serve(async (req) => {
@@ -256,8 +314,8 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching optimized tips for ${city}, ${country}`);
 
-    // Check cache first
-    const cacheKey = `tips_${city}_${country}`;
+    // Check cache first with normalized key
+    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}`;
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -273,94 +331,95 @@ Deno.serve(async (req) => {
       );
     }
 
-    const subreddits = generateOptimizedSubreddits(city, country);
-    const searchTerms = generateOptimizedSearchTerms(city, country);
-    const allTips = [];
+    // Generate subreddits and search terms
+    const subreddits = await generateOptimizedSubreddits(city, country);
+    const searchTermGroups = generateOptimizedSearchTerms(city, country);
+    
+    console.log(`Using subreddits: ${subreddits.join(', ')}`);
 
-    // Parallel fetching for better performance
-    const fetchPromises = [];
+    // Create fetch promises with controlled concurrency
+    const fetchPromises: Promise<any[]>[] = [];
 
-    // Fetch from main travel subreddits with targeted searches
-    for (const subreddit of subreddits.slice(0, 4)) { // Limit to 4 subreddits
-      // Only use 2-3 most relevant search terms per subreddit
-      const relevantTerms = searchTerms.slice(0, 3);
-      
-      for (const searchTerm of relevantTerms) {
-        fetchPromises.push(
-          fetchTopPosts(subreddit, searchTerm, 8).then(posts => {
-            const tips = [];
-            for (const post of posts.slice(0, 5)) { // Limit posts processed
-              tips.push(...extractTipsFromPost(post));
-            }
-            return tips;
-          })
-        );
+    for (const subreddit of subreddits.slice(0, 4)) {
+      for (let groupIndex = 0; groupIndex < Math.min(searchTermGroups.length, 2); groupIndex++) {
+        const searchTerms = searchTermGroups[groupIndex];
+        
+        for (const searchTerm of searchTerms.slice(0, 2)) { // Limit to 2 terms per group
+          fetchPromises.push(
+            fetchTopPosts(subreddit, groupIndex, searchTerm, 6).then(posts => {
+              const tips = [];
+              // Process only top 3 posts per search for speed
+              for (const post of posts.slice(0, 3)) {
+                tips.push(...extractTipsFromPost(post));
+              }
+              return tips;
+            })
+          );
+        }
       }
     }
 
-    // Execute all fetches in parallel with timeout
-    const results = await Promise.allSettled(
-      fetchPromises.map(promise => 
-        Promise.race([
-          promise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-        ])
-      )
-    );
+    console.log(`Created ${fetchPromises.length} fetch promises`);
+
+    // Execute with throttling (3 concurrent requests, 100ms delay between batches)
+    const results = await throttledFetch(fetchPromises, 3, 100);
 
     // Collect successful results
+    const allTips = [];
+    let successfulFetches = 0;
+    
     for (const result of results) {
       if (result.status === 'fulfilled') {
         allTips.push(...result.value);
+        successfulFetches++;
       }
     }
 
-    console.log(`Raw tips collected: ${allTips.length}`);
+    console.log(`Successful fetches: ${successfulFetches}/${results.length}, Raw tips: ${allTips.length}`);
 
-    // Quick deduplication and sorting
-    const uniqueTips = allTips
-      .filter((tip, index, self) => {
-        // Simple deduplication based on content start
-        const contentStart = tip.content.substring(0, 50).toLowerCase();
-        return index === self.findIndex(t => 
-          t.content.substring(0, 50).toLowerCase() === contentStart
-        );
-      })
+    // Enhanced processing pipeline
+    const processedTips = deduplicateTips(allTips)
       .filter(tip => {
-        // Basic quality filter
-        return tip.content.length > 20 && 
-               tip.score > 1 && 
-               !tip.content.toLowerCase().includes('deleted');
+        // Enhanced quality filter
+        return tip.content.length > 25 && 
+               tip.content.length < 400 &&
+               tip.score > 2 && 
+               !tip.content.toLowerCase().includes('deleted') &&
+               !tip.content.toLowerCase().includes('removed') &&
+               !tip.title.toLowerCase().includes('[deleted]');
       })
       .sort((a, b) => {
-        // Quick relevance scoring
-        const aRelevant = a.content.toLowerCase().includes(city.toLowerCase()) || 
-                         a.title.toLowerCase().includes(city.toLowerCase());
-        const bRelevant = b.content.toLowerCase().includes(city.toLowerCase()) || 
-                         b.title.toLowerCase().includes(city.toLowerCase());
+        // Enhanced relevance scoring
+        const cityLower = city.toLowerCase();
+        const aRelevant = (a.content.toLowerCase().includes(cityLower) || 
+                          a.title.toLowerCase().includes(cityLower)) ? 10 : 0;
+        const bRelevant = (b.content.toLowerCase().includes(cityLower) || 
+                          b.title.toLowerCase().includes(cityLower)) ? 10 : 0;
         
-        if (aRelevant && !bRelevant) return -1;
-        if (!aRelevant && bRelevant) return 1;
-        return b.score - a.score;
+        // Combine relevance and score
+        const aScore = aRelevant + Math.log(a.score + 1);
+        const bScore = bRelevant + Math.log(b.score + 1);
+        
+        return bScore - aScore;
       })
-      .slice(0, 25); // Return up to 25 tips
+      .slice(0, 20); // Return top 20 tips
 
-    console.log(`Final unique tips: ${uniqueTips.length} for ${city}, ${country}`);
+    console.log(`Final processed tips: ${processedTips.length} for ${city}, ${country}`);
 
     // Cache the result
     cache.set(cacheKey, {
-      data: uniqueTips,
+      data: processedTips,
       timestamp: Date.now()
     });
 
-    // If no tips found, return enhanced fallback tips
-    if (uniqueTips.length === 0) {
+    // Enhanced fallback tips if no results
+    if (processedTips.length === 0) {
       const fallbackTips = [
         {
           id: 'fallback_1',
           category: 'Culture',
-          title: `Research ${country} customs before visiting ${city}`,
-          content: `Learn about local customs, tipping practices, and cultural norms in ${country}. This shows respect and helps avoid misunderstandings during your visit to ${city}.`,
+          title: `Essential cultural insights for ${city}`,
+          content: `Research local customs, greeting styles, and cultural norms in ${country}. Understanding basic etiquette shows respect and enhances your experience in ${city}.`,
           source: 'r/travel',
           reddit_url: 'https://reddit.com/r/travel',
           score: 100,
@@ -369,8 +428,8 @@ Deno.serve(async (req) => {
         {
           id: 'fallback_2',
           category: 'Food',
-          title: `Discover authentic cuisine in ${city}`,
-          content: `Seek out local restaurants and street food in ${city} to experience authentic ${country} flavors. Ask locals for recommendations and try regional specialties!`,
+          title: `Authentic dining experiences in ${city}`,
+          content: `Explore local markets and neighborhood restaurants in ${city}. Ask locals for their favorite spots and try regional specialties unique to ${country}.`,
           source: 'r/solotravel',
           reddit_url: 'https://reddit.com/r/solotravel',
           score: 95,
@@ -379,8 +438,8 @@ Deno.serve(async (req) => {
         {
           id: 'fallback_3',
           category: 'Transport',
-          title: `Navigate ${city} transportation efficiently`,
-          content: `Research public transport options in ${city}, download local transit apps, and consider getting a transit pass. Having offline maps is always helpful.`,
+          title: `Getting around ${city} efficiently`,
+          content: `Download local transit apps and research public transport passes for ${city}. Having offline maps and understanding the transport system saves time and money.`,
           source: 'r/TravelHacks',
           reddit_url: 'https://reddit.com/r/TravelHacks',
           score: 90,
@@ -389,8 +448,8 @@ Deno.serve(async (req) => {
         {
           id: 'fallback_4',
           category: 'Budget',
-          title: `Budget wisely for your ${city} trip`,
-          content: `Research typical costs in ${city} for meals, transport, and activities. Look for city passes, happy hour deals, and free attractions to stretch your budget.`,
+          title: `Smart spending strategies for ${city}`,
+          content: `Research typical costs in ${city} and look for city tourism cards that include attractions and transport. Many cities offer free walking tours and museum days.`,
           source: 'r/Shoestring',
           reddit_url: 'https://reddit.com/r/Shoestring',
           score: 85,
@@ -399,8 +458,8 @@ Deno.serve(async (req) => {
         {
           id: 'fallback_5',
           category: 'Safety',
-          title: `Stay safe while exploring ${city}`,
-          content: `Research safe areas in ${city}, learn about common scams in ${country}, and keep emergency contacts handy. Trust your instincts and stay aware.`,
+          title: `Staying safe and aware in ${city}`,
+          content: `Learn about safe neighborhoods in ${city} and common tourist scams in ${country}. Keep emergency contacts accessible and trust your instincts.`,
           source: 'r/travel',
           reddit_url: 'https://reddit.com/r/travel',
           score: 88,
@@ -409,8 +468,8 @@ Deno.serve(async (req) => {
         {
           id: 'fallback_6',
           category: 'Things to Do',
-          title: `Explore beyond tourist spots in ${city}`,
-          content: `While visiting main attractions, also explore local neighborhoods and markets in ${city}. Ask residents for hidden gems - some of the best experiences are off the beaten path!`,
+          title: `Hidden gems and local favorites in ${city}`,
+          content: `Beyond major attractions, explore local neighborhoods and ask residents for recommendations. Some of the best ${city} experiences are off the typical tourist path.`,
           source: 'r/TravelTips',
           reddit_url: 'https://reddit.com/r/TravelTips',
           score: 82,
@@ -418,8 +477,9 @@ Deno.serve(async (req) => {
         }
       ];
       
-      // Cache fallback tips too
-      cache.set(cacheKey, {
+      // Cache fallback tips separately
+      const fallbackKey = `${cacheKey}_fallback`;
+      cache.set(fallbackKey, {
         data: fallbackTips,
         timestamp: Date.now()
       });
@@ -436,7 +496,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify(uniqueTips),
+      JSON.stringify(processedTips),
       {
         headers: {
           ...corsHeaders,

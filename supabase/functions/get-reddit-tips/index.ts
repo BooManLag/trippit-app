@@ -33,94 +33,114 @@ async function fetchTopPosts(
     return cached.data;
   }
 
-  let url: string;
+  // Try multiple URL formats as fallbacks
+  const urlVariants = [];
+  
   if (searchQuery) {
-    // Search within subreddit via Reddit's public API
-    url =
+    // Primary: API endpoint
+    urlVariants.push(
       `https://api.reddit.com/r/${encodeURIComponent(subredditName)}/search?` +
       `q=${encodeURIComponent(searchQuery)}` +
-      `&restrict_sr=1&limit=${limit}&sort=relevance&t=${timeframe}`;
+      `&restrict_sr=1&limit=${limit}&sort=relevance&t=${timeframe}`
+    );
+    
+    // Fallback: www endpoint
+    urlVariants.push(
+      `https://www.reddit.com/r/${encodeURIComponent(subredditName)}/search.json?` +
+      `q=${encodeURIComponent(searchQuery)}` +
+      `&restrict_sr=on&limit=${limit}&sort=relevance&t=${timeframe}`
+    );
   } else {
-    // Fetch top posts from subreddit via Reddit's public API
-    url =
+    // Primary: API endpoint
+    urlVariants.push(
       `https://api.reddit.com/r/${encodeURIComponent(subredditName)}/top?` +
-      `limit=${limit}&t=${timeframe}`;
+      `limit=${limit}&t=${timeframe}`
+    );
+    
+    // Fallback: www endpoint
+    urlVariants.push(
+      `https://www.reddit.com/r/${encodeURIComponent(subredditName)}/top.json?` +
+      `limit=${limit}&t=${timeframe}`
+    );
   }
 
-  console.log(`🔍 Fetching from Reddit: ${url}`);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        // Reddit requires a descriptive User-Agent.
-        'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLaggg)',
-        'Accept': 'application/json',
-      },
-    });
-
-    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
-
-    if (!response.ok) {
-      console.warn(`❌ Failed to fetch /r/${subredditName}: ${response.status} ${response.statusText}`);
-      return [];
-    }
-
-    const json = await response.json();
-    console.log(`📊 Raw response structure:`, {
-      hasData: !!json.data,
-      hasChildren: !!json.data?.children,
-      childrenCount: json.data?.children?.length || 0
-    });
-
-    if (!json.data?.children) {
-      console.warn(`❌ Unexpected JSON structure from /r/${subredditName}`, json);
-      return [];
-    }
-
-    const rawPosts: RedditPost[] = (json.data.children as any[]).map((child) => ({
-      ...child.data,
-      subreddit: subredditName,
-    }));
-
-    console.log(`📝 Raw posts from r/${subredditName}: ${rawPosts.length}`);
-
-    // Log sample of raw posts for debugging
-    if (rawPosts.length > 0) {
-      const sample = rawPosts[0];
-      console.log(`📋 Sample post:`, {
-        title: sample.title?.substring(0, 50),
-        selftext_length: sample.selftext?.length || 0,
-        score: sample.score,
-        author: sample.author
+  // Try each URL variant until one works
+  for (let i = 0; i < urlVariants.length; i++) {
+    const url = urlVariants[i];
+    console.log(`🔍 Attempt ${i + 1}: Fetching from ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLaggg)',
+          'Accept': 'application/json',
+          // Add additional headers that might help
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+        },
       });
+
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+
+      if (response.ok) {
+        const json = await response.json();
+        console.log(`📊 Raw response structure:`, {
+          hasData: !!json.data,
+          hasChildren: !!json.data?.children,
+          childrenCount: json.data?.children?.length || 0
+        });
+
+        if (json.data?.children) {
+          const rawPosts: RedditPost[] = (json.data.children as any[]).map((child) => ({
+            ...child.data,
+            subreddit: subredditName,
+          }));
+
+          console.log(`📝 Raw posts from r/${subredditName}: ${rawPosts.length}`);
+
+          // Apply quality filter
+          const posts = rawPosts.filter((post) => {
+            const hasContent = post.selftext && post.selftext.length >= 20;
+            const goodScore  = post.score >= 1;
+            const notDeleted = !post.selftext.includes('[deleted]') &&
+                               !post.selftext.includes('[removed]') &&
+                               !post.title.includes('[deleted]') &&
+                               !post.title.includes('[removed]');
+            const notTooLong = post.selftext.length <= 5000;
+            const notBot     = !post.author.toLowerCase().includes('bot');
+            return hasContent && goodScore && notDeleted && notTooLong && notBot;
+          });
+
+          console.log(`✅ Filtered posts from r/${subredditName}: ${posts.length} (from ${rawPosts.length} raw)`);
+
+          // Cache and return successful result
+          cache.set(cacheKey, { data: posts, timestamp: Date.now() });
+          return posts;
+        }
+      } else if (response.status === 403) {
+        console.warn(`🚫 403 Forbidden for ${url} - trying next variant...`);
+        continue; // Try next URL variant
+      } else if (response.status === 429) {
+        console.warn(`⏰ Rate limited for ${url} - waiting and trying next variant...`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+        continue;
+      } else {
+        console.warn(`❌ HTTP ${response.status} for ${url} - trying next variant...`);
+        continue;
+      }
+    } catch (err) {
+      console.error(`❌ Network error for ${url}:`, err);
+      continue; // Try next URL variant
     }
-
-    // Apply your "quality" filter (adjust thresholds as needed)
-    const posts = rawPosts.filter((post) => {
-      const hasContent = post.selftext && post.selftext.length >= 20; // More lenient
-      const goodScore  = post.score >= 1; // More lenient
-      const notDeleted = !post.selftext.includes('[deleted]') &&
-                         !post.selftext.includes('[removed]') &&
-                         !post.title.includes('[deleted]') &&
-                         !post.title.includes('[removed]');
-      const notTooLong = post.selftext.length <= 5000;
-      const notBot     = !post.author.toLowerCase().includes('bot');
-      return hasContent && goodScore && notDeleted && notTooLong && notBot;
-    });
-
-    console.log(`✅ Filtered posts from r/${subredditName}: ${posts.length} (from ${rawPosts.length} raw)`);
-
-    // Cache the filtered result
-    cache.set(cacheKey, { data: posts, timestamp: Date.now() });
-    return posts;
-  } catch (err) {
-    console.error(`❌ Error during fetchTopPosts(${subredditName}):`, err);
-    return [];
   }
+
+  console.warn(`❌ All URL variants failed for r/${subredditName}`);
+  return [];
 }
 
 async function generateOptimizedSubreddits(city: string, country: string): Promise<string[]> {
   // Start with proven travel subreddits
-  const baseSubreddits = ['travel', 'solotravel', 'backpacking', 'TravelHacks'];
+  const baseSubreddits = ['travel', 'solotravel', 'backpacking'];
   
   const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
   const countryClean = country.toLowerCase().replace(/[^a-z]/g, '');
@@ -131,7 +151,7 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
   const locationSubreddits = [];
   
   // Add city subreddit if it's long enough
-  if (cityClean.length >= 3) { // Reduced from 4
+  if (cityClean.length >= 3) {
     locationSubreddits.push(cityClean);
   }
   
@@ -141,9 +161,9 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
   if (countryClean === 'unitedkingdom') countryVariations.push('uk');
   if (countryClean === 'vietnam') countryVariations.push('vietnam');
   
-  locationSubreddits.push(...countryVariations.filter(name => name.length >= 2)); // Reduced from 3
+  locationSubreddits.push(...countryVariations.filter(name => name.length >= 2));
   
-  const finalSubreddits = [...baseSubreddits, ...locationSubreddits.slice(0, 3)];
+  const finalSubreddits = [...baseSubreddits, ...locationSubreddits.slice(0, 2)];
   console.log(`🎯 Target subreddits: ${finalSubreddits.join(', ')}`);
   
   return finalSubreddits;
@@ -161,7 +181,7 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
     return [];
   }
   
-  // Simplified tip extraction patterns
+  // Enhanced tip extraction patterns
   const patterns = [
     // Numbered lists (1. 2. 3.)
     /(?:^|\n)\s*(\d+[\.\)]\s*[^\n]{15,300})(?=\n\s*\d+[\.\)]|\n\s*$|\n\n|$)/gm,
@@ -169,6 +189,8 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
     /(?:^|\n)\s*([-\*•]\s*[^\n]{15,300})(?=\n\s*[-\*•]|\n\s*$|\n\n|$)/gm,
     // Explicit tips/advice
     /(?:tip|advice|recommendation|pro tip|lpt):\s*([^\n]{15,300})/gim,
+    // Sentences with helpful keywords
+    /([^\n.!?]{20,300}(?:should|must|recommend|suggest|avoid|don't|always|never|best|good|great)[^\n.!?]{10,200}[.!?])/gim
   ];
 
   let foundTips = 0;
@@ -185,7 +207,7 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
           .replace(/^(?:tip|advice|recommendation|pro tip|lpt):\s*/i, '')
           .trim();
         
-        // Quality checks - more lenient
+        // Quality checks
         if (tipText.length < 15 || tipText.length > 400) continue;
         if (tipText.toLowerCase().includes('edit:')) continue;
         if (tipText.toLowerCase().includes('update:')) continue;
@@ -216,7 +238,7 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
   }
 
   // More lenient fallback: if no structured tips found but post seems valuable
-  if (foundTips === 0 && post.score > 5 && content.length > 50 && content.length < 1000) {
+  if (foundTips === 0 && post.score > 3 && content.length > 50 && content.length < 1000) {
     const helpfulKeywords = ['tip', 'advice', 'recommend', 'experience', 'guide', 'helpful', 'must', 'should', 'avoid'];
     const hasHelpfulContent = helpfulKeywords.some(keyword => 
       title.toLowerCase().includes(keyword) || content.toLowerCase().includes(keyword)
@@ -339,6 +361,48 @@ function deduplicateTips(tips: any[]): any[] {
   });
 }
 
+// Fallback function to generate basic tips if Reddit fails completely
+function generateFallbackTips(city: string, country: string): any[] {
+  const fallbackTips = [
+    {
+      id: `fallback_${city}_1`,
+      category: 'Planning',
+      title: `Research ${city} before you go`,
+      content: `Learn about local customs, weather patterns, and must-see attractions in ${city}. Check visa requirements and book accommodations in advance.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 10,
+      created_at: new Date().toISOString(),
+      relevance_score: 50
+    },
+    {
+      id: `fallback_${city}_2`,
+      category: 'Budget',
+      title: `Money tips for ${city}`,
+      content: `Research typical costs in ${city} and notify your bank of travel plans. Consider getting local currency and understanding tipping customs.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 8,
+      created_at: new Date().toISOString(),
+      relevance_score: 45
+    },
+    {
+      id: `fallback_${city}_3`,
+      category: 'Safety',
+      title: `Stay safe in ${city}`,
+      content: `Keep copies of important documents, stay aware of your surroundings, and research common scams in ${country}. Trust your instincts.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 12,
+      created_at: new Date().toISOString(),
+      relevance_score: 40
+    }
+  ];
+
+  console.log(`🆘 Generated ${fallbackTips.length} fallback tips for ${city}, ${country}`);
+  return fallbackTips;
+}
+
 Deno.serve(async (req) => {
   console.log('🔥 INCOMING REQUEST to /get-reddit-tips');
   console.log(`📡 Method: ${req.method}, URL: ${req.url}`);
@@ -387,9 +451,7 @@ Deno.serve(async (req) => {
     const searchQueries = [
       `${city} tips`,
       `${city} travel`,
-      `${city} guide`,
-      `visiting ${city}`,
-      `${country} travel`
+      `visiting ${city}`
     ];
 
     console.log(`🎯 Will search in subreddits: ${subreddits.join(', ')}`);
@@ -401,17 +463,14 @@ Deno.serve(async (req) => {
     // Search in travel subreddits with city-specific queries
     for (const subreddit of ['travel', 'solotravel']) {
       for (const query of searchQueries.slice(0, 2)) {
-        fetchPromises.push(fetchTopPosts(subreddit, query, 10, 'year'));
+        fetchPromises.push(fetchTopPosts(subreddit, query, 8, 'year'));
       }
     }
 
     // Search in location-specific subreddits
-    const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking', 'TravelHacks'].includes(s));
+    const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking'].includes(s));
     for (const subreddit of locationSubreddits.slice(0, 2)) {
-      fetchPromises.push(fetchTopPosts(subreddit, '', 15, 'year'));
-      if (city.length > 3) {
-        fetchPromises.push(fetchTopPosts(subreddit, city, 10, 'year'));
-      }
+      fetchPromises.push(fetchTopPosts(subreddit, '', 10, 'year'));
     }
 
     console.log(`📡 Created ${fetchPromises.length} fetch requests`);
@@ -422,7 +481,7 @@ Deno.serve(async (req) => {
         Promise.race([
           promise,
           new Promise<RedditPost[]>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 15000) // Increased timeout
+            setTimeout(() => reject(new Error('Timeout')), 12000)
           )
         ])
       )
@@ -453,12 +512,11 @@ Deno.serve(async (req) => {
 
     console.log(`📊 SUMMARY: ${successfulFetches}/${results.length} successful fetches, ${totalPosts} total posts, ${allTips.length} raw tips extracted`);
 
-    // Process and filter tips with more lenient criteria
-    const processedTips = deduplicateTips(allTips)
+    // Process and filter tips
+    let processedTips = deduplicateTips(allTips)
       .filter(tip => {
-        // More lenient quality filtering
-        const hasGoodLength = tip.content.length >= 20 && tip.content.length <= 500; // Reduced minimum
-        const hasGoodScore = tip.score >= 1; // Reduced minimum score
+        const hasGoodLength = tip.content.length >= 20 && tip.content.length <= 500;
+        const hasGoodScore = tip.score >= 1;
         const notDeleted = !tip.content.toLowerCase().includes('deleted') &&
                           !tip.content.toLowerCase().includes('removed') &&
                           !tip.title.toLowerCase().includes('[deleted]');
@@ -466,24 +524,20 @@ Deno.serve(async (req) => {
         return hasGoodLength && hasGoodScore && notDeleted;
       })
       .sort((a, b) => {
-        // Sort by relevance score and Reddit score
         const aTotal = (a.relevance_score || 0) + Math.log(a.score + 1) * 3;
         const bTotal = (b.relevance_score || 0) + Math.log(b.score + 1) * 3;
         return bTotal - aTotal;
       })
-      .slice(0, 30); // Top 30 tips
+      .slice(0, 30);
+
+    // If we got very few tips from Reddit, supplement with fallback tips
+    if (processedTips.length < 3) {
+      console.log(`⚠️ Only got ${processedTips.length} tips from Reddit, adding fallback tips`);
+      const fallbackTips = generateFallbackTips(city, country);
+      processedTips = [...processedTips, ...fallbackTips].slice(0, 30);
+    }
 
     console.log(`✅ FINAL RESULT: ${processedTips.length} quality tips for ${city}, ${country}`);
-
-    // Log sample of final tips for debugging
-    if (processedTips.length > 0) {
-      console.log(`📋 Sample tip:`, {
-        title: processedTips[0].title,
-        content: processedTips[0].content.substring(0, 100),
-        category: processedTips[0].category,
-        score: processedTips[0].score
-      });
-    }
 
     // Cache the result
     cache.set(cacheKey, {
@@ -491,7 +545,6 @@ Deno.serve(async (req) => {
       timestamp: Date.now()
     });
 
-    // Always return results, even if empty
     return new Response(
       JSON.stringify(processedTips),
       {
@@ -501,12 +554,32 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('💥 CRITICAL ERROR in get-reddit-tips function:', error);
-    console.error('💥 Error stack:', error.stack);
+    
+    // Try to extract city/country from error context for fallback
+    let fallbackTips = [];
+    try {
+      const body = await req.json();
+      if (body.city && body.country) {
+        fallbackTips = generateFallbackTips(body.city, body.country);
+      }
+    } catch (e) {
+      // If we can't even parse the request, return generic error
+    }
+
+    if (fallbackTips.length > 0) {
+      console.log(`🆘 Returning fallback tips due to error`);
+      return new Response(
+        JSON.stringify(fallbackTips),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch tips',
-        details: error.message,
-        stack: error.stack
+        details: error.message
       }),
       {
         status: 500,

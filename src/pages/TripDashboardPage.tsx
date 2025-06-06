@@ -64,6 +64,7 @@ const TripDashboardPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch tips');
 
       const redditTips = await response.json();
+      console.log(`Received ${redditTips.length} tips for ${city}, ${country}`);
       setTips(redditTips);
     } catch (error) {
       console.error('Error fetching Reddit tips:', error);
@@ -195,16 +196,17 @@ const TripDashboardPage: React.FC = () => {
       'Planning': '📋',
       'Mindset': '🧠',
       'Things to Do': '🎯',
-      'General': '💡'
+      'General': '💡',
+      'Weather': '🌤️'
     };
     return icons[category] || '💡';
   };
 
-  // Determine how many tips to show in preview
-  const getPreviewTipCount = () => {
-    if (tips.length === 0) return 0;
-    if (tips.length <= 6) return tips.length; // Show all if 6 or fewer
-    return 6; // Show 6 as preview if more available
+  // Determine how many tips to show in preview and if "View All" should appear
+  const getPreviewConfig = () => {
+    if (tips.length === 0) return { showCount: 0, showViewAll: false };
+    if (tips.length <= 3) return { showCount: tips.length, showViewAll: false };
+    return { showCount: 3, showViewAll: true }; // Show 3 as preview if 4+ available
   };
 
   if (loading) {
@@ -216,7 +218,7 @@ const TripDashboardPage: React.FC = () => {
   }
 
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
-  const previewTipCount = getPreviewTipCount();
+  const { showCount, showViewAll } = getPreviewConfig();
 
   return (
     <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
@@ -317,7 +319,7 @@ const TripDashboardPage: React.FC = () => {
                 </span>
               )}
             </div>
-            {tips.length > previewTipCount && (
+            {showViewAll && (
               <button 
                 onClick={() => navigate(`/tips?tripId=${tripId}`)}
                 className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
@@ -335,7 +337,7 @@ const TripDashboardPage: React.FC = () => {
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {tips.slice(0, previewTipCount).map(tip => (
+              {tips.slice(0, showCount).map(tip => (
                 <div key={tip.id} className="pixel-card bg-gray-800 p-4 border border-blue-500/10 hover:border-blue-500/30 transition-all">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -364,7 +366,7 @@ const TripDashboardPage: React.FC = () => {
                 </div>
               ))}
               
-              {tips.length > previewTipCount && (
+              {showViewAll && (
                 <div className="text-center pt-4">
                   <button
                     onClick={() => navigate(`/tips?tripId=${tripId}`)}

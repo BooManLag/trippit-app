@@ -525,12 +525,6 @@ const TripDashboardPage: React.FC = () => {
 
           {totalDares > 4 && incompleteDares.length > 0 && (
             <div className="text-center mt-4">
-              <button
-                onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
-                className="pixel-button-secondary"
-              >
-                VIEW ALL {totalDares} DARES
-              </button>
             </div>
           )}
         </div>

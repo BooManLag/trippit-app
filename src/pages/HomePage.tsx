@@ -41,7 +41,7 @@ const HomePage: React.FC = () => {
             onClick={() => navigate('/game')}
             className="pixel-button-primary w-full"
           >
-            🧭 TRY A SCENARIO
+            🎮 SURVIVE A SCENARIO
           </button>
 
           <button
@@ -55,9 +55,9 @@ const HomePage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
           {[
             {
-              icon: "🎮",
+              icon: "🤪",
               title: "Where'd I Go?",
-              description: "Play the travel-fail simulator"
+              description: "Survive hilarious travel disasters"
             },
             {
               icon: "📍",
@@ -72,7 +72,7 @@ const HomePage: React.FC = () => {
             {
               icon: "💬",
               title: "Travel Stories",
-              description: "Learn from real stories"
+              description: "Learn from epic fails and wins"
             }
           ].map((feature, index) => (
             <div key={index} className="pixel-card">

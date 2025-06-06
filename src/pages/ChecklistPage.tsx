@@ -189,11 +189,10 @@ const ChecklistPage: React.FC = () => {
                             {item.description}
                           </span>
                         </div>
-                        {!item.is_default && (
-                          <button onClick={() => deleteItem(item.id)} className="text-red-500">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* Allow deletion of ALL items, including default ones */}
+                        <button onClick={() => deleteItem(item.id)} className="text-red-500 hover:text-red-400 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>

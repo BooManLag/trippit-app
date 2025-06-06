@@ -71,14 +71,50 @@ async function fetchTopPosts(
   }
 }
 
-function generateSearchTerms(city: string, country: string): string[] {
+function generateLocationSpecificSearchTerms(city: string, country: string): string[] {
   return [
-    `${city} tips`,
-    `${city} travel`,
-    `${city} guide`,
+    // Culture & Etiquette
+    `${city} culture tips`,
+    `${city} etiquette`,
+    `${country} customs`,
+    `${city} local customs`,
+    `what to know before visiting ${city}`,
+    
+    // Food & Dining
+    `${city} food guide`,
+    `${city} restaurants`,
+    `${city} street food`,
+    `${country} cuisine`,
+    `where to eat in ${city}`,
+    `${city} local food`,
+    
+    // Budget & Money
+    `${city} budget travel`,
+    `${city} cheap eats`,
+    `${city} cost of living`,
+    `${country} money tips`,
+    `${city} budget guide`,
+    
+    // Things to Do
+    `${city} attractions`,
+    `${city} hidden gems`,
+    `things to do ${city}`,
+    `${city} must see`,
+    `${city} itinerary`,
+    
+    // Transportation & Commute
+    `${city} transportation`,
+    `${city} public transport`,
+    `getting around ${city}`,
+    `${city} metro guide`,
+    `${country} transport tips`,
+    
+    // General Travel Tips
+    `${city} travel tips`,
+    `${city} travel guide`,
     `visiting ${city}`,
-    `${country} travel tips`,
-    `${country} guide`
+    `${city} first time`,
+    `${country} travel advice`
   ];
 }
 
@@ -88,7 +124,9 @@ function generateSubreddits(city: string, country: string): string[] {
     'solotravel',
     'backpacking',
     'TravelHacks',
-    'digitalnomad'
+    'digitalnomad',
+    'TravelTips',
+    'Shoestring'
   ];
 
   // Add location-specific subreddits (clean names)
@@ -99,10 +137,37 @@ function generateSubreddits(city: string, country: string): string[] {
     cityClean,
     countryClean,
     `${cityClean}travel`,
-    `${countryClean}travel`
+    `${countryClean}travel`,
+    `visit${countryClean}`,
+    `${countryClean}tourism`
   ].filter(name => name.length > 2); // Only include meaningful names
 
   return [...baseSubreddits, ...locationSubreddits];
+}
+
+function categorizeTip(title: string, content: string): string {
+  const text = `${title} ${content}`.toLowerCase();
+  
+  if (text.includes('food') || text.includes('eat') || text.includes('restaurant') || text.includes('cuisine') || text.includes('dish')) {
+    return 'Food';
+  }
+  if (text.includes('transport') || text.includes('metro') || text.includes('bus') || text.includes('taxi') || text.includes('getting around')) {
+    return 'Transport';
+  }
+  if (text.includes('budget') || text.includes('cheap') || text.includes('money') || text.includes('cost') || text.includes('price')) {
+    return 'Budget';
+  }
+  if (text.includes('culture') || text.includes('custom') || text.includes('etiquette') || text.includes('tradition') || text.includes('local')) {
+    return 'Culture';
+  }
+  if (text.includes('safety') || text.includes('safe') || text.includes('danger') || text.includes('avoid') || text.includes('scam')) {
+    return 'Safety';
+  }
+  if (text.includes('attraction') || text.includes('visit') || text.includes('see') || text.includes('do') || text.includes('activity')) {
+    return 'Things to Do';
+  }
+  
+  return 'General';
 }
 
 function extractTipsFromPost(post: RedditPost): any[] {
@@ -125,7 +190,7 @@ function extractTipsFromPost(post: RedditPost): any[] {
       if (tipText.length > 20 && tipText.length < 300) {
         tips.push({
           id: `${post.id}_${tips.length}`,
-          category: 'General',
+          category: categorizeTip(post.title, tipText),
           title: post.title.substring(0, 100),
           content: tipText,
           source: `r/${post.subreddit}`,
@@ -140,7 +205,12 @@ function extractTipsFromPost(post: RedditPost): any[] {
   // If no specific tips found, use the whole post if it's informative
   if (tips.length === 0 && post.selftext.length > 100 && post.selftext.length < 1500) {
     // Check if it looks like a helpful post
-    const helpfulKeywords = ['tip', 'advice', 'recommend', 'guide', 'experience', 'visit', 'travel', 'stay', 'eat', 'avoid'];
+    const helpfulKeywords = [
+      'tip', 'advice', 'recommend', 'guide', 'experience', 'visit', 'travel', 
+      'stay', 'eat', 'avoid', 'culture', 'food', 'transport', 'budget', 'cost',
+      'attraction', 'activity', 'local', 'custom', 'etiquette'
+    ];
+    
     const hasHelpfulContent = helpfulKeywords.some(keyword => 
       post.title.toLowerCase().includes(keyword) || post.selftext.toLowerCase().includes(keyword)
     );
@@ -148,7 +218,7 @@ function extractTipsFromPost(post: RedditPost): any[] {
     if (hasHelpfulContent) {
       tips.push({
         id: post.id,
-        category: 'General',
+        category: categorizeTip(post.title, post.selftext),
         title: post.title,
         content: post.selftext.substring(0, 400) + (post.selftext.length > 400 ? '...' : ''),
         source: `r/${post.subreddit}`,
@@ -180,20 +250,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Fetching tips for ${city}, ${country}`);
+    console.log(`Fetching location-specific tips for ${city}, ${country}`);
 
     const subreddits = generateSubreddits(city, country);
-    const searchTerms = generateSearchTerms(city, country);
+    const searchTerms = generateLocationSpecificSearchTerms(city, country);
     const allTips = [];
 
-    // Fetch from multiple subreddits
-    for (const subreddit of subreddits.slice(0, 6)) { // Limit to prevent timeout
-      console.log(`Checking subreddit: r/${subreddit}`);
+    // Fetch from multiple subreddits with location-specific searches
+    for (const subreddit of subreddits.slice(0, 8)) { // Increased limit for better coverage
+      console.log(`Searching r/${subreddit} for ${city} tips`);
       
       try {
-        // Try different search approaches
-        for (const searchTerm of searchTerms.slice(0, 2)) { // Limit search terms
-          const posts = await fetchTopPosts(subreddit, searchTerm, 3);
+        // Use targeted search terms for this destination
+        const relevantSearchTerms = searchTerms.filter(term => 
+          term.includes(city.toLowerCase()) || term.includes(country.toLowerCase())
+        ).slice(0, 3); // Top 3 most relevant terms per subreddit
+
+        for (const searchTerm of relevantSearchTerms) {
+          const posts = await fetchTopPosts(subreddit, searchTerm, 5);
           
           for (const post of posts) {
             const tips = extractTipsFromPost(post);
@@ -201,12 +275,12 @@ Deno.serve(async (req) => {
           }
 
           // Add small delay to be respectful to Reddit's servers
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        // Also get general top posts from main travel subreddits
+        // For main travel subreddits, also search for general destination info
         if (['travel', 'solotravel', 'backpacking'].includes(subreddit)) {
-          const generalPosts = await fetchTopPosts(subreddit, '', 2);
+          const generalPosts = await fetchTopPosts(subreddit, `${city} ${country}`, 3);
           for (const post of generalPosts) {
             const tips = extractTipsFromPost(post);
             allTips.push(...tips);
@@ -218,26 +292,38 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Remove duplicates and sort by score
+    // Remove duplicates and sort by relevance and score
     const uniqueTips = allTips
       .filter((tip, index, self) => 
         index === self.findIndex(t => 
           t.content.toLowerCase().trim() === tip.content.toLowerCase().trim()
         )
       )
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 15); // Return top 15 tips
+      .sort((a, b) => {
+        // Prioritize tips that mention the specific city/country
+        const aRelevant = a.content.toLowerCase().includes(city.toLowerCase()) || 
+                         a.content.toLowerCase().includes(country.toLowerCase());
+        const bRelevant = b.content.toLowerCase().includes(city.toLowerCase()) || 
+                         b.content.toLowerCase().includes(country.toLowerCase());
+        
+        if (aRelevant && !bRelevant) return -1;
+        if (!aRelevant && bRelevant) return 1;
+        
+        // Then sort by score
+        return b.score - a.score;
+      })
+      .slice(0, 20); // Return top 20 tips
 
-    console.log(`Found ${uniqueTips.length} unique tips for ${city}, ${country}`);
+    console.log(`Found ${uniqueTips.length} location-specific tips for ${city}, ${country}`);
 
-    // If no tips found, return some fallback tips
+    // If no tips found, return destination-specific fallback tips
     if (uniqueTips.length === 0) {
       const fallbackTips = [
         {
           id: 'fallback_1',
-          category: 'General',
-          title: 'Research local customs and etiquette',
-          content: 'Before traveling, research the local customs, tipping practices, and cultural norms to show respect and avoid misunderstandings.',
+          category: 'Culture',
+          title: `Research ${country} customs and etiquette`,
+          content: `Before visiting ${city}, research local customs, tipping practices, and cultural norms specific to ${country} to show respect and avoid misunderstandings.`,
           source: 'r/travel',
           reddit_url: 'https://reddit.com/r/travel',
           score: 100,
@@ -245,9 +331,9 @@ Deno.serve(async (req) => {
         },
         {
           id: 'fallback_2',
-          category: 'Safety',
-          title: 'Keep copies of important documents',
-          content: 'Make digital and physical copies of your passport, visa, and other important documents. Store them separately from the originals.',
+          category: 'Food',
+          title: `Try authentic ${country} cuisine in ${city}`,
+          content: `Look for local restaurants and street food in ${city} to experience authentic ${country} flavors. Ask locals for recommendations!`,
           source: 'r/solotravel',
           reddit_url: 'https://reddit.com/r/solotravel',
           score: 95,
@@ -255,12 +341,22 @@ Deno.serve(async (req) => {
         },
         {
           id: 'fallback_3',
-          category: 'Budget',
-          title: 'Notify your bank of travel plans',
-          content: 'Contact your bank before traveling to inform them of your destination and dates to prevent your cards from being blocked.',
+          category: 'Transport',
+          title: `Learn about ${city} transportation options`,
+          content: `Research public transportation, taxi apps, and walking routes in ${city}. Download offline maps and transportation apps before you arrive.`,
           source: 'r/TravelHacks',
           reddit_url: 'https://reddit.com/r/TravelHacks',
           score: 90,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'fallback_4',
+          category: 'Budget',
+          title: `Budget planning for ${city}`,
+          content: `Research typical costs for meals, transportation, and activities in ${city}. Consider getting a local SIM card or travel pass for savings.`,
+          source: 'r/Shoestring',
+          reddit_url: 'https://reddit.com/r/Shoestring',
+          score: 85,
           created_at: new Date().toISOString()
         }
       ];

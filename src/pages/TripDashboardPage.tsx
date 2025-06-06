@@ -93,11 +93,9 @@ const TripDashboardPage: React.FC = () => {
       // If no items exist, create default ones
       if (!items || items.length === 0) {
         const { error: createError } = await supabase.rpc('create_default_bucket_list_items', {
-          payload: {
-            p_destination: destination,
-            p_trip_id: tripId,
-            p_user_id: userId
-          }
+          p_destination: destination,
+          p_trip_id: tripId,
+          p_user_id: userId
         });
 
         if (!createError) {
@@ -110,6 +108,9 @@ const TripDashboardPage: React.FC = () => {
             .order('created_at', { ascending: false });
 
           setBucketItems(newItems || []);
+        } else {
+          console.error('Error creating default bucket list items:', createError);
+          setBucketItems([]);
         }
       } else {
         setBucketItems(items);
@@ -276,7 +277,9 @@ const TripDashboardPage: React.FC = () => {
       'Shopping': '🛍️',
       'Nightlife': '🌙',
       'Nature': '🌿',
-      'Experience': '✨'
+      'Experience': '✨',
+      'Photography': '📸',
+      'Local Life': '🏠'
     };
     return icons[category] || '💡';
   };

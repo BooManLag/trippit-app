@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Trophy, Star, RotateCcw, Zap, Heart, Laugh } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
+import scenariosData from '../data/scenarios.json';
 
 interface GameScenario {
   id: string;
@@ -51,16 +52,18 @@ const GamePage: React.FC = () => {
 
   useEffect(() => {
     const fetchTripAndGenerateScenarios = async () => {
-      if (!tripId) {
-        const genericScenarios = generateGenericScenarios();
-        setScenarios(genericScenarios);
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         
+        if (!tripId) {
+          // No trip ID - generate random scenarios from JSON
+          const randomScenarios = generateRandomScenarios();
+          setScenarios(randomScenarios);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch trip details
         const { data: tripData } = await supabase
           .from('trips')
           .select('*')
@@ -71,13 +74,19 @@ const GamePage: React.FC = () => {
           setTrip(tripData);
           const [city, country] = tripData.destination.split(', ');
           
-          const countryScenarios = generateCountrySpecificScenarios(city, country);
-          setScenarios(countryScenarios);
+          // Generate trip-specific scenarios
+          const tripScenarios = generateTripSpecificScenarios(city, country);
+          setScenarios(tripScenarios);
+        } else {
+          // Fallback to random scenarios
+          const randomScenarios = generateRandomScenarios();
+          setScenarios(randomScenarios);
         }
       } catch (error) {
         console.error('Error fetching trip:', error);
-        const genericScenarios = generateGenericScenarios();
-        setScenarios(genericScenarios);
+        // Fallback to random scenarios
+        const randomScenarios = generateRandomScenarios();
+        setScenarios(randomScenarios);
       } finally {
         setLoading(false);
       }
@@ -86,346 +95,114 @@ const GamePage: React.FC = () => {
     fetchTripAndGenerateScenarios();
   }, [tripId]);
 
-  const generateCountrySpecificScenarios = (city: string, country: string): GameScenario[] => {
-    const baseScenarios = [
-      {
-        id: '1',
-        title: `The Great ${city} Navigation Disaster! 🗺️`,
-        description: `You're confidently strutting through ${city} when you realize you've been following Google Maps in the wrong direction for 30 minutes. Your phone is dying, you're sweating, and a local just gave you a look that says "another lost tourist." What's your move, navigator?`,
-        country,
-        category: 'Navigation',
-        funLevel: 'spicy' as const,
-        emoji: '🧭',
-        choices: [
-          {
-            id: '1a',
-            text: 'Panic-call an expensive taxi while dramatically waving your arms',
-            outcome: 'The taxi driver laughs at your dramatic entrance and charges you double for the "entertainment fee." You arrive safely but your wallet is crying! 💸',
-            isCorrect: false,
-            explanation: 'While safe, this is expensive and doesn\'t help you learn the area.',
-            funnyReaction: 'Your dramatic arm-waving becomes a local meme! 📱'
-          },
-          {
-            id: '1b',
-            text: 'Channel your inner detective and ask locals for help',
-            outcome: 'Plot twist! The friendly local not only gives you perfect directions but also recommends a hidden gem restaurant. You just unlocked the "Local Whisperer" achievement! 🏆',
-            isCorrect: true,
-            explanation: 'Locals often give the best directions and you might make a connection!',
-            funnyReaction: 'You accidentally learn 5 new words in the local language! 🗣️'
-          },
-          {
-            id: '1c',
-            text: 'Keep wandering and hope for a miracle',
-            outcome: 'Congratulations! You\'ve discovered every dead end in ${city}. Your phone dies, you\'re more lost than a penguin in the desert, and you\'re now the star of a "How NOT to travel" documentary! 🎬',
-            isCorrect: false,
-            explanation: 'This could lead to dangerous situations, especially at night.',
-            funnyReaction: 'You accidentally become a street performer by looking so confused! 🎭'
-          }
-        ]
-      },
-      {
-        id: '2',
-        title: `The ${city} Menu Mystery! 🍽️`,
-        description: `You're at the most Instagram-worthy restaurant in ${city}, but the menu looks like ancient hieroglyphics. The waiter is staring at you expectantly, other diners are watching, and your stomach is growling louder than a motorcycle. Time to make a choice, food adventurer!`,
-        country,
-        category: 'Food',
-        funLevel: 'chaotic' as const,
-        emoji: '🍜',
-        choices: [
-          {
-            id: '2a',
-            text: 'Point dramatically at what the coolest-looking person is eating',
-            outcome: 'JACKPOT! You just ordered the restaurant\'s signature dish that\'s not even on the menu. The other diners are impressed, the chef comes out to high-five you, and you feel like a culinary genius! 👨‍🍳✨',
-            isCorrect: true,
-            explanation: 'This is a great way to discover authentic local cuisine!',
-            funnyReaction: 'You accidentally ordered the "tourist challenge" dish and survived! 🌶️'
-          },
-          {
-            id: '2b',
-            text: 'Frantically use Google Translate on the entire menu',
-            outcome: 'Google Translate thinks you want "Fried Happiness with Confused Vegetables." You get something that might be food, might be art. It tastes... interesting. The waiter is trying not to laugh! 😅',
-            isCorrect: false,
-            explanation: 'Translation apps can be unreliable for food terms and cultural context.',
-            funnyReaction: 'Your phone starts smoking from translating too fast! 📱💨'
-          },
-          {
-            id: '2c',
-            text: 'Retreat to the safety of McDonald\'s',
-            outcome: 'You successfully order a Big Mac in ${city}. Congratulations, you\'ve traveled thousands of miles to eat the exact same thing you could get at home. Your Instagram followers are... confused. 🍔😐',
-            isCorrect: false,
-            explanation: 'You\'ll miss authentic experiences and often pay more for less authentic food.',
-            funnyReaction: 'The McDonald\'s mascot judges you in the local language! 🤡'
-          }
-        ]
-      },
-      {
-        id: '3',
-        title: `The Great ${city} Bathroom Hunt! 🚽`,
-        description: `Nature calls urgently while you're exploring ${city}, but every bathroom requires a PhD in local customs to access. Some need coins, some need codes, some need a blood sacrifice (probably). You're doing the international "I need a bathroom" dance. What's your strategy?`,
-        country,
-        category: 'Culture',
-        funLevel: 'chaotic' as const,
-        emoji: '🚻',
-        choices: [
-          {
-            id: '3a',
-            text: 'Buy the smallest item at every café until someone takes pity',
-            outcome: 'You now own 47 packets of sugar and have visited 12 cafés, but you finally found relief! You\'re also accidentally caffeinated enough to power a small city. Mission accomplished? ☕⚡',
-            isCorrect: true,
-            explanation: 'Buying something small is usually the polite way to use facilities.',
-            funnyReaction: 'You\'re now known as the "Sugar Packet Collector" of ${city}! 📦'
-          },
-          {
-            id: '3b',
-            text: 'Ask random strangers using elaborate charades',
-            outcome: 'Your interpretive bathroom dance becomes a viral sensation! Three people filmed you, but someone eventually understood and helped. You\'re famous, but for all the wrong reasons! 🕺📱',
-            isCorrect: false,
-            explanation: 'While creative, this might be embarrassing and not always effective.',
-            funnyReaction: 'Your dance moves get remixed into a TikTok trend! 🎵'
-          },
-          {
-            id: '3c',
-            text: 'Hold it until you get back to your hotel',
-            outcome: 'You develop superhuman bladder control and the walking speed of a caffeinated cheetah. You make it back, but you\'ve missed half the city\'s attractions in your sprint! 🏃‍♂️💨',
-            isCorrect: false,
-            explanation: 'This is uncomfortable and might make you miss out on experiences.',
-            funnyReaction: 'You accidentally break the ${city} speed-walking record! 🏃‍♂️🏆'
-          }
-        ]
-      }
-    ];
-
-    const countrySpecific = getCountrySpecificScenarios(city, country);
+  const generateRandomScenarios = (): GameScenario[] => {
+    // Get all generic scenarios (country: "any") and some random specific ones
+    const genericScenarios = scenariosData.filter(s => s.country === 'any');
+    const specificScenarios = scenariosData.filter(s => s.country !== 'any');
     
-    return [...baseScenarios, ...countrySpecific].slice(0, 8);
+    // Shuffle and pick scenarios
+    const shuffledGeneric = [...genericScenarios].sort(() => Math.random() - 0.5);
+    const shuffledSpecific = [...specificScenarios].sort(() => Math.random() - 0.5);
+    
+    // Mix them: 60% generic, 40% specific for variety
+    const selectedScenarios = [
+      ...shuffledGeneric.slice(0, 5),
+      ...shuffledSpecific.slice(0, 3)
+    ].sort(() => Math.random() - 0.5);
+
+    return selectedScenarios.slice(0, 8).map(scenario => ({
+      ...scenario,
+      title: scenario.title.replace(/\{\{city\}\}/g, 'Unknown City'),
+      description: scenario.description.replace(/\{\{city\}\}/g, 'Unknown City')
+    }));
   };
 
-  const getCountrySpecificScenarios = (city: string, country: string): GameScenario[] => {
-    const scenarios: GameScenario[] = [];
+  const generateTripSpecificScenarios = (city: string, country: string): GameScenario[] => {
+    // Always include generic scenarios
+    const genericScenarios = scenariosData.filter(s => s.country === 'any');
     
-    if (['France', 'Germany', 'Italy', 'Spain', 'Netherlands', 'United Kingdom'].includes(country)) {
-      scenarios.push({
-        id: 'eu_transport',
-        title: `The ${city} Transport Puzzle! 🚇`,
-        description: `You're staring at the ${city} transport map like it's a NASA blueprint. There are zones, day passes, weekly passes, tourist passes, and probably a secret handshake required. The locals are zooming past you like transport ninjas. Time to crack the code!`,
-        country,
-        category: 'Transport',
-        funLevel: 'spicy' as const,
-        emoji: '🎫',
-        choices: [
-          {
-            id: 'eu_t1',
-            text: 'Buy the most expensive ticket because expensive = good, right?',
-            outcome: 'You just bought a first-class annual pass for the entire European Union. You could probably commute to Mars with this ticket! Your bank account is crying, but hey, you\'re definitely covered! 🚀💸',
-            isCorrect: false,
-            explanation: 'European transport often has day passes that are more economical.',
-            funnyReaction: 'The ticket machine prints a receipt longer than your arm! 📜'
-          },
-          {
-            id: 'eu_t2',
-            text: 'Find a transport worker and unleash your best charades performance',
-            outcome: 'Your interpretive dance of "confused tourist needs help" wins over a kind transport worker who explains everything! You get the perfect ticket AND a new friend. Plus, your charades skills are now legendary! 🎭✨',
-            isCorrect: true,
-            explanation: 'Transport workers are usually helpful and can explain the best options.',
-            funnyReaction: 'You accidentally learn the transport worker\'s life story! 👥'
-          },
-          {
-            id: 'eu_t3',
-            text: 'YOLO! Jump on and hope nobody checks tickets',
-            outcome: 'Plot twist: The ticket inspector appears like a transport ninja! You get a fine that costs more than your entire trip budget. You\'re now the cautionary tale other tourists whisper about! 🥷💰',
-            isCorrect: false,
-            explanation: 'European cities have frequent ticket checks with expensive fines.',
-            funnyReaction: 'The fine is so expensive, it gets its own payment plan! 📋'
-          }
-        ]
-      });
+    // Find country-specific scenarios
+    const countrySpecificScenarios = scenariosData.filter(s => 
+      s.country.toLowerCase() === country.toLowerCase() ||
+      isCountryMatch(s.country, country)
+    );
+    
+    // Find region-specific scenarios
+    const regionSpecificScenarios = scenariosData.filter(s => 
+      isRegionMatch(s.country, country)
+    );
 
-      scenarios.push({
-        id: 'eu_cafe',
-        title: `The ${city} Café Conundrum! ☕`,
-        description: `You walk into a charming ${city} café and immediately realize you've entered a cultural minefield. Do you seat yourself? Wait to be seated? Order at the counter? The locals are giving you looks that range from amused to concerned. The pressure is real!`,
-        country,
-        category: 'Culture',
-        funLevel: 'mild' as const,
-        emoji: '☕',
-        choices: [
-          {
-            id: 'eu_c1',
-            text: 'Stand awkwardly by the door until someone acknowledges your existence',
-            outcome: 'After 15 minutes of awkward hovering, a kind waiter takes pity on you and explains the system. You get seated, but you\'ve become the café\'s entertainment for the day! 🎪',
-            isCorrect: true,
-            explanation: 'When in doubt, waiting for guidance is usually the safest approach.',
-            funnyReaction: 'You become the café\'s unofficial greeter! 👋'
-          },
-          {
-            id: 'eu_c2',
-            text: 'Confidently march to any empty table like you own the place',
-            outcome: 'You accidentally sit at the table reserved for the mayor\'s daily coffee meeting. The entire café watches in fascination as you unknowingly become part of local politics! 🏛️',
-            isCorrect: false,
-            explanation: 'Different cafés have different seating protocols.',
-            funnyReaction: 'You accidentally get invited to the mayor\'s book club! 📚'
-          },
-          {
-            id: 'eu_c3',
-            text: 'Order 47 coffees at the counter to show you mean business',
-            outcome: 'The barista thinks you\'re catering a conference and starts preparing enough coffee to fuel a small army. You now own more caffeine than some countries\' strategic reserves! ☕⚡',
-            isCorrect: false,
-            explanation: 'Observing first is usually better than making assumptions.',
-            funnyReaction: 'You accidentally become ${city}\'s coffee distributor! 📦'
-          }
-        ]
-      });
-    }
+    // Combine and shuffle
+    const allRelevantScenarios = [
+      ...genericScenarios,
+      ...countrySpecificScenarios,
+      ...regionSpecificScenarios
+    ];
 
-    if (['Japan', 'China', 'Thailand', 'Vietnam', 'South Korea'].includes(country)) {
-      scenarios.push({
-        id: 'asia_bow',
-        title: `The ${city} Bowing Bonanza! 🙇`,
-        description: `You're at a traditional establishment in ${city} and everyone is bowing at different angles like they're performing synchronized geometry. You need to bow back, but how deep? Too shallow and you're rude, too deep and you might fall over. The pressure is intense!`,
-        country,
-        category: 'Culture',
-        funLevel: 'spicy' as const,
-        emoji: '🙇‍♂️',
-        choices: [
-          {
-            id: 'asia_b1',
-            text: 'Copy the person next to you like a cultural mirror',
-            outcome: 'Perfect strategy! You successfully mirror everyone and blend in seamlessly. You\'ve unlocked the "Cultural Chameleon" achievement and earned the respect of the locals! 🦎✨',
-            isCorrect: true,
-            explanation: 'Observing and copying local behavior shows respect and cultural awareness.',
-            funnyReaction: 'You accidentally start a bowing chain reaction! 🔄'
-          },
-          {
-            id: 'asia_b2',
-            text: 'Go full 90-degree bow to show maximum respect',
-            outcome: 'You bow so deeply that you nearly tip over! Everyone rushes to help you, and while your enthusiasm is appreciated, you\'ve become the "overly enthusiastic tourist" legend! 🤸‍♂️',
-            isCorrect: false,
-            explanation: 'Different situations require different levels of formality.',
-            funnyReaction: 'Your bow is so deep, you discover a new yoga pose! 🧘‍♂️'
-          },
-          {
-            id: 'asia_b3',
-            text: 'Panic and do a weird half-wave, half-bow hybrid',
-            outcome: 'You invent a new greeting that confuses everyone! It\'s not quite a bow, not quite a wave, but somehow it\'s endearing. You\'ve accidentally created the "${city} Tourist Special!" 👋🙇‍♂️',
-            isCorrect: false,
-            explanation: 'Consistency in cultural gestures is important.',
-            funnyReaction: 'Your hybrid greeting becomes a local inside joke! 😄'
-          }
-        ]
-      });
-    }
+    // Shuffle and select 8 scenarios
+    const shuffledScenarios = [...allRelevantScenarios].sort(() => Math.random() - 0.5);
+    const selectedScenarios = shuffledScenarios.slice(0, 8);
 
-    return scenarios;
+    // Replace placeholders with actual city name
+    return selectedScenarios.map(scenario => ({
+      ...scenario,
+      title: scenario.title.replace(/\{\{city\}\}/g, city),
+      description: scenario.description.replace(/\{\{city\}\}/g, city),
+      choices: scenario.choices.map(choice => ({
+        ...choice,
+        outcome: choice.outcome.replace(/\{\{city\}\}/g, city),
+        funnyReaction: choice.funnyReaction?.replace(/\{\{city\}\}/g, city)
+      }))
+    }));
   };
 
-  const generateGenericScenarios = (): GameScenario[] => {
-    return [
-      {
-        id: 'generic_1',
-        title: 'The Airport Security Time Warp! ⏰',
-        description: 'You arrive at the airport and the security line looks like a Black Friday sale at a electronics store. Your flight boards in 45 minutes, and you\'re currently positioned somewhere between "this might work" and "I should start planning my next vacation from this airport." What\'s your move, time traveler?',
-        country: 'Global',
-        category: 'Travel',
-        funLevel: 'chaotic' as const,
-        emoji: '✈️',
-        choices: [
-          {
-            id: 'g1a',
-            text: 'Channel your inner action hero and dramatically cut in line',
-            outcome: 'You become the villain in everyone else\'s travel story! Security escorts you to the back of an even longer line, and you\'re now famous on social media for all the wrong reasons. Your flight waves goodbye from the window! 👋✈️',
-            isCorrect: false,
-            explanation: 'Cutting in line creates conflict and wastes more time.',
-            funnyReaction: 'You accidentally start a conga line instead! 💃'
-          },
-          {
-            id: 'g1b',
-            text: 'Find an airport employee and explain your situation with puppy dog eyes',
-            outcome: 'Your combination of politeness and mild panic works! The airport angel directs you to a faster security line for your flight. You make it with 5 minutes to spare and feel like you\'ve won the lottery! 🎰✨',
-            isCorrect: true,
-            explanation: 'Airport staff know the best solutions and are there to help.',
-            funnyReaction: 'The airport employee adopts you as their favorite passenger! 🏆'
-          },
-          {
-            id: 'g1c',
-            text: 'Accept defeat and start booking your "extended airport vacation"',
-            outcome: 'You give up faster than a phone battery at 1%! Turns out you would have made it easily, but now you\'re paying rebooking fees that cost more than your original trip. The airport becomes your expensive new home! 🏠💸',
-            isCorrect: false,
-            explanation: 'Don\'t give up too quickly - explore all options first.',
-            funnyReaction: 'You become the airport\'s unofficial mascot! 🎭'
-          }
-        ]
-      },
-      {
-        id: 'generic_2',
-        title: 'The Universal Language of "I Feel Terrible!" 🤒',
-        description: 'You wake up feeling like you\'ve been hit by a truck driven by a very angry elephant. You need medicine, but you\'re in a country where your language skills are about as useful as a chocolate teapot. Your translation app has given up on life. Time to get creative!',
-        country: 'Global',
-        category: 'Health',
-        funLevel: 'spicy' as const,
-        emoji: '💊',
-        choices: [
-          {
-            id: 'g2a',
-            text: 'Become a master of interpretive illness dance',
-            outcome: 'Your dramatic performance of "sick tourist in distress" wins an Oscar in the pharmacist\'s heart! They understand immediately and help you find the perfect medicine. You\'ve discovered that suffering is indeed a universal language! 🎭💊',
-            isCorrect: true,
-            explanation: 'Body language is universal and people want to help when you\'re sick.',
-            funnyReaction: 'Your illness dance becomes a viral TikTok trend! 📱'
-          },
-          {
-            id: 'g2b',
-            text: 'Retreat to your hotel room and become one with the bed',
-            outcome: 'You spend the day having a very expensive staring contest with the ceiling. Your condition gets worse, you miss all your planned activities, and you\'ve basically paid premium prices to be sick in a foreign country! 🛏️😷',
-            isCorrect: false,
-            explanation: 'Don\'t let language barriers prevent you from getting help when sick.',
-            funnyReaction: 'You become best friends with room service! 🍲'
-          },
-          {
-            id: 'g2c',
-            text: 'Find a local superhero (aka someone who speaks English)',
-            outcome: 'You discover that kindness is the real universal language! A helpful local not only translates for you but also recommends the best pharmacy and even walks you there. Faith in humanity: restored! 🦸‍♀️✨',
-            isCorrect: true,
-            explanation: 'Many people speak some English and are willing to help travelers.',
-            funnyReaction: 'You accidentally become pen pals with your translator! ✉️'
-          }
-        ]
-      },
-      {
-        id: 'generic_3',
-        title: 'The WiFi Password Quest! 📶',
-        description: 'You\'re at a café desperately trying to connect to WiFi, but the password is written in what appears to be ancient runes. You need internet to navigate, translate, and prove to Instagram that you\'re having fun. The barista is busy, and your data plan is crying. What\'s your strategy, digital nomad?',
-        country: 'Global',
-        category: 'Technology',
-        funLevel: 'mild' as const,
-        emoji: '📱',
-        choices: [
-          {
-            id: 'g3a',
-            text: 'Try every possible combination like you\'re hacking the Matrix',
-            outcome: 'After 47 attempts, you successfully guess "password123" and feel like a cybersecurity genius! Unfortunately, you\'ve been trying for so long that your coffee is now cold and the café is closing! ☕❄️',
-            isCorrect: false,
-            explanation: 'Guessing passwords wastes time and might not work.',
-            funnyReaction: 'You accidentally connect to your neighbor\'s WiFi from 3 countries away! 🌍'
-          },
-          {
-            id: 'g3b',
-            text: 'Use your international charm to ask the barista nicely',
-            outcome: 'Your polite request and genuine smile work like magic! The barista not only gives you the password but also recommends the best local spots to visit. You\'ve unlocked the "Local Insider" achievement! 🗝️✨',
-            isCorrect: true,
-            explanation: 'Simply asking is often the most effective approach.',
-            funnyReaction: 'The barista becomes your unofficial tour guide! 🗺️'
-          },
-          {
-            id: 'g3c',
-            text: 'Embrace the digital detox and go completely offline',
-            outcome: 'You discover the ancient art of "asking for directions with your mouth" and "looking at things with your eyes!" It\'s terrifying but liberating. You survive, but your Instagram followers think you\'ve been kidnapped! 📵🆘',
-            isCorrect: false,
-            explanation: 'While digital detox can be good, you might need internet for important travel functions.',
-            funnyReaction: 'You accidentally become a zen master of offline travel! 🧘‍♂️'
-          }
-        ]
+  const isCountryMatch = (scenarioCountry: string, tripCountry: string): boolean => {
+    const countryMappings: { [key: string]: string[] } = {
+      'France': ['France', 'French'],
+      'Germany': ['Germany', 'German'],
+      'Italy': ['Italy', 'Italian'],
+      'Spain': ['Spain', 'Spanish'],
+      'Japan': ['Japan', 'Japanese'],
+      'Thailand': ['Thailand', 'Thai'],
+      'Mexico': ['Mexico', 'Mexican'],
+      'Kenya': ['Kenya', 'Kenyan'],
+      'United Kingdom': ['UK', 'Britain', 'England', 'Scotland', 'Wales'],
+      'United States': ['USA', 'US', 'America', 'American']
+    };
+
+    const scenarioCountryLower = scenarioCountry.toLowerCase();
+    const tripCountryLower = tripCountry.toLowerCase();
+
+    // Direct match
+    if (scenarioCountryLower === tripCountryLower) return true;
+
+    // Check mappings
+    for (const [key, variants] of Object.entries(countryMappings)) {
+      if (variants.some(v => v.toLowerCase() === tripCountryLower) && 
+          key.toLowerCase() === scenarioCountryLower) {
+        return true;
       }
-    ];
+    }
+
+    return false;
+  };
+
+  const isRegionMatch = (scenarioCountry: string, tripCountry: string): boolean => {
+    const regionMappings: { [key: string]: string[] } = {
+      'France': ['Germany', 'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland'],
+      'Germany': ['France', 'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland'],
+      'Italy': ['France', 'Germany', 'Spain', 'Netherlands', 'Belgium', 'Switzerland'],
+      'Japan': ['China', 'South Korea', 'Taiwan', 'Singapore'],
+      'Thailand': ['Vietnam', 'Cambodia', 'Laos', 'Myanmar', 'Malaysia'],
+      'Mexico': ['Guatemala', 'Belize', 'Costa Rica', 'Panama', 'Colombia']
+    };
+
+    const scenarioCountryLower = scenarioCountry.toLowerCase();
+    const tripCountryLower = tripCountry.toLowerCase();
+
+    return regionMappings[scenarioCountry]?.some(c => 
+      c.toLowerCase() === tripCountryLower
+    ) || false;
   };
 
   const handleChoiceSelect = (choice: GameChoice) => {
@@ -459,6 +236,16 @@ const GamePage: React.FC = () => {
   };
 
   const handleRestart = () => {
+    // Generate new random scenarios for replay value
+    if (tripId && trip) {
+      const [city, country] = trip.destination.split(', ');
+      const newScenarios = generateTripSpecificScenarios(city, country);
+      setScenarios(newScenarios);
+    } else {
+      const newScenarios = generateRandomScenarios();
+      setScenarios(newScenarios);
+    }
+    
     setCurrentScenarioIndex(0);
     setSelectedChoice(null);
     setShowOutcome(false);
@@ -522,6 +309,11 @@ const GamePage: React.FC = () => {
                 Survive the chaos in {trip.destination}!
               </p>
             )}
+            {!trip && (
+              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">
+                Random travel disasters await!
+              </p>
+            )}
           </div>
         </div>
 
@@ -547,7 +339,7 @@ const GamePage: React.FC = () => {
               className="pixel-button-secondary flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <RotateCcw className="w-3 sm:w-4 h-3 sm:h-4" />
-              RESTART CHAOS
+              NEW CHAOS
             </button>
           </div>
           
@@ -614,7 +406,7 @@ const GamePage: React.FC = () => {
                     <span className={`pixel-text text-xs sm:text-sm ${getFunLevelColor(scenarios[currentScenarioIndex]?.funLevel)}`}>
                       {getFunLevelEmoji(scenarios[currentScenarioIndex]?.funLevel)} {scenarios[currentScenarioIndex]?.funLevel?.toUpperCase()}
                     </span>
-                    {scenarios[currentScenarioIndex]?.country && (
+                    {scenarios[currentScenarioIndex]?.country && scenarios[currentScenarioIndex]?.country !== 'any' && (
                       <span className="pixel-text text-xs sm:text-sm text-gray-500">
                         • {scenarios[currentScenarioIndex].country}
                       </span>

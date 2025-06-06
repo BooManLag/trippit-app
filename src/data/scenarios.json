@@ -1,0 +1,317 @@
+[
+  {
+    "id": "generic_1",
+    "title": "The Airport Security Time Warp! \u23f0",
+    "description": "You arrive at the airport and the security line looks like a Black Friday sale at an electronics store. Your flight boards in 45 minutes, and you're currently positioned somewhere between \"this might work\" and \"I should start planning my next vacation from this airport.\" What's your move, time traveler?",
+    "country": "any",
+    "category": "Travel",
+    "funLevel": "chaotic",
+    "emoji": "\u2708\ufe0f",
+    "choices": [
+      {
+        "id": "g1a",
+        "text": "Channel your inner action hero and dramatically cut in line",
+        "outcome": "You become the villain in everyone else's travel story! Security escorts you to the back of an even longer line, and you're now famous on social media for all the wrong reasons. Your flight waves goodbye from the window! \ud83d\udc4b\u2708\ufe0f",
+        "isCorrect": false,
+        "explanation": "Cutting in line creates conflict and wastes more time.",
+        "funnyReaction": "You accidentally start a conga line instead! \ud83d\udc83"
+      },
+      {
+        "id": "g1b",
+        "text": "Find an airport employee and explain your situation with puppy dog eyes",
+        "outcome": "Your combination of politeness and mild panic works! The airport angel directs you to a faster security line for your flight. You make it with 5 minutes to spare and feel like you've won the lottery! \ud83c\udfb0\u2728",
+        "isCorrect": true,
+        "explanation": "Airport staff know the best solutions and are there to help.",
+        "funnyReaction": "The airport employee adopts you as their favorite passenger! \ud83c\udfc6"
+      },
+      {
+        "id": "g1c",
+        "text": "Accept defeat and start booking your \"extended airport vacation\"",
+        "outcome": "You give up faster than a phone battery at 1%! Turns out you would have made it easily, but now you're paying rebooking fees that cost more than your original trip. The airport becomes your expensive new home! \ud83c\udfe0\ud83d\udcb8",
+        "isCorrect": false,
+        "explanation": "Don't give up too quickly - explore all options first.",
+        "funnyReaction": "You become the airport's unofficial mascot! \ud83c\udfad"
+      }
+    ]
+  },
+  {
+    "id": "generic_2",
+    "title": "The Universal Language of \"I Feel Terrible!\" \ud83e\udd12",
+    "description": "You wake up feeling like you've been hit by a truck driven by a very angry elephant. You need medicine, but you're in a country where your language skills are about as useful as a chocolate teapot. Your translation app has given up on life. Time to get creative!",
+    "country": "any",
+    "category": "Health",
+    "funLevel": "spicy",
+    "emoji": "\ud83d\udc8a",
+    "choices": [
+      {
+        "id": "g2a",
+        "text": "Become a master of interpretive illness dance",
+        "outcome": "Your dramatic performance of \"sick tourist in distress\" wins an Oscar in the pharmacist's heart! They understand immediately and help you find the perfect medicine. You've discovered that suffering is indeed a universal language! \ud83c\udfad\ud83d\udc8a",
+        "isCorrect": true,
+        "explanation": "Body language is universal and people want to help when you're sick.",
+        "funnyReaction": "Your illness dance becomes a viral TikTok trend! \ud83d\udcf1"
+      },
+      {
+        "id": "g2b",
+        "text": "Retreat to your hotel room and become one with the bed",
+        "outcome": "You spend the day having a very expensive staring contest with the ceiling. Your condition gets worse, you miss all your planned activities, and you've basically paid premium prices to be sick in a foreign country! \ud83d\udecf\ufe0f\ud83d\ude37",
+        "isCorrect": false,
+        "explanation": "Don't let language barriers prevent you from getting help when sick.",
+        "funnyReaction": "You become best friends with room service! \ud83c\udf72"
+      },
+      {
+        "id": "g2c",
+        "text": "Find a local superhero (aka someone who speaks English)",
+        "outcome": "You discover that kindness is the real universal language! A helpful local not only translates for you but also recommends the best pharmacy and even walks you there. Faith in humanity: restored! \ud83e\uddb8\u200d\u2640\ufe0f\u2728",
+        "isCorrect": true,
+        "explanation": "Many people speak some English and are willing to help travelers.",
+        "funnyReaction": "You accidentally become pen pals with your translator! \u2709\ufe0f"
+      }
+    ]
+  },
+  {
+    "id": "generic_3",
+    "title": "The WiFi Password Quest! \ud83d\udcf6",
+    "description": "You're at a caf\u00e9 desperately trying to connect to WiFi, but the password is written in what appears to be ancient runes. You need internet to navigate, translate, and prove to Instagram that you're having fun. The barista is busy, and your data plan is crying. What's your strategy, digital nomad?",
+    "country": "any",
+    "category": "Technology",
+    "funLevel": "mild",
+    "emoji": "\ud83d\udcf1",
+    "choices": [
+      {
+        "id": "g3a",
+        "text": "Try every possible combination like you're hacking the Matrix",
+        "outcome": "After 47 attempts, you successfully guess \"password123\" and feel like a cybersecurity genius! Unfortunately, you've been trying for so long that your coffee is now cold and the caf\u00e9 is closing! \u2615\u2744\ufe0f",
+        "isCorrect": false,
+        "explanation": "Guessing passwords wastes time and might not work.",
+        "funnyReaction": "You accidentally connect to your neighbor's WiFi from 3 countries away! \ud83c\udf0d"
+      },
+      {
+        "id": "g3b",
+        "text": "Use your international charm to ask the barista nicely",
+        "outcome": "Your polite request and genuine smile work like magic! The barista not only gives you the password but also recommends the best local spots to visit. You've unlocked the \"Local Insider\" achievement! \ud83d\udddd\ufe0f\u2728",
+        "isCorrect": true,
+        "explanation": "Simply asking is often the most effective approach.",
+        "funnyReaction": "The barista becomes your unofficial tour guide! \ud83d\uddfa\ufe0f"
+      },
+      {
+        "id": "g3c",
+        "text": "Embrace the digital detox and go completely offline",
+        "outcome": "You discover the ancient art of \"asking for directions with your mouth\" and \"looking at things with your eyes!\" It's terrifying but liberating. You survive, but your Instagram followers think you've been kidnapped! \ud83d\udcf5\ud83c\udd98",
+        "isCorrect": false,
+        "explanation": "While digital detox can be good, you might need internet for important travel functions.",
+        "funnyReaction": "You accidentally become a zen master of offline travel! \ud83e\uddd8\u200d\u2642\ufe0f"
+      }
+    ]
+  },
+  {
+    "id": "eu_transport",
+    "title": "The {{city}} Transport Puzzle! \ud83d\ude87",
+    "description": "You're staring at the {{city}} transport map like it's a NASA blueprint. There are zones, day passes, weekly passes, tourist passes, and probably a secret handshake required. The locals are zooming past you like transport ninjas. Time to crack the code!",
+    "country": "France",
+    "category": "Transport",
+    "funLevel": "spicy",
+    "emoji": "\ud83c\udfab",
+    "choices": [
+      {
+        "id": "eu_t1",
+        "text": "Buy the most expensive ticket because expensive = good, right?",
+        "outcome": "You just bought a first-class annual pass for the entire European Union. You could probably commute to Mars with this ticket! Your bank account is crying, but hey, you're definitely covered! \ud83d\ude80\ud83d\udcb8",
+        "isCorrect": false,
+        "explanation": "European transport often has day passes that are more economical.",
+        "funnyReaction": "The ticket machine prints a receipt longer than your arm! \ud83d\udcdc"
+      },
+      {
+        "id": "eu_t2",
+        "text": "Find a transport worker and unleash your best charades performance",
+        "outcome": "Your interpretive dance of \"confused tourist needs help\" wins over a kind transport worker who explains everything! You get the perfect ticket AND a new friend. Plus, your charades skills are now legendary! \ud83c\udfad\u2728",
+        "isCorrect": true,
+        "explanation": "Transport workers are usually helpful and can explain the best options.",
+        "funnyReaction": "You accidentally learn the transport worker's life story! \ud83d\udc65"
+      },
+      {
+        "id": "eu_t3",
+        "text": "YOLO! Jump on and hope nobody checks tickets",
+        "outcome": "Plot twist: The ticket inspector appears like a transport ninja! You get a fine that costs more than your entire trip budget. You're now the cautionary tale other tourists whisper about! \ud83e\udd77\ud83d\udcb0",
+        "isCorrect": false,
+        "explanation": "European cities have frequent ticket checks with expensive fines.",
+        "funnyReaction": "The fine is so expensive, it gets its own payment plan! \ud83d\udccb"
+      }
+    ]
+  },
+  {
+    "id": "eu_cafe",
+    "title": "The {{city}} Caf\u00e9 Conundrum! \u2615",
+    "description": "You walk into a charming {{city}} caf\u00e9 and immediately realize you've entered a cultural minefield. Do you seat yourself? Wait to be seated? Order at the counter? The locals are giving you looks that range from amused to concerned. The pressure is real!",
+    "country": "Italy",
+    "category": "Culture",
+    "funLevel": "mild",
+    "emoji": "\u2615",
+    "choices": [
+      {
+        "id": "eu_c1",
+        "text": "Stand awkwardly by the door until someone acknowledges your existence",
+        "outcome": "After 15 minutes of awkward hovering, a kind waiter takes pity on you and explains the system. You get seated, but you've become the caf\u00e9's entertainment for the day! \ud83c\udfaa",
+        "isCorrect": true,
+        "explanation": "When in doubt, waiting for guidance is usually the safest approach.",
+        "funnyReaction": "You become the caf\u00e9's unofficial greeter! \ud83d\udc4b"
+      },
+      {
+        "id": "eu_c2",
+        "text": "Confidently march to any empty table like you own the place",
+        "outcome": "You accidentally sit at the table reserved for the mayor's daily coffee meeting. The entire caf\u00e9 watches in fascination as you unknowingly become part of local politics! \ud83c\udfdb\ufe0f",
+        "isCorrect": false,
+        "explanation": "Different caf\u00e9s have different seating protocols.",
+        "funnyReaction": "You accidentally get invited to the mayor's book club! \ud83d\udcda"
+      },
+      {
+        "id": "eu_c3",
+        "text": "Order 47 coffees at the counter to show you mean business",
+        "outcome": "The barista thinks you're catering a conference and starts preparing enough coffee to fuel a small army. You now own more caffeine than some countries' strategic reserves! \u2615\u26a1",
+        "isCorrect": false,
+        "explanation": "Observing first is usually better than making assumptions.",
+        "funnyReaction": "You accidentally become {{city}}'s coffee distributor! \ud83d\udce6"
+      }
+    ]
+  },
+  {
+    "id": "asia_bow",
+    "title": "The {{city}} Bowing Bonanza! \ud83d\ude47\u200d\u2642\ufe0f",
+    "description": "You're at a traditional establishment in {{city}} and everyone is bowing at different angles like they're performing synchronized geometry. You need to bow back, but how deep? Too shallow and you're rude, too deep and you might fall over. The pressure is intense!",
+    "country": "Japan",
+    "category": "Culture",
+    "funLevel": "spicy",
+    "emoji": "\ud83d\ude47\u200d\u2642\ufe0f",
+    "choices": [
+      {
+        "id": "asia_b1",
+        "text": "Copy the person next to you like a cultural mirror",
+        "outcome": "Perfect strategy! You successfully mirror everyone and blend in seamlessly. You've unlocked the \"Cultural Chameleon\" achievement and earned the respect of the locals! \ud83e\udd8e\u2728",
+        "isCorrect": true,
+        "explanation": "Observing and copying local behavior shows respect and cultural awareness.",
+        "funnyReaction": "You accidentally start a bowing chain reaction! \ud83d\udd04"
+      },
+      {
+        "id": "asia_b2",
+        "text": "Go full 90-degree bow to show maximum respect",
+        "outcome": "You bow so deeply that you nearly tip over! Everyone rushes to help you, and while your enthusiasm is appreciated, you've become the \"overly enthusiastic tourist\" legend! \ud83e\udd38\u200d\u2642\ufe0f",
+        "isCorrect": false,
+        "explanation": "Different situations require different levels of formality.",
+        "funnyReaction": "Your bow is so deep, you discover a new yoga pose! \ud83e\uddd8\u200d\u2642\ufe0f"
+      },
+      {
+        "id": "asia_b3",
+        "text": "Panic and do a weird half-wave, half-bow hybrid",
+        "outcome": "You invent a new greeting that confuses everyone! It's not quite a bow, not quite a wave, but somehow it's endearing. You've accidentally created the \"{{city}} Tourist Special!\" \ud83d\udc4b\ud83d\ude47\u200d\u2642\ufe0f",
+        "isCorrect": false,
+        "explanation": "Consistency in cultural gestures is important.",
+        "funnyReaction": "Your hybrid greeting becomes a local inside joke! \ud83d\ude04"
+      }
+    ]
+  },
+  {
+    "id": "asia_market",
+    "title": "The {{city}} Street Market Haggling Hustle! \ud83d\udcb0",
+    "description": "You're in a bustling street market in {{city}}, and every vendor expects you to bargain. The initial price is outrageous, but no one will take your first offer seriously. Can you negotiate like a pro or will you be forced to buy a banana at 10x its real value?",
+    "country": "Thailand",
+    "category": "Budget",
+    "funLevel": "chaotic",
+    "emoji": "\ud83d\udecd\ufe0f",
+    "choices": [
+      {
+        "id": "asia_m1",
+        "text": "Offer 10% of the asking price and raise slowly",
+        "outcome": "The vendor laughs so hard you almost cry, but then they give you a little discount. You end up paying 50% of the original price\u2014still a win! \ud83c\udfc6",
+        "isCorrect": true,
+        "explanation": "Starting very low and meeting in the middle is standard bargaining practice.",
+        "funnyReaction": "The vendor gives you a free plate of mango sticky rice just for the entertainment! \ud83d\ude0b"
+      },
+      {
+        "id": "asia_m2",
+        "text": "Pay the asking price because you're too shy to haggle",
+        "outcome": "You walk away with the cheapest souvenir possible in {{city}}. You realize later that tourists laugh about you in the back of the shop. Ouch. \ud83d\uded2\ud83d\ude05",
+        "isCorrect": false,
+        "explanation": "In many markets, haggling is expected\u2014don\u2019t be shy!",
+        "funnyReaction": "A local starts a GoFundMe to help you pay for overpriced souvenirs! \ud83c\udf10\ud83d\udcb8"
+      },
+      {
+        "id": "asia_m3",
+        "text": "Value the item so loudly that the vendor feels guilty",
+        "outcome": "You rave about how much you love the vendor's craftsmanship. The vendor reduces the price out of pride but secretly tucks your money into a secret piggy bank. \ud83e\udd2b\ud83d\udc37",
+        "isCorrect": false,
+        "explanation": "Flattery can work, but most vendors know the game too well.",
+        "funnyReaction": "You get a small free souvenir as a 'thank you' for the praise! \ud83c\udf81"
+      }
+    ]
+  },
+  {
+    "id": "latam_currency",
+    "title": "The {{city}} Currency Confusion! \ud83d\udcb5",
+    "description": "You're in {{city}} and the local currency looks like Monopoly money. You just paid 500 notes for a coffee but have no idea if you overpaid. Do you check the exchange rate on your phone, count bills in the middle of the street, or hope the barista doesn\u2019t notice your confusion?",
+    "country": "Mexico",
+    "category": "Budget",
+    "funLevel": "mild",
+    "emoji": "\ud83d\udcb8",
+    "choices": [
+      {
+        "id": "latam_c1",
+        "text": "Quickly check the exchange rate on your phone",
+        "outcome": "You realize you paid twice as much for your coffee. You go back politely and point out the mistake, earning a free pastry for your honesty! \ud83e\udd50",
+        "isCorrect": true,
+        "explanation": "Always verify the price when dealing with unfamiliar currency.",
+        "funnyReaction": "You start a trend of tourists double-checking prices at every stand! \ud83e\udd33"
+      },
+      {
+        "id": "latam_c2",
+        "text": "Ignore it and pretend you understood perfectly",
+        "outcome": "You proudly walk away, only to return when you see locals buying a coffee for half the price. You become the star of a TikTok video titled 'Overpaying Tourists of {{city}}.' \ud83d\udcf9\ud83d\ude06",
+        "isCorrect": false,
+        "explanation": "Ignoring the price can lead to unnecessary overspending.",
+        "funnyReaction": "A local gifts you a tiny sombrero as a consolation prize! \ud83c\udfa9"
+      },
+      {
+        "id": "latam_c3",
+        "text": "Count out your bills so loudly that everyone stares",
+        "outcome": "You realize you miscounted by 200 notes. The barista corrects you, and the entire caf\u00e9 applauds your counting skills\u2014or lack thereof. \ud83d\udc4f\u2615",
+        "isCorrect": false,
+        "explanation": "Counting money in public can be embarrassing.",
+        "funnyReaction": "You accidentally become a guest on a local morning show! \ud83d\udcfa"
+      }
+    ]
+  },
+  {
+    "id": "africa_safari",
+    "title": "The {{city}} Safari Selfie Snafu! \ud83d\udcf8",
+    "description": "You're on safari in {{city}}, and a majestic lion appears 5 feet from your jeep. You want the perfect selfie, but you also want to remain the main character in your own life. Do you stay, snap a pic, or run to the guide for help?",
+    "country": "Kenya",
+    "category": "Safety",
+    "funLevel": "spicy",
+    "emoji": "\ud83e\udd81",
+    "choices": [
+      {
+        "id": "africa_s1",
+        "text": "Stay completely still and slowly take one selfie",
+        "outcome": "You get the best wildlife photo of your life without waking the lion. Your selfie goes viral, and you earn the title 'Lion Whisperer'! \ud83e\udd81\ud83d\udcf8",
+        "isCorrect": true,
+        "explanation": "Staying calm and not provoking wildlife is key to safety.",
+        "funnyReaction": "A zebra photobombs your photo last second! \ud83e\udd93"
+      },
+      {
+        "id": "africa_s2",
+        "text": "Try to pet the lion because it looks friendly",
+        "outcome": "The lion is remarkably unamused. You get a little too close, and suddenly you\u2019re in an entirely different bucket list: 'How I Learned to Run from a Lion.' \ud83c\udfc3\u200d\u2642\ufe0f\ud83d\udca8",
+        "isCorrect": false,
+        "explanation": "Wild animals are unpredictable\u2014never try to touch them.",
+        "funnyReaction": "Your guide faints in the background from sheer terror! \ud83d\ude31"
+      },
+      {
+        "id": "africa_s3",
+        "text": "Run away screaming like a cartoon character",
+        "outcome": "You trip over a rock, roll down a hill, and accidentally land face-first in a mud puddle. The lion ignores you, but the whole jeep finds you hilarious. Mud mask for days! \ud83e\udd2a",
+        "isCorrect": false,
+        "explanation": "Fleeing recklessly can cause more danger than staying calm.",
+        "funnyReaction": "You emerge looking like a mud warrior\u2014fashion statement unlocked! \ud83e\udd77"
+      }
+    ]
+  }
+]

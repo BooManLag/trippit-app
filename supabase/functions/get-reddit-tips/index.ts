@@ -22,8 +22,35 @@ const subredditExistsCache = new Map<string, boolean>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const SUBREDDIT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-// Country data - this would ideally be loaded from your countries.min.json
-// For now, we'll include the most common variations and aliases
+// Load countries data from your JSON file
+let countriesData: { [country: string]: string[] } = {};
+
+// Initialize countries data
+async function loadCountriesData() {
+  try {
+    // In Deno, we can import JSON directly
+    const response = await fetch(new URL('../../../src/data/countries.min.json', import.meta.url));
+    countriesData = await response.json();
+    console.log(`Loaded ${Object.keys(countriesData).length} countries from JSON`);
+  } catch (error) {
+    console.error('Failed to load countries.min.json:', error);
+    // Fallback to basic country aliases if JSON loading fails
+    countriesData = {
+      'United States': ['New York', 'Los Angeles', 'Chicago'],
+      'United Kingdom': ['London', 'Manchester', 'Edinburgh'],
+      'France': ['Paris', 'Lyon', 'Marseille'],
+      'Germany': ['Berlin', 'Munich', 'Hamburg'],
+      'Italy': ['Rome', 'Milan', 'Naples'],
+      'Spain': ['Madrid', 'Barcelona', 'Valencia'],
+      'Japan': ['Tokyo', 'Osaka', 'Kyoto'],
+      'Australia': ['Sydney', 'Melbourne', 'Brisbane'],
+      'Canada': ['Toronto', 'Vancouver', 'Montreal'],
+      'Netherlands': ['Amsterdam', 'Rotterdam', 'The Hague']
+    };
+  }
+}
+
+// Common country name variations and abbreviations
 const COUNTRY_ALIASES: { [key: string]: string[] } = {
   'united states': ['usa', 'america', 'us', 'unitedstates'],
   'united kingdom': ['uk', 'britain', 'england', 'unitedkingdom', 'greatbritain'],
@@ -33,36 +60,13 @@ const COUNTRY_ALIASES: { [key: string]: string[] } = {
   'czech republic': ['czechia', 'czechrepublic'],
   'bosnia and herzegovina': ['bosnia', 'herzegovina'],
   'trinidad and tobago': ['trinidad', 'tobago'],
-  'antigua and barbuda': ['antigua', 'barbuda'],
-  'saint kitts and nevis': ['saintkitts', 'nevis'],
-  'saint vincent and the grenadines': ['saintvincent', 'grenadines'],
-  'sao tome and principe': ['saotome', 'principe'],
-  'papua new guinea': ['papuanewguinea', 'png'],
-  'solomon islands': ['solomonislands'],
-  'marshall islands': ['marshallislands'],
-  'cook islands': ['cookislands'],
-  'faroe islands': ['faroeislands'],
-  'cayman islands': ['caymanislands'],
-  'virgin islands': ['virginislands'],
-  'turks and caicos': ['turksandcaicos'],
   'new zealand': ['newzealand', 'nz'],
   'south africa': ['southafrica'],
   'saudi arabia': ['saudiarabia'],
   'sri lanka': ['srilanka'],
   'costa rica': ['costarica'],
   'puerto rico': ['puertorico'],
-  'el salvador': ['elsalvador'],
-  'burkina faso': ['burkinafaso'],
-  'ivory coast': ['ivorycoast', 'cotedivoire'],
-  'sierra leone': ['sierraleone'],
-  'equatorial guinea': ['equatorialguinea'],
-  'central african republic': ['centralafricanrepublic', 'car'],
-  'democratic republic of congo': ['drc', 'congo', 'democraticrepublicofcongo'],
-  'republic of congo': ['congo', 'republicofcongo'],
-  'east timor': ['easttimor', 'timorleste'],
-  'north macedonia': ['macedonia', 'northmacedonia'],
-  'san marino': ['sanmarino'],
-  'vatican city': ['vatican', 'vaticancity']
+  'el salvador': ['elsalvador']
 };
 
 // Throttling utility for controlled concurrency
@@ -197,32 +201,75 @@ function generateOptimizedSearchTerms(city: string, country: string): string[][]
   ];
 }
 
-function getCountryVariations(country: string): string[] {
+function getCountryVariationsFromJSON(country: string): string[] {
   const countryLower = country.toLowerCase().trim();
+  const variations = new Set<string>();
+  
+  // Add the country itself (cleaned)
   const countryClean = countryLower.replace(/[^a-z\s]/g, '').replace(/\s+/g, '');
+  if (countryClean.length >= 2) {
+    variations.add(countryClean);
+  }
   
-  // Check if we have predefined aliases for this country
-  const aliases = COUNTRY_ALIASES[countryLower] || [];
+  // Check if this country exists in our JSON data
+  const matchingCountry = Object.keys(countriesData).find(
+    key => key.toLowerCase() === countryLower
+  );
   
-  // Create variations
-  const variations = new Set([
-    countryClean,
-    countryLower.replace(/\s+/g, ''), // Remove spaces
-    ...aliases
-  ]);
+  if (matchingCountry) {
+    console.log(`Found country "${matchingCountry}" in countries.min.json`);
+    
+    // Add country name variations
+    const countryKey = matchingCountry.toLowerCase();
+    variations.add(countryKey.replace(/\s+/g, ''));
+    
+    // Add predefined aliases if they exist
+    const aliases = COUNTRY_ALIASES[countryKey] || [];
+    aliases.forEach(alias => {
+      if (alias.length >= 2) {
+        variations.add(alias);
+      }
+    });
+    
+    // For major countries, also try to find state/region subreddits
+    const cities = countriesData[matchingCountry] || [];
+    if (cities.length > 0) {
+      // Add major cities as potential subreddits (first few cities are usually major ones)
+      cities.slice(0, 3).forEach(city => {
+        const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
+        if (cityClean.length >= 3) {
+          variations.add(cityClean);
+        }
+      });
+    }
+  } else {
+    console.log(`Country "${country}" not found in countries.min.json, using fallback`);
+    
+    // Fallback: use predefined aliases
+    const aliases = COUNTRY_ALIASES[countryLower] || [];
+    aliases.forEach(alias => {
+      if (alias.length >= 2) {
+        variations.add(alias);
+      }
+    });
+    
+    // Add basic variations
+    variations.add(countryLower.replace(/\s+/g, ''));
+  }
   
-  // Filter out very short names (less than 3 characters) as they're likely to be too generic
-  return Array.from(variations).filter(name => name && name.length >= 2);
+  // Filter out very short names and return as array
+  const result = Array.from(variations).filter(name => name && name.length >= 2);
+  console.log(`Country variations for "${country}":`, result);
+  
+  return result;
 }
 
 async function generateOptimizedSubreddits(city: string, country: string): Promise<string[]> {
   const baseSubreddits = ['travel', 'solotravel', 'backpacking', 'TravelHacks'];
   
   const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
-  const countryVariations = getCountryVariations(country);
+  const countryVariations = getCountryVariationsFromJSON(country);
   
-  console.log(`Country variations for "${country}":`, countryVariations);
-
   // Check existence of location-specific subreddits in parallel
   const locationCandidates = [cityClean, ...countryVariations];
   const existenceChecks = await Promise.allSettled(
@@ -357,6 +404,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Load countries data on first request
+    if (Object.keys(countriesData).length === 0) {
+      await loadCountriesData();
+    }
+
     const { city, country } = await req.json();
     
     if (!city || !country) {
@@ -388,7 +440,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate subreddits and search terms
+    // Generate subreddits and search terms using JSON data
     const subreddits = await generateOptimizedSubreddits(city, country);
     const searchTermGroups = generateOptimizedSearchTerms(city, country);
     

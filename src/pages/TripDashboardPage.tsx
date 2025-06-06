@@ -381,15 +381,15 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bucket List Section - 2x2 Compact Cards */}
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+        {/* Dare Bucket List Section - 2x2 Compact Cards */}
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-red-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
-              <Target className="h-5 sm:h-6 w-5 sm:w-6 text-purple-400" />
-              <h3 className="pixel-text text-sm sm:text-lg">BUCKET LIST</h3>
+              <Target className="h-5 sm:h-6 w-5 sm:w-6 text-red-400" />
+              <h3 className="pixel-text text-sm sm:text-lg">DARE BUCKET LIST</h3>
               {!loadingBucketList && totalItems > 0 && (
-                <span className="pixel-text text-xs sm:text-sm text-purple-400">
-                  {completedItems}/{totalItems} completed
+                <span className="pixel-text text-xs sm:text-sm text-red-400">
+                  {completedItems}/{totalItems} conquered
                 </span>
               )}
             </div>
@@ -405,8 +405,8 @@ const TripDashboardPage: React.FC = () => {
 
           {loadingBucketList ? (
             <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-purple-500 animate-spin mr-3" />
-              <span className="pixel-text text-purple-400 text-sm sm:text-base">LOADING YOUR GOALS...</span>
+              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-spin mr-3" />
+              <span className="pixel-text text-red-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
             </div>
           ) : incompleteBucketItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -418,7 +418,7 @@ const TripDashboardPage: React.FC = () => {
                     className={`pixel-card transition-all cursor-pointer ${
                       completed 
                         ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
-                        : 'bg-gray-800 border-purple-500/10 hover:border-purple-500/30'
+                        : 'bg-gray-800 border-red-500/10 hover:border-red-500/30'
                     }`}
                     onClick={() => toggleBucketItem(item)}
                   >
@@ -428,7 +428,7 @@ const TripDashboardPage: React.FC = () => {
                         {completed ? (
                           <CheckCircle2 className="w-4 h-4 text-green-400" />
                         ) : (
-                          <Circle className="w-4 h-4 text-gray-500" />
+                          <Circle className="w-4 h-4 text-red-500" />
                         )}
                       </div>
 
@@ -436,7 +436,8 @@ const TripDashboardPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm">{getCategoryIcon(item.category)}</span>
-                          <span className="pixel-text text-xs text-purple-400">{item.category}</span>
+                          <span className="pixel-text text-xs text-red-400">{item.category}</span>
+                          {completed && <span className="pixel-text text-xs text-green-400">CONQUERED!</span>}
                         </div>
 
                         <h4 className={`outfit-text font-semibold mb-1 leading-tight text-xs break-words ${
@@ -455,7 +456,7 @@ const TripDashboardPage: React.FC = () => {
 
                         <div className="flex items-center justify-between mt-2">
                           <span className="pixel-text text-xs text-gray-500">
-                            Personal Goal
+                            {completed ? 'DARE CONQUERED!' : 'DARE PENDING'}
                           </span>
                         </div>
                       </div>
@@ -466,20 +467,20 @@ const TripDashboardPage: React.FC = () => {
             </div>
           ) : totalItems > 0 ? (
             <div className="text-center py-8 sm:py-12">
-              <div className="text-3xl sm:text-4xl mb-4">🎉</div>
-              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">ALL GOALS COMPLETED!</h3>
-              <p className="outfit-text text-gray-500 text-sm">Amazing! You've completed all your bucket list goals for {trip?.destination}!</p>
+              <div className="text-3xl sm:text-4xl mb-4">🏆</div>
+              <h3 className="pixel-text text-red-400 mb-2 text-sm sm:text-base">ALL DARES CONQUERED!</h3>
+              <p className="outfit-text text-gray-500 text-sm">Amazing! You've conquered all your travel dares for {trip?.destination}!</p>
             </div>
           ) : (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🎯</div>
-              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">NO GOALS YET</h3>
-              <p className="outfit-text text-gray-500 text-sm">Create your first bucket list goal for {trip?.destination}!</p>
+              <h3 className="pixel-text text-red-400 mb-2 text-sm sm:text-base">NO DARES YET</h3>
+              <p className="outfit-text text-gray-500 text-sm">Create your first epic dare for {trip?.destination}!</p>
               <button
                 onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
                 className="pixel-button-primary mt-4"
               >
-                ADD GOALS
+                ADD DARES
               </button>
             </div>
           )}
@@ -490,7 +491,7 @@ const TripDashboardPage: React.FC = () => {
                 onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
                 className="pixel-button-secondary"
               >
-                VIEW ALL {totalItems} GOALS
+                VIEW ALL {totalItems} DARES
               </button>
             </div>
           )}

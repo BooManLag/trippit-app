@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, Edit3 } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface BucketListItem {
@@ -23,6 +23,7 @@ const BucketListPage: React.FC = () => {
   const [filter, setFilter] = useState<string>('All');
   const [showCompleted, setShowCompleted] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -32,6 +33,60 @@ const BucketListPage: React.FC = () => {
   const categories = [
     'Experience', 'Food & Drink', 'Culture', 'Sightseeing', 
     'Adventure', 'Shopping', 'Nature', 'Nightlife'
+  ];
+
+  // Predefined fun dare options (max 10 as requested)
+  const predefinedDares = [
+    {
+      title: 'Eat Something Wildly Local (Without Googling First)',
+      description: 'Dare yourself to order the most mysterious-looking street food you can find. Embrace the unknown flavors!',
+      category: 'Food & Drink'
+    },
+    {
+      title: 'Learn & Use a Local Slang Phrase in Public',
+      description: 'Ask a local for a funny or cheeky expression. Drop it into conversation at least once—bonus points if you nail the pronunciation!',
+      category: 'Culture'
+    },
+    {
+      title: 'Improvise a Local Dance Move on the Street',
+      description: 'Find a busy plaza or market, drop some coins for street musicians (if there are any), and bust out your best attempt at their traditional dance. Embrace the laughs!',
+      category: 'Culture'
+    },
+    {
+      title: 'Make One "100% Tourist" Photo—Pridefully',
+      description: 'Pose in front of the biggest cliché landmark and go all out with goofy props or a dramatic pose. No shame—only glory.',
+      category: 'Sightseeing'
+    },
+    {
+      title: 'Challenge a Stranger to a Mini Talent Swap',
+      description: 'Offer to teach someone a silly party trick, and ask them to teach you something uniquely local—song snippet, hand gesture, etc.',
+      category: 'Culture'
+    },
+    {
+      title: 'Use Public Transport in "Stealth Mode"',
+      description: 'Ride the local bus/train without studying routes—just hop on, ask "is this going downtown?" and go with whatever happens.',
+      category: 'Adventure'
+    },
+    {
+      title: 'Find & Photograph the Hackiest Tourist Souvenir',
+      description: 'Seek out the most bizarre magnet, keychain, or hat that screams "tourist." Snap a pic and wear/use it for the next day.',
+      category: 'Shopping'
+    },
+    {
+      title: 'Crash a Local Gathering (Festival, Market, etc.)',
+      description: 'Spot a public festival, open-air karaoke, or lively market—step in, join the circle, and participate for at least five minutes.',
+      category: 'Culture'
+    },
+    {
+      title: 'Barter Like a Boss',
+      description: 'At a small market or roadside stall, negotiate a discount on something you don\'t actually need. Aim to get at least 20% off!',
+      category: 'Shopping'
+    },
+    {
+      title: 'Perform a Random Act of "Tourist Kindness"',
+      description: 'Buy a coffee for a stranger, help someone carry groceries, or feed pigeons in a public square—spread good vibes!',
+      category: 'Experience'
+    }
   ];
 
   useEffect(() => {
@@ -138,7 +193,29 @@ const BucketListPage: React.FC = () => {
     }
   };
 
-  const addItem = async () => {
+  const addPredefinedItem = async (dare: typeof predefinedDares[0]) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('bucket_list_items')
+      .insert({
+        user_id: user.id,
+        trip_id: tripId,
+        title: dare.title,
+        description: dare.description,
+        category: dare.category,
+        is_completed: false
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setBucketItems(prev => [data, ...prev]);
+    }
+  };
+
+  const addCustomItem = async () => {
     if (!newItem.title.trim()) return;
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -178,6 +255,11 @@ const BucketListPage: React.FC = () => {
     return icons[category] || '✨';
   };
 
+  // Filter out predefined dares that are already added
+  const availableDares = predefinedDares.filter(dare => 
+    !bucketItems.some(item => item.title === dare.title)
+  );
+
   const filteredItems = bucketItems.filter(item => {
     const matchesCategory = filter === 'All' || item.category === filter;
     const matchesCompletion = showCompleted ? item.is_completed : !item.is_completed;
@@ -198,10 +280,10 @@ const BucketListPage: React.FC = () => {
             <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h2 className="pixel-text mobile-heading">BUCKET LIST</h2>
+            <h2 className="pixel-text mobile-heading">DARE BUCKET LIST</h2>
             {trip && (
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
-                Your personal goals for {trip.destination}
+                Epic dares & challenges for {trip.destination}
               </p>
             )}
           </div>
@@ -214,55 +296,107 @@ const BucketListPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Trophy className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-400" />
                 <span className="pixel-text text-yellow-400 text-sm sm:text-base">
-                  {completedCount}/{totalCount} COMPLETED
+                  {completedCount}/{totalCount} DARES COMPLETED
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Target className="w-5 sm:w-6 h-5 sm:h-6 text-blue-400" />
                 <span className="pixel-text text-blue-400 text-sm sm:text-base">
-                  {Math.round((completedCount / Math.max(totalCount, 1)) * 100)}% PROGRESS
+                  {Math.round((completedCount / Math.max(totalCount, 1)) * 100)}% BRAVE
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="pixel-button-primary flex items-center justify-center gap-2 w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              ADD GOAL
-            </button>
           </div>
           
           <div className="w-full bg-gray-700 h-3 mt-4 rounded-full overflow-hidden">
             <div 
-              className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full transition-all duration-500"
+              className="bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 h-full transition-all duration-500"
               style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }}
             />
           </div>
         </div>
 
-        {/* Add Item Form */}
-        {showAddForm && (
-          <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-green-500/20">
-            <h3 className="pixel-text text-green-400 mb-4 text-sm sm:text-base">ADD NEW BUCKET LIST GOAL</h3>
-            <div className="space-y-4">
+        {/* Add Dare Section */}
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-green-500/20">
+          <h3 className="pixel-text text-green-400 mb-4 text-sm sm:text-base">ADD NEW DARE</h3>
+          
+          {/* Predefined Dares Dropdown */}
+          {availableDares.length > 0 && (
+            <div className="mb-4">
+              <label className="block pixel-text text-xs text-blue-400 mb-2">CHOOSE A DARE (MAX 10 TOTAL)</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                  className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors text-sm sm:text-base"
+                >
+                  <span className="outfit-text">Select a fun dare... ({availableDares.length} available)</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showCategoryDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-blue-500/20 z-10 max-h-80 overflow-auto">
+                    {availableDares.map((dare, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          addPredefinedItem(dare);
+                          setShowCategoryDropdown(false);
+                        }}
+                        className="w-full px-3 sm:px-4 py-3 text-left hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg flex-shrink-0">{getCategoryIcon(dare.category)}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="outfit-text font-semibold text-white text-sm mb-1 break-words">
+                              {dare.title}
+                            </div>
+                            <div className="outfit-text text-xs text-gray-400 mb-2 break-words">
+                              {dare.description}
+                            </div>
+                            <div className="pixel-text text-xs text-blue-400">
+                              {dare.category}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Custom Dare Option */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="pixel-button-secondary flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              {showAddForm ? 'CANCEL CUSTOM' : 'CREATE CUSTOM'}
+            </button>
+          </div>
+
+          {/* Custom Dare Form */}
+          {showAddForm && (
+            <div className="mt-4 space-y-4 border-t border-gray-700 pt-4">
               <div>
-                <label className="block pixel-text text-xs text-blue-400 mb-2">TITLE</label>
+                <label className="block pixel-text text-xs text-blue-400 mb-2">CUSTOM DARE TITLE</label>
                 <input
                   type="text"
                   value={newItem.title}
                   onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="What do you want to do?"
+                  placeholder="What's your custom dare?"
                   className="w-full input-pixel"
                   maxLength={100}
                 />
               </div>
               <div>
-                <label className="block pixel-text text-xs text-blue-400 mb-2">DESCRIPTION (OPTIONAL)</label>
+                <label className="block pixel-text text-xs text-blue-400 mb-2">DESCRIPTION</label>
                 <textarea
                   value={newItem.description}
                   onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Add more details..."
+                  placeholder="Describe your dare..."
                   className="w-full input-pixel h-20 resize-none"
                   maxLength={200}
                 />
@@ -281,27 +415,16 @@ const BucketListPage: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={addItem}
-                  disabled={!newItem.title.trim()}
-                  className="pixel-button-primary flex-1 disabled:opacity-50"
-                >
-                  ADD GOAL
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setNewItem({ title: '', description: '', category: 'Experience' });
-                  }}
-                  className="pixel-button-secondary flex-1"
-                >
-                  CANCEL
-                </button>
-              </div>
+              <button
+                onClick={addCustomItem}
+                disabled={!newItem.title.trim()}
+                className="pixel-button-primary w-full disabled:opacity-50"
+              >
+                ADD CUSTOM DARE
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Filters */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
@@ -329,11 +452,11 @@ const BucketListPage: React.FC = () => {
                 onClick={() => setShowCompleted(false)}
                 className={`px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors ${
                   !showCompleted
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-red-500 text-white'
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                📋 TO DO ({totalCount - completedCount})
+                🎯 PENDING DARES ({totalCount - completedCount})
               </button>
               <button
                 onClick={() => setShowCompleted(true)}
@@ -343,7 +466,7 @@ const BucketListPage: React.FC = () => {
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                ✅ COMPLETED ({completedCount})
+                ✅ CONQUERED ({completedCount})
               </button>
             </div>
           </div>
@@ -353,7 +476,7 @@ const BucketListPage: React.FC = () => {
         {loading && (
           <div className="flex items-center justify-center py-8 sm:py-12">
             <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400 text-sm sm:text-base">LOADING YOUR GOALS...</span>
+            <span className="pixel-text text-blue-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
           </div>
         )}
 
@@ -367,7 +490,7 @@ const BucketListPage: React.FC = () => {
                 className={`pixel-card transition-all group ${
                   completed 
                     ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
-                    : 'bg-gray-900 border-blue-500/20 hover:border-blue-500/40'
+                    : 'bg-gray-900 border-red-500/20 hover:border-red-500/40'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -379,7 +502,7 @@ const BucketListPage: React.FC = () => {
                     {completed ? (
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
                     ) : (
-                      <Circle className="w-5 h-5 text-gray-500 hover:text-blue-400" />
+                      <Circle className="w-5 h-5 text-red-500 hover:text-red-400" />
                     )}
                   </div>
 
@@ -388,6 +511,7 @@ const BucketListPage: React.FC = () => {
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">{getCategoryIcon(item.category)}</span>
                       <span className="pixel-text text-xs text-blue-400">{item.category}</span>
+                      {completed && <span className="pixel-text text-xs text-green-400">CONQUERED!</span>}
                     </div>
 
                     <h3 className={`outfit-text font-semibold mb-2 leading-tight text-sm break-words ${
@@ -406,7 +530,7 @@ const BucketListPage: React.FC = () => {
 
                     <div className="flex items-center justify-between">
                       <span className="pixel-text text-xs text-gray-500">
-                        {new Date(item.created_at).toLocaleDateString()}
+                        {completed ? 'DARE COMPLETED!' : 'DARE PENDING'}
                       </span>
                       <button
                         onClick={() => deleteItem(item.id)}
@@ -425,17 +549,31 @@ const BucketListPage: React.FC = () => {
         {filteredItems.length === 0 && !loading && (
           <div className="text-center py-8 sm:py-12">
             <div className="text-3xl sm:text-4xl mb-4">
-              {showCompleted ? '🎉' : '🎯'}
+              {showCompleted ? '🏆' : '🎯'}
             </div>
             <h3 className="pixel-text text-sm sm:text-lg text-gray-400 mb-2">
-              {showCompleted ? 'NO COMPLETED GOALS YET' : 'ALL GOALS COMPLETED!'}
+              {showCompleted ? 'NO CONQUERED DARES YET' : 'ALL DARES CONQUERED!'}
             </h3>
             <p className="outfit-text text-gray-500 text-sm sm:text-base">
               {showCompleted 
-                ? 'Start checking off goals to see your progress here'
-                : 'Amazing! You\'ve completed all your bucket list goals'
+                ? 'Start conquering dares to see your victories here'
+                : 'Amazing! You\'ve conquered all your travel dares'
               }
             </p>
+          </div>
+        )}
+
+        {/* Motivational Footer */}
+        {bucketItems.length > 0 && (
+          <div className="pixel-card bg-gray-900/30 mt-6 sm:mb-8 border border-gray-700">
+            <div className="text-center">
+              <p className="outfit-text text-gray-500 text-xs sm:text-sm">
+                🔥 {completedCount > 0 ? `You've conquered ${completedCount} dares!` : 'Ready to be brave?'} • 
+                <span className="text-red-400 ml-1">
+                  {totalCount - completedCount > 0 ? `${totalCount - completedCount} dares await your courage` : 'You are a travel legend!'}
+                </span>
+              </p>
+            </div>
           </div>
         )}
       </div>

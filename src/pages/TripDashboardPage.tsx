@@ -92,10 +92,14 @@ const TripDashboardPage: React.FC = () => {
 
       // If no items exist, create default ones
       if (!items || items.length === 0) {
+        // Split destination into city and country
+        const [city, country] = destination.split(', ');
+        
         const { error: createError } = await supabase.rpc('create_default_bucket_list_items', {
           p_user_id: userId,
           p_trip_id: tripId,
-          p_destination: destination
+          p_city: city,
+          p_country: country
         });
 
         if (!createError) {

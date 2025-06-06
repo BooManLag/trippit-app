@@ -18,16 +18,8 @@ interface BucketListItem {
   title: string;
   description: string;
   category: string;
-  difficulty_level: string;
-  estimated_cost: string;
-  source: string;
-  reddit_url: string;
-  score: number;
-}
-
-interface UserProgress {
-  bucket_item_id: string;
-  completed_at: string | null;
+  is_completed: boolean;
+  created_at: string;
 }
 
 interface RedditTip {
@@ -51,7 +43,6 @@ const TripDashboardPage: React.FC = () => {
   const [loadingBucketList, setLoadingBucketList] = useState(true);
   const [tips, setTips] = useState<RedditTip[]>([]);
   const [bucketItems, setBucketItems] = useState<BucketListItem[]>([]);
-  const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
 
   const fetchRedditTips = async (city: string, country: string) => {
@@ -82,37 +73,44 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  const fetchBucketList = async (city: string, country: string) => {
+  const fetchBucketList = async (userId: string, tripId: string, destination: string) => {
     try {
       setLoadingBucketList(true);
       
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-bucket-list`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ city, country }),
+      // Fetch user's bucket list items for this trip
+      const { data: items, error } = await supabase
+        .from('bucket_list_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('trip_id', tripId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching bucket list:', error);
+        return;
+      }
+
+      // If no items exist, create default ones
+      if (!items || items.length === 0) {
+        const { error: createError } = await supabase.rpc('create_default_bucket_list_items', {
+          p_user_id: userId,
+          p_trip_id: tripId,
+          p_destination: destination
+        });
+
+        if (!createError) {
+          // Fetch the newly created items
+          const { data: newItems } = await supabase
+            .from('bucket_list_items')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('trip_id', tripId)
+            .order('created_at', { ascending: false });
+
+          setBucketItems(newItems || []);
         }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch bucket list');
-
-      const items = await response.json();
-      setBucketItems(items);
-
-      // Fetch user progress
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: progressData } = await supabase
-          .from('user_bucket_progress')
-          .select('bucket_item_id, completed_at')
-          .eq('user_id', user.id)
-          .eq('trip_id', tripId);
-
-        setUserProgress(progressData || []);
+      } else {
+        setBucketItems(items);
       }
     } catch (error) {
       console.error('Error fetching bucket list:', error);
@@ -123,46 +121,19 @@ const TripDashboardPage: React.FC = () => {
   };
 
   const toggleBucketItem = async (item: BucketListItem) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { error } = await supabase
+      .from('bucket_list_items')
+      .update({ is_completed: !item.is_completed })
+      .eq('id', item.id);
 
-    const existingProgress = userProgress.find(p => p.bucket_item_id === item.id);
-    
-    if (existingProgress) {
-      // Toggle completion
-      const newCompletedAt = existingProgress.completed_at ? null : new Date().toISOString();
-      
-      const { error } = await supabase
-        .from('user_bucket_progress')
-        .update({ completed_at: newCompletedAt })
-        .eq('user_id', user.id)
-        .eq('bucket_item_id', item.id);
-
-      if (!error) {
-        setUserProgress(prev => 
-          prev.map(p => 
-            p.bucket_item_id === item.id 
-              ? { ...p, completed_at: newCompletedAt }
-              : p
-          )
-        );
-      }
-    } else {
-      // Create new progress entry
-      const { data, error } = await supabase
-        .from('user_bucket_progress')
-        .insert({
-          user_id: user.id,
-          trip_id: tripId,
-          bucket_item_id: item.id,
-          completed_at: new Date().toISOString()
-        })
-        .select('bucket_item_id, completed_at')
-        .single();
-
-      if (!error && data) {
-        setUserProgress(prev => [...prev, data]);
-      }
+    if (!error) {
+      setBucketItems(prev => 
+        prev.map(i => 
+          i.id === item.id 
+            ? { ...i, is_completed: !i.is_completed }
+            : i
+        )
+      );
     }
   };
 
@@ -192,7 +163,7 @@ const TripDashboardPage: React.FC = () => {
         
         // Fetch tips and bucket list in parallel
         fetchRedditTips(city, country);
-        fetchBucketList(city, country);
+        fetchBucketList(user.id, tripId!, tripData.destination);
 
         // Fetch existing checklist items
         const { data: existingItems } = await supabase
@@ -271,22 +242,13 @@ const TripDashboardPage: React.FC = () => {
 
   const getBucketListSummary = () => {
     const totalItems = bucketItems.length;
-    const completedItems = bucketItems.filter(item => 
-      userProgress.some(p => p.bucket_item_id === item.id && p.completed_at)
-    ).length;
+    const completedItems = bucketItems.filter(item => item.is_completed).length;
     const remainingItems = totalItems - completedItems;
     return { totalItems, completedItems, remainingItems };
   };
 
   const getIncompleteBucketItems = () => {
-    return bucketItems.filter(item => 
-      !userProgress.some(p => p.bucket_item_id === item.id && p.completed_at)
-    ).slice(0, 4);
-  };
-
-  const isItemCompleted = (itemId: string) => {
-    const progress = userProgress.find(p => p.bucket_item_id === itemId);
-    return progress?.completed_at !== null;
+    return bucketItems.filter(item => !item.is_completed).slice(0, 4);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -315,24 +277,6 @@ const TripDashboardPage: React.FC = () => {
       'Experience': '✨'
     };
     return icons[category] || '💡';
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy': return 'text-green-400';
-      case 'Medium': return 'text-yellow-400';
-      case 'Hard': return 'text-red-400';
-      default: return 'text-blue-400';
-    }
-  };
-
-  const getCostColor = (cost: string) => {
-    switch (cost) {
-      case 'Free': return 'text-green-400';
-      case 'Budget': return 'text-yellow-400';
-      case 'Expensive': return 'text-red-400';
-      default: return 'text-blue-400';
-    }
   };
 
   if (loading) {
@@ -462,12 +406,12 @@ const TripDashboardPage: React.FC = () => {
           {loadingBucketList ? (
             <div className="flex items-center justify-center py-8 sm:py-12">
               <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-purple-500 animate-spin mr-3" />
-              <span className="pixel-text text-purple-400 text-sm sm:text-base">LOADING EPIC EXPERIENCES...</span>
+              <span className="pixel-text text-purple-400 text-sm sm:text-base">LOADING YOUR GOALS...</span>
             </div>
           ) : incompleteBucketItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {incompleteBucketItems.map(item => {
-                const completed = isItemCompleted(item.id);
+                const completed = item.is_completed;
                 return (
                   <div 
                     key={item.id} 
@@ -493,9 +437,6 @@ const TripDashboardPage: React.FC = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm">{getCategoryIcon(item.category)}</span>
                           <span className="pixel-text text-xs text-purple-400">{item.category}</span>
-                          <span className={`pixel-text text-xs ${getDifficultyColor(item.difficulty_level)}`}>
-                            {item.difficulty_level}
-                          </span>
                         </div>
 
                         <h4 className={`outfit-text font-semibold mb-1 leading-tight text-xs break-words ${
@@ -504,16 +445,18 @@ const TripDashboardPage: React.FC = () => {
                           {item.title}
                         </h4>
 
+                        {item.description && (
+                          <p className={`outfit-text text-xs leading-relaxed break-words mb-2 ${
+                            completed ? 'text-gray-500' : 'text-gray-300'
+                          }`}>
+                            {item.description.length > 60 ? `${item.description.substring(0, 60)}...` : item.description}
+                          </p>
+                        )}
+
                         <div className="flex items-center justify-between mt-2">
                           <span className="pixel-text text-xs text-gray-500">
-                            {item.source === 'Trippit' ? 'Trippit' : `r/${item.source.replace('r/', '')}`}
+                            Personal Goal
                           </span>
-                          {item.source !== 'Trippit' && (
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 text-yellow-400" />
-                              <span className="pixel-text text-xs text-yellow-400">{item.score}</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -524,14 +467,20 @@ const TripDashboardPage: React.FC = () => {
           ) : totalItems > 0 ? (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🎉</div>
-              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">ALL EXPERIENCES COMPLETED!</h3>
-              <p className="outfit-text text-gray-500 text-sm">Amazing! You've completed all bucket list items for {trip?.destination}!</p>
+              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">ALL GOALS COMPLETED!</h3>
+              <p className="outfit-text text-gray-500 text-sm">Amazing! You've completed all your bucket list goals for {trip?.destination}!</p>
             </div>
           ) : (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🎯</div>
-              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">GATHERING EXPERIENCES</h3>
-              <p className="outfit-text text-gray-500 text-sm">Searching for epic bucket list items for {trip?.destination}...</p>
+              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">NO GOALS YET</h3>
+              <p className="outfit-text text-gray-500 text-sm">Create your first bucket list goal for {trip?.destination}!</p>
+              <button
+                onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
+                className="pixel-button-primary mt-4"
+              >
+                ADD GOALS
+              </button>
             </div>
           )}
 
@@ -541,7 +490,7 @@ const TripDashboardPage: React.FC = () => {
                 onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
                 className="pixel-button-secondary"
               >
-                VIEW ALL {totalItems} EXPERIENCES
+                VIEW ALL {totalItems} GOALS
               </button>
             </div>
           )}

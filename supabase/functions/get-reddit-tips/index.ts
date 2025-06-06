@@ -30,6 +30,7 @@ async function fetchTopPosts(
   const cached = cache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log(`📦 Cache hit for ${cacheKey} - returning ${cached.data.length} posts`);
     return cached.data;
   }
 
@@ -44,7 +45,7 @@ async function fetchTopPosts(
       url = `https://www.reddit.com/r/${encodeURIComponent(subredditName)}/top.json?limit=${limit}&t=${timeframe}`;
     }
     
-    console.log(`🔍 Fetching: ${url}`);
+    console.log(`🔍 Fetching from: ${url}`);
     
     const response = await fetch(url, {
       headers: {
@@ -53,38 +54,58 @@ async function fetchTopPosts(
       }
     });
 
+    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       console.log(`❌ Failed to fetch from r/${subredditName}: ${response.status} ${response.statusText}`);
       return [];
     }
 
     const data = await response.json();
+    console.log(`📊 Raw response structure:`, {
+      hasData: !!data.data,
+      hasChildren: !!data.data?.children,
+      childrenCount: data.data?.children?.length || 0
+    });
     
     if (!data.data?.children) {
-      console.log(`❌ No data from r/${subredditName}`);
+      console.log(`❌ No data.children from r/${subredditName}`);
       return [];
     }
 
-    const posts = data.data.children
-      .map((child: any) => ({
-        ...child.data,
-        subreddit: subredditName
-      }) as RedditPost)
-      .filter((post: RedditPost) => {
-        // Better filtering for quality content
-        const hasContent = post.selftext && post.selftext.length >= 50;
-        const goodScore = post.score >= 5;
-        const notDeleted = !post.selftext.includes('[deleted]') && 
-                          !post.selftext.includes('[removed]') &&
-                          !post.title.includes('[deleted]') &&
-                          !post.title.includes('[removed]');
-        const notTooLong = post.selftext.length <= 5000;
-        const notBot = !post.author.toLowerCase().includes('bot');
-        
-        return hasContent && goodScore && notDeleted && notTooLong && notBot;
-      });
+    const rawPosts = data.data.children.map((child: any) => ({
+      ...child.data,
+      subreddit: subredditName
+    }) as RedditPost);
 
-    console.log(`✅ Found ${posts.length} quality posts from r/${subredditName} (from ${data.data.children.length} total)`);
+    console.log(`📝 Raw posts from r/${subredditName}: ${rawPosts.length}`);
+
+    // Log sample of raw posts for debugging
+    if (rawPosts.length > 0) {
+      const sample = rawPosts[0];
+      console.log(`📋 Sample post:`, {
+        title: sample.title?.substring(0, 50),
+        selftext_length: sample.selftext?.length || 0,
+        score: sample.score,
+        author: sample.author
+      });
+    }
+
+    const posts = rawPosts.filter((post: RedditPost) => {
+      // More lenient filtering for debugging
+      const hasContent = post.selftext && post.selftext.length >= 20; // Reduced from 50
+      const goodScore = post.score >= 1; // Reduced from 5
+      const notDeleted = !post.selftext.includes('[deleted]') && 
+                        !post.selftext.includes('[removed]') &&
+                        !post.title.includes('[deleted]') &&
+                        !post.title.includes('[removed]');
+      const notTooLong = post.selftext.length <= 5000;
+      const notBot = !post.author.toLowerCase().includes('bot');
+      
+      return hasContent && goodScore && notDeleted && notTooLong && notBot;
+    });
+
+    console.log(`✅ Filtered posts from r/${subredditName}: ${posts.length} (from ${rawPosts.length} raw)`);
 
     // Cache the result
     cache.set(cacheKey, {
@@ -106,11 +127,13 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
   const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
   const countryClean = country.toLowerCase().replace(/[^a-z]/g, '');
   
+  console.log(`🔹 Cleaned names: cityClean="${cityClean}", countryClean="${countryClean}"`);
+  
   // Add location-specific subreddits
   const locationSubreddits = [];
   
   // Add city subreddit if it's long enough
-  if (cityClean.length >= 4) {
+  if (cityClean.length >= 3) { // Reduced from 4
     locationSubreddits.push(cityClean);
   }
   
@@ -120,11 +143,12 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
   if (countryClean === 'unitedkingdom') countryVariations.push('uk');
   if (countryClean === 'vietnam') countryVariations.push('vietnam');
   
-  locationSubreddits.push(...countryVariations.filter(name => name.length >= 3));
+  locationSubreddits.push(...countryVariations.filter(name => name.length >= 2)); // Reduced from 3
   
-  console.log(`🎯 Target subreddits: ${[...baseSubreddits, ...locationSubreddits].join(', ')}`);
+  const finalSubreddits = [...baseSubreddits, ...locationSubreddits.slice(0, 3)];
+  console.log(`🎯 Target subreddits: ${finalSubreddits.join(', ')}`);
   
-  return [...baseSubreddits, ...locationSubreddits.slice(0, 2)];
+  return finalSubreddits;
 }
 
 function extractTipsFromPost(post: RedditPost, city: string): any[] {
@@ -134,16 +158,19 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
   
   console.log(`🔍 Processing post: "${title.substring(0, 60)}..." (${content.length} chars, score: ${post.score})`);
   
-  // Enhanced tip extraction patterns
+  if (!content || content.length < 20) {
+    console.log(`  ⚠️ Skipping post - content too short (${content.length} chars)`);
+    return [];
+  }
+  
+  // Simplified tip extraction patterns
   const patterns = [
     // Numbered lists (1. 2. 3.)
-    /(?:^|\n)\s*(\d+[\.\)]\s*[^\n]{20,300})(?=\n\s*\d+[\.\)]|\n\s*$|\n\n|$)/gm,
+    /(?:^|\n)\s*(\d+[\.\)]\s*[^\n]{15,300})(?=\n\s*\d+[\.\)]|\n\s*$|\n\n|$)/gm,
     // Bullet points (- * •)
-    /(?:^|\n)\s*([-\*•]\s*[^\n]{20,300})(?=\n\s*[-\*•]|\n\s*$|\n\n|$)/gm,
+    /(?:^|\n)\s*([-\*•]\s*[^\n]{15,300})(?=\n\s*[-\*•]|\n\s*$|\n\n|$)/gm,
     // Explicit tips/advice
-    /(?:tip|advice|recommendation|pro tip|lpt):\s*([^\n]{20,300})/gim,
-    // Helpful sentences
-    /([^\n.!?]{30,300}(?:should|must|recommend|suggest|avoid|don't|always|never|best|good|great)[^\n.!?]{10,200}[.!?])/gim
+    /(?:tip|advice|recommendation|pro tip|lpt):\s*([^\n]{15,300})/gim,
   ];
 
   let foundTips = 0;
@@ -153,15 +180,15 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
     if (matches) {
       console.log(`  📝 Found ${matches.length} matches with pattern`);
       
-      for (const match of matches.slice(0, 3)) { // Max 3 per pattern
+      for (const match of matches.slice(0, 2)) { // Max 2 per pattern
         let tipText = match.trim()
           .replace(/^\d+[\.\)]\s*/, '')
           .replace(/^[-\*•]\s*/, '')
           .replace(/^(?:tip|advice|recommendation|pro tip|lpt):\s*/i, '')
           .trim();
         
-        // Quality checks
-        if (tipText.length < 20 || tipText.length > 400) continue;
+        // Quality checks - more lenient
+        if (tipText.length < 15 || tipText.length > 400) continue;
         if (tipText.toLowerCase().includes('edit:')) continue;
         if (tipText.toLowerCase().includes('update:')) continue;
         if (tipText.toLowerCase().includes('deleted')) continue;
@@ -190,8 +217,8 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
     }
   }
 
-  // Fallback: if no structured tips found but post seems valuable
-  if (foundTips === 0 && post.score > 20 && content.length > 100 && content.length < 800) {
+  // More lenient fallback: if no structured tips found but post seems valuable
+  if (foundTips === 0 && post.score > 5 && content.length > 50 && content.length < 1000) {
     const helpfulKeywords = ['tip', 'advice', 'recommend', 'experience', 'guide', 'helpful', 'must', 'should', 'avoid'];
     const hasHelpfulContent = helpfulKeywords.some(keyword => 
       title.toLowerCase().includes(keyword) || content.toLowerCase().includes(keyword)
@@ -204,8 +231,8 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
       console.log(`  💡 Using entire post as tip (score: ${post.score}, helpful: ${hasHelpfulContent}, city mentioned: ${cityMentioned})`);
       
       let cleanContent = content.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
-      if (cleanContent.length > 300) {
-        cleanContent = cleanContent.substring(0, 300) + '...';
+      if (cleanContent.length > 250) {
+        cleanContent = cleanContent.substring(0, 250) + '...';
       }
       
       tips.push({
@@ -315,14 +342,23 @@ function deduplicateTips(tips: any[]): any[] {
 }
 
 Deno.serve(async (req) => {
+  console.log('🔥 INCOMING REQUEST to /get-reddit-tips');
+  console.log(`📡 Method: ${req.method}, URL: ${req.url}`);
+  
   if (req.method === 'OPTIONS') {
+    console.log('✅ Handling OPTIONS request');
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { city, country } = await req.json();
+    console.log('📥 Attempting to parse request body...');
+    const body = await req.json();
+    console.log('📋 Parsed request body:', JSON.stringify(body, null, 2));
+    
+    const { city, country } = body;
     
     if (!city || !country) {
+      console.log('❌ Missing required fields:', { city, country });
       return new Response(
         JSON.stringify({ error: 'City and country are required' }),
         {
@@ -332,14 +368,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`🚀 Fetching tips for ${city}, ${country}`);
+    console.log(`🚀 Starting tip search for: ${city}, ${country}`);
 
     // Check cache first
     const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}`;
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('📦 Returning cached tips');
+      console.log(`📦 Returning cached tips: ${cached.data.length} items`);
       return new Response(
         JSON.stringify(cached.data),
         {
@@ -358,14 +394,14 @@ Deno.serve(async (req) => {
       `${country} travel`
     ];
 
-    console.log(`🎯 Searching in: ${subreddits.join(', ')}`);
-    console.log(`🔍 Using queries: ${searchQueries.join(', ')}`);
+    console.log(`🎯 Will search in subreddits: ${subreddits.join(', ')}`);
+    console.log(`🔍 Using search queries: ${searchQueries.join(', ')}`);
 
     // Create fetch promises with better distribution
     const fetchPromises: Promise<RedditPost[]>[] = [];
 
     // Search in travel subreddits with city-specific queries
-    for (const subreddit of ['travel', 'solotravel', 'backpacking']) {
+    for (const subreddit of ['travel', 'solotravel']) {
       for (const query of searchQueries.slice(0, 2)) {
         fetchPromises.push(fetchTopPosts(subreddit, query, 10, 'year'));
       }
@@ -375,7 +411,9 @@ Deno.serve(async (req) => {
     const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking', 'TravelHacks'].includes(s));
     for (const subreddit of locationSubreddits.slice(0, 2)) {
       fetchPromises.push(fetchTopPosts(subreddit, '', 15, 'year'));
-      fetchPromises.push(fetchTopPosts(subreddit, city, 10, 'year'));
+      if (city.length > 3) {
+        fetchPromises.push(fetchTopPosts(subreddit, city, 10, 'year'));
+      }
     }
 
     console.log(`📡 Created ${fetchPromises.length} fetch requests`);
@@ -386,7 +424,7 @@ Deno.serve(async (req) => {
         Promise.race([
           promise,
           new Promise<RedditPost[]>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 10000)
+            setTimeout(() => reject(new Error('Timeout')), 15000) // Increased timeout
           )
         ])
       )
@@ -397,37 +435,37 @@ Deno.serve(async (req) => {
     let successfulFetches = 0;
     let totalPosts = 0;
     
-    for (const result of results) {
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
       if (result.status === 'fulfilled') {
         const posts = result.value;
         successfulFetches++;
         totalPosts += posts.length;
+        console.log(`✅ Fetch ${i + 1}: Got ${posts.length} posts`);
         
         // Extract tips from each post
-        for (const post of posts.slice(0, 5)) { // Top 5 posts per fetch
+        for (const post of posts.slice(0, 3)) { // Top 3 posts per fetch
           const tips = extractTipsFromPost(post, city);
           allTips.push(...tips);
         }
       } else {
-        console.log(`❌ Fetch failed: ${result.reason}`);
+        console.log(`❌ Fetch ${i + 1} failed: ${result.reason}`);
       }
     }
 
-    console.log(`📊 Results: ${successfulFetches}/${results.length} successful fetches, ${totalPosts} posts, ${allTips.length} raw tips`);
+    console.log(`📊 SUMMARY: ${successfulFetches}/${results.length} successful fetches, ${totalPosts} total posts, ${allTips.length} raw tips extracted`);
 
-    // Process and filter tips
+    // Process and filter tips with more lenient criteria
     const processedTips = deduplicateTips(allTips)
       .filter(tip => {
-        // Enhanced quality filtering
-        const hasGoodLength = tip.content.length >= 30 && tip.content.length <= 500;
-        const hasGoodScore = tip.score >= 3;
+        // More lenient quality filtering
+        const hasGoodLength = tip.content.length >= 20 && tip.content.length <= 500; // Reduced minimum
+        const hasGoodScore = tip.score >= 1; // Reduced minimum score
         const notDeleted = !tip.content.toLowerCase().includes('deleted') &&
                           !tip.content.toLowerCase().includes('removed') &&
                           !tip.title.toLowerCase().includes('[deleted]');
-        const notGeneric = !tip.content.toLowerCase().includes('research local customs') &&
-                          !tip.content.toLowerCase().includes('explore local markets');
         
-        return hasGoodLength && hasGoodScore && notDeleted && notGeneric;
+        return hasGoodLength && hasGoodScore && notDeleted;
       })
       .sort((a, b) => {
         // Sort by relevance score and Reddit score
@@ -437,7 +475,17 @@ Deno.serve(async (req) => {
       })
       .slice(0, 30); // Top 30 tips
 
-    console.log(`✅ Final result: ${processedTips.length} quality tips for ${city}, ${country}`);
+    console.log(`✅ FINAL RESULT: ${processedTips.length} quality tips for ${city}, ${country}`);
+
+    // Log sample of final tips for debugging
+    if (processedTips.length > 0) {
+      console.log(`📋 Sample tip:`, {
+        title: processedTips[0].title,
+        content: processedTips[0].content.substring(0, 100),
+        category: processedTips[0].category,
+        score: processedTips[0].score
+      });
+    }
 
     // Cache the result
     cache.set(cacheKey, {
@@ -445,32 +493,22 @@ Deno.serve(async (req) => {
       timestamp: Date.now()
     });
 
-    // Return results or fallback
-    if (processedTips.length >= 3) {
-      console.log(`🎉 Success! Returning ${processedTips.length} real Reddit tips`);
-      return new Response(
-        JSON.stringify(processedTips),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    } else {
-      console.log(`⚠️ Only found ${processedTips.length} tips, this is likely fallback content`);
-      
-      // Return what we have, even if it's limited
-      return new Response(
-        JSON.stringify(processedTips),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
+    // Always return results, even if empty
+    return new Response(
+      JSON.stringify(processedTips),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+
   } catch (error) {
-    console.error('💥 Error in get-reddit-tips function:', error);
+    console.error('💥 CRITICAL ERROR in get-reddit-tips function:', error);
+    console.error('💥 Error stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch tips',
-        details: error.message 
+        details: error.message,
+        stack: error.stack
       }),
       {
         status: 500,

@@ -287,7 +287,7 @@ const TripDashboardPage: React.FC = () => {
               onClick={() => navigate(`/tips?tripId=${tripId}`)}
               className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
             >
-              View All
+              View All Tips
               <ChevronRight className="h-4 w-4 ml-1" />
             </button>
           </div>
@@ -328,7 +328,7 @@ const TripDashboardPage: React.FC = () => {
             <div className="text-center py-12">
               <Lightbulb className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <p className="outfit-text text-gray-500">No tips found for this destination yet.</p>
-              <p className="outfit-text text-gray-600 text-sm mt-2">Try checking back later or explore our general travel tips!</p>
+              <p className="outfit-text text-gray-600 text-sm mt-2">Try checking back later or explore our comprehensive travel tips!</p>
             </div>
           )}
         </div>

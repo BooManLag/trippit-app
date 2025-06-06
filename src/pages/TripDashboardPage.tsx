@@ -83,17 +83,21 @@ const TripDashboardPage: React.FC = () => {
           return;
         }
 
-        const { data: tripData } = await supabase
+        const { data: tripData, error: tripError } = await supabase
           .from('trips')
           .select('*')
           .eq('id', tripId)
           .single();
 
-        if (tripData) {
-          setTrip(tripData);
-          const [city, country] = tripData.destination.split(', ');
-          fetchRedditTips(city, country);
+        if (tripError || !tripData) {
+          console.error('Trip not found:', tripError);
+          navigate('/my-trips');
+          return;
         }
+
+        setTrip(tripData);
+        const [city, country] = tripData.destination.split(', ');
+        fetchRedditTips(city, country);
 
         // Fetch existing checklist items
         const { data: existingItems } = await supabase
@@ -133,6 +137,7 @@ const TripDashboardPage: React.FC = () => {
         setTripCount(count || 0);
       } catch (error) {
         console.error('Error fetching trip details:', error);
+        navigate('/my-trips');
       } finally {
         setLoading(false);
       }

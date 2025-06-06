@@ -1,6 +1,6 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-reddit-session',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-reddit-token',
 };
 
 interface RedditPost {
@@ -16,15 +16,6 @@ interface RedditPost {
   subreddit: string;
 }
 
-// Import sessions from the OAuth callback function
-// In a real app, this would be a shared database
-const sessions = new Map<string, {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  username: string;
-}>();
-
 // Enhanced cache with better key management
 const cache = new Map<string, any>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -34,9 +25,9 @@ async function fetchTopPostsWithAuth(
   searchQuery: string = '',
   limit: number = 10,
   timeframe: string = 'month',
-  accessToken?: string
+  bearerToken?: string
 ): Promise<RedditPost[]> {
-  const cacheKey = `${subredditName}_${searchQuery}_${limit}_${timeframe}_${accessToken ? 'auth' : 'noauth'}`;
+  const cacheKey = `${subredditName}_${searchQuery}_${limit}_${timeframe}_${bearerToken ? 'auth' : 'noauth'}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     console.log(`📦 Cache hit for ${cacheKey} - returning ${cached.data.length} posts`);
@@ -44,7 +35,7 @@ async function fetchTopPostsWithAuth(
   }
 
   // Use OAuth endpoints if we have a token, otherwise fall back to public API
-  const baseUrl = accessToken ? 'https://oauth.reddit.com' : 'https://api.reddit.com';
+  const baseUrl = bearerToken ? 'https://oauth.reddit.com' : 'https://api.reddit.com';
   
   let url: string;
   if (searchQuery) {
@@ -56,7 +47,7 @@ async function fetchTopPostsWithAuth(
       `limit=${limit}&t=${timeframe}`;
   }
 
-  console.log(`🔍 Fetching from ${accessToken ? 'OAuth' : 'public'} API: ${url}`);
+  console.log(`🔍 Fetching from ${bearerToken ? 'OAuth' : 'public'} API: ${url}`);
   
   try {
     const headers: Record<string, string> = {
@@ -64,8 +55,8 @@ async function fetchTopPostsWithAuth(
       'Accept': 'application/json',
     };
 
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
+    if (bearerToken) {
+      headers['Authorization'] = `Bearer ${bearerToken}`;
     }
 
     const response = await fetch(url, { headers });
@@ -73,8 +64,8 @@ async function fetchTopPostsWithAuth(
     console.log(`📡 Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
-      if (response.status === 401 && accessToken) {
-        console.warn(`🔑 OAuth token expired or invalid for r/${subredditName}`);
+      if (response.status === 401 && bearerToken) {
+        console.warn(`🔑 Bearer token expired or invalid for r/${subredditName}`);
         // Fall back to public API
         return fetchTopPostsWithAuth(subredditName, searchQuery, limit, timeframe);
       }
@@ -394,27 +385,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check for Reddit session token
-    const sessionToken = req.headers.get('x-reddit-session');
-    let accessToken: string | undefined;
+    // Check for Reddit bearer token
+    const bearerToken = req.headers.get('x-reddit-token');
     
-    if (sessionToken) {
-      const session = sessions.get(sessionToken);
-      if (session && session.expiresAt > Date.now()) {
-        accessToken = session.accessToken;
-        console.log(`🔑 Using Reddit OAuth token for user: ${session.username}`);
-      } else {
-        console.log('⚠️ Reddit session expired or invalid');
-        sessions.delete(sessionToken);
-      }
+    if (bearerToken) {
+      console.log(`🔑 Using Reddit bearer token for enhanced access`);
     } else {
-      console.log('ℹ️ No Reddit session token provided, using public API');
+      console.log('ℹ️ No Reddit bearer token provided, using public API');
     }
 
-    console.log(`🚀 Starting tip search for: ${city}, ${country} ${accessToken ? '(authenticated)' : '(public)'}`);
+    console.log(`🚀 Starting tip search for: ${city}, ${country} ${bearerToken ? '(authenticated)' : '(public)'}`);
 
     // Check cache first
-    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_${accessToken ? 'auth' : 'public'}`;
+    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_${bearerToken ? 'auth' : 'public'}`;
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -444,14 +427,14 @@ Deno.serve(async (req) => {
     // Search in travel subreddits with city-specific queries
     for (const subreddit of ['travel', 'solotravel']) {
       for (const query of searchQueries.slice(0, 2)) {
-        fetchPromises.push(fetchTopPostsWithAuth(subreddit, query, 8, 'year', accessToken));
+        fetchPromises.push(fetchTopPostsWithAuth(subreddit, query, 8, 'year', bearerToken));
       }
     }
 
     // Search in location-specific subreddits
     const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking'].includes(s));
     for (const subreddit of locationSubreddits.slice(0, 2)) {
-      fetchPromises.push(fetchTopPostsWithAuth(subreddit, '', 10, 'year', accessToken));
+      fetchPromises.push(fetchTopPostsWithAuth(subreddit, '', 10, 'year', bearerToken));
     }
 
     console.log(`📡 Created ${fetchPromises.length} fetch requests`);

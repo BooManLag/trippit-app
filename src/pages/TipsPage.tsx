@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Shield } from 'lucide-react';
+import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Shield, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import RedditAuthModal from '../components/RedditAuthModal';
 
 interface RedditTip {
   id: string;
@@ -26,13 +25,15 @@ const TipsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [trip, setTrip] = useState<any>(null);
-  const [showRedditAuth, setShowRedditAuth] = useState(false);
-  const [redditConnected, setRedditConnected] = useState(false);
+  const [bearerToken, setBearerToken] = useState('');
+  const [showTokenInput, setShowTokenInput] = useState(false);
 
   useEffect(() => {
-    // Check if user has Reddit session
-    const redditSession = localStorage.getItem('reddit_session');
-    setRedditConnected(!!redditSession);
+    // Check if user has stored bearer token
+    const storedToken = localStorage.getItem('reddit_bearer_token');
+    if (storedToken) {
+      setBearerToken(storedToken);
+    }
   }, []);
 
   useEffect(() => {
@@ -53,16 +54,16 @@ const TipsPage: React.FC = () => {
           setTrip(tripData);
           const [city, country] = tripData.destination.split(', ');
           
-          // Fetch Reddit tips with optional authentication
+          // Fetch Reddit tips with optional bearer token
           const headers: Record<string, string> = {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           };
 
-          // Add Reddit session token if available
-          const redditSession = localStorage.getItem('reddit_session');
-          if (redditSession) {
-            headers['x-reddit-session'] = redditSession;
+          // Add Reddit bearer token if available
+          const storedToken = localStorage.getItem('reddit_bearer_token');
+          if (storedToken) {
+            headers['x-reddit-token'] = storedToken;
           }
 
           const response = await fetch(
@@ -91,10 +92,19 @@ const TipsPage: React.FC = () => {
     fetchTripAndTips();
   }, [tripId]);
 
-  const handleRedditAuthSuccess = () => {
-    setShowRedditAuth(false);
-    setRedditConnected(true);
-    // Refresh tips with authentication
+  const handleSaveToken = () => {
+    if (bearerToken.trim()) {
+      localStorage.setItem('reddit_bearer_token', bearerToken.trim());
+      setShowTokenInput(false);
+      // Refresh tips with the new token
+      window.location.reload();
+    }
+  };
+
+  const handleRemoveToken = () => {
+    localStorage.removeItem('reddit_bearer_token');
+    setBearerToken('');
+    // Refresh tips without token
     window.location.reload();
   };
 
@@ -150,68 +160,115 @@ const TipsPage: React.FC = () => {
     return colors[category] || 'text-blue-400';
   };
 
+  const hasStoredToken = !!localStorage.getItem('reddit_bearer_token');
+
   return (
     <div className="min-h-screen bg-black text-white px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
-            className="text-blue-400 hover:text-blue-300"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <h2 className="pixel-text text-2xl">CITY TIPS</h2>
-            {trip && (
-              <p className="outfit-text text-gray-400 mt-1">
-                Real traveler advice for {trip.destination}
-              </p>
-            )}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
+              className="text-blue-400 hover:text-blue-300"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1">
+              <h2 className="pixel-text text-2xl">CITY TIPS</h2>
+              {trip && (
+                <p className="outfit-text text-gray-400 mt-1">
+                  Real traveler advice for {trip.destination}
+                </p>
+              )}
+            </div>
           </div>
           
-          {!redditConnected && (
-            <button
-              onClick={() => {
-                localStorage.setItem('reddit_auth_return_to', window.location.pathname + window.location.search);
-                setShowRedditAuth(true);
-              }}
-              className="pixel-button-secondary flex items-center gap-2 bg-orange-600 hover:bg-orange-500"
-            >
-              <Shield className="w-4 h-4" />
-              CONNECT REDDIT
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {hasStoredToken ? (
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-400" />
+                <span className="pixel-text text-sm text-green-400">ENHANCED</span>
+                <button
+                  onClick={handleRemoveToken}
+                  className="pixel-button-secondary text-sm bg-red-600 hover:bg-red-500"
+                >
+                  DISCONNECT
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowTokenInput(true)}
+                className="pixel-button-secondary flex items-center gap-2 bg-orange-600 hover:bg-orange-500"
+              >
+                <Key className="w-4 h-4" />
+                ADD TOKEN
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Token Input Modal */}
+        {showTokenInput && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="pixel-card max-w-md w-full">
+              <h3 className="pixel-text text-lg mb-4">ADD REDDIT BEARER TOKEN</h3>
+              <p className="outfit-text text-gray-400 mb-4 text-sm">
+                Paste your Reddit API bearer token to get enhanced access to more tips and avoid rate limits.
+              </p>
+              <input
+                type="password"
+                value={bearerToken}
+                onChange={(e) => setBearerToken(e.target.value)}
+                placeholder="Paste your bearer token here..."
+                className="w-full px-4 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none mb-4"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTokenInput(false)}
+                  className="pixel-button-secondary flex-1"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleSaveToken}
+                  className="pixel-button-primary flex-1"
+                >
+                  SAVE TOKEN
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Reddit Connection Status */}
-        {!redditConnected && (
+        {!hasStoredToken && (
           <div className="pixel-card bg-orange-900/20 p-4 mb-6 border-2 border-orange-500/20">
             <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-orange-400" />
+              <Key className="h-5 w-5 text-orange-400" />
               <div>
                 <h3 className="pixel-text text-sm text-orange-400">ENHANCED TIPS AVAILABLE</h3>
                 <p className="outfit-text text-sm text-gray-300 mt-1">
-                  Connect with Reddit to access more detailed tips and location-specific advice from real travelers.
+                  Add your Reddit bearer token to access more detailed tips and avoid rate limits.
                 </p>
               </div>
               <button
-                onClick={() => setShowRedditAuth(true)}
+                onClick={() => setShowTokenInput(true)}
                 className="pixel-button-secondary text-sm bg-orange-600 hover:bg-orange-500"
               >
-                CONNECT
+                ADD TOKEN
               </button>
             </div>
           </div>
         )}
 
-        {redditConnected && (
+        {hasStoredToken && (
           <div className="pixel-card bg-green-900/20 p-4 mb-6 border-2 border-green-500/20">
             <div className="flex items-center gap-3">
               <Shield className="h-5 w-5 text-green-400" />
               <div>
-                <h3 className="pixel-text text-sm text-green-400">REDDIT CONNECTED</h3>
+                <h3 className="pixel-text text-sm text-green-400">REDDIT TOKEN ACTIVE</h3>
                 <p className="outfit-text text-sm text-gray-300 mt-1">
-                  You're now getting enhanced tips from Reddit communities!
+                  You're getting enhanced tips with your Reddit bearer token!
                 </p>
               </div>
             </div>
@@ -273,9 +330,9 @@ const TipsPage: React.FC = () => {
             <span className="pixel-text text-sm text-blue-400">
               • Real traveler experiences
             </span>
-            {redditConnected && (
+            {hasStoredToken && (
               <span className="pixel-text text-sm text-orange-400">
-                • Enhanced with Reddit OAuth
+                • Enhanced with bearer token
               </span>
             )}
           </div>
@@ -367,12 +424,6 @@ const TipsPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      <RedditAuthModal
-        isOpen={showRedditAuth}
-        onClose={() => setShowRedditAuth(false)}
-        onSuccess={handleRedditAuthSuccess}
-      />
     </div>
   );
 };

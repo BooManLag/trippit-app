@@ -4,6 +4,7 @@ import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRigh
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { ChecklistItem } from '../types';
+import { defaultChecklist } from '../data/defaultChecklist';
 
 interface TripDetails {
   id: string;
@@ -93,14 +94,34 @@ const TripDashboardPage: React.FC = () => {
           fetchRedditTips(city, country);
         }
 
+        // Fetch existing checklist items
         const { data: existingItems } = await supabase
           .from('checklist_items')
           .select('*')
           .eq('user_id', user.id)
           .eq('trip_id', tripId);
 
-        if (existingItems) {
+        if (existingItems && existingItems.length > 0) {
           setChecklistItems(existingItems);
+        } else {
+          // If no items exist, we know we have default items to create
+          // Calculate the total from default checklist
+          const totalDefaultItems = defaultChecklist.reduce((total, category) => {
+            return total + category.items.length;
+          }, 0);
+          
+          // Create placeholder items to show correct count
+          const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
+            id: `placeholder_${index}`,
+            category: 'Loading...',
+            description: 'Loading...',
+            is_completed: false,
+            is_default: true,
+            user_id: user.id,
+            trip_id: tripId
+          }));
+          
+          setChecklistItems(placeholderItems);
         }
 
         const { count } = await supabase

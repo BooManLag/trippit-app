@@ -281,13 +281,13 @@ const TripDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-6 w-6 text-yellow-400" />
-              <h3 className="pixel-text text-lg">CITY TIPS</h3>
+              <h3 className="pixel-text text-lg">REDDIT TRAVEL TIPS</h3>
             </div>
             <button 
               onClick={() => navigate(`/tips?tripId=${tripId}`)}
               className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
             >
-              View All Tips
+              View All Reddit Tips
               <ChevronRight className="h-4 w-4 ml-1" />
             </button>
           </div>
@@ -295,7 +295,7 @@ const TripDashboardPage: React.FC = () => {
           {loadingTips ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-              <span className="pixel-text text-blue-400">LOADING TIPS...</span>
+              <span className="pixel-text text-blue-400">GATHERING REDDIT WISDOM...</span>
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
@@ -303,8 +303,9 @@ const TripDashboardPage: React.FC = () => {
                 <div key={tip.id} className="pixel-card bg-gray-800 p-4 border border-blue-500/10 hover:border-blue-500/30 transition-all">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="pixel-text text-xs text-blue-400">{tip.source}</span>
+                      <span className="pixel-text text-xs text-green-400">{tip.source}</span>
                       <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
+                      <span className="pixel-text text-xs text-blue-400">{tip.category}</span>
                     </div>
                     <a 
                       href={tip.reddit_url} 
@@ -326,9 +327,10 @@ const TripDashboardPage: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-12">
-              <Lightbulb className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <p className="outfit-text text-gray-500">No tips found for this destination yet.</p>
-              <p className="outfit-text text-gray-600 text-sm mt-2">Try checking back later or explore our comprehensive travel tips!</p>
+              <div className="text-4xl mb-4">🌐</div>
+              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING REDDIT WISDOM</h3>
+              <p className="outfit-text text-gray-500">Searching Reddit for tips about {trip?.destination}...</p>
+              <p className="outfit-text text-gray-600 text-sm mt-2">This might take a moment as we gather insights from real travelers!</p>
             </div>
           )}
         </div>

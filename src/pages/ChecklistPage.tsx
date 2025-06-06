@@ -26,7 +26,8 @@ const ChecklistPage: React.FC = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      // First, check if checklist items exist for this trip
+      const { data: existingItems, error } = await supabase
         .from('checklist_items')
         .select('*')
         .eq('user_id', user.id)
@@ -34,8 +35,42 @@ const ChecklistPage: React.FC = () => {
 
       if (error) {
         console.error('Error fetching checklist:', error);
+        setLoading(false);
+        return;
+      }
+
+      // If no items exist, create default ones
+      if (!existingItems || existingItems.length === 0) {
+        console.log('No checklist items found, creating defaults...');
+        
+        // Create default checklist items
+        const defaultItems = [];
+        defaultChecklist.forEach(category => {
+          category.items.forEach(item => {
+            defaultItems.push({
+              user_id: user.id,
+              trip_id: tripId,
+              category: category.name,
+              description: item.description,
+              is_completed: false,
+              is_default: true
+            });
+          });
+        });
+
+        // Insert all default items
+        const { data: insertedItems, error: insertError } = await supabase
+          .from('checklist_items')
+          .insert(defaultItems)
+          .select();
+
+        if (insertError) {
+          console.error('Error creating default checklist items:', insertError);
+        } else {
+          setItems(insertedItems || []);
+        }
       } else {
-        setItems(data || []);
+        setItems(existingItems);
       }
 
       setLoading(false);
@@ -165,6 +200,48 @@ const ChecklistPage: React.FC = () => {
                 </div>
               );
             })}
+
+            {/* Show custom items if any */}
+            {groupedItems['✨ Custom'] && (
+              <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
+                <h3 className="pixel-text text-lg text-blue-400 mb-4">
+                  ✨ Custom Items
+                </h3>
+                <div className="space-y-3">
+                  {groupedItems['✨ Custom'].map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between px-4 py-3 border ${
+                        item.is_completed
+                          ? 'bg-green-500/10 border-green-500/20'
+                          : 'bg-gray-800 border-blue-500/10'
+                      }`}
+                    >
+                      <div
+                        onClick={() => toggleComplete(item)}
+                        className="flex items-center gap-3 cursor-pointer flex-1"
+                      >
+                        <CheckCircle2
+                          className={`w-5 h-5 ${
+                            item.is_completed ? 'text-green-400' : 'text-gray-500'
+                          }`}
+                        />
+                        <span
+                          className={`outfit-text ${
+                            item.is_completed ? 'line-through text-gray-400' : 'text-white'
+                          }`}
+                        >
+                          {item.description}
+                        </span>
+                      </div>
+                      <button onClick={() => deleteItem(item.id)} className="text-red-500">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -182,6 +259,7 @@ const ChecklistPage: React.FC = () => {
                   {category.name}
                 </option>
               ))}
+              <option value="✨ Custom">✨ Custom</option>
             </select>
             <div className="flex items-center gap-3">
               <input

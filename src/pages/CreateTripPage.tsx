@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { MapPin, Calendar, Search, Loader2 } from 'lucide-react';
-import { supabase, isAuthenticated } from '../lib/supabase';
+import { supabase, isAuthenticated, ensureUserProfile } from '../lib/supabase';
 import countries from '../data/countries.min.json';
 
 interface Location {
@@ -29,6 +29,9 @@ const CreateTripPage: React.FC = () => {
         navigate('/');
         return;
       }
+
+      // Ensure user profile exists
+      await ensureUserProfile();
     };
 
     checkAuth();
@@ -70,11 +73,16 @@ const CreateTripPage: React.FC = () => {
     if (!selectedLocation) return;
 
     try {
+      setLoading(true);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/');
         return;
       }
+
+      // Ensure user profile exists before creating trip
+      await ensureUserProfile();
 
       const { error } = await supabase.from('trips').insert({
         user_id: user.id,
@@ -83,11 +91,17 @@ const CreateTripPage: React.FC = () => {
         end_date: endDate,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating trip:', error);
+        throw error;
+      }
       
       navigate('/my-trips');
     } catch (error) {
       console.error('Error creating trip:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,11 +133,7 @@ const CreateTripPage: React.FC = () => {
                   required
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                  ) : (
-                    <Search className="w-5 h-5 text-blue-500" />
-                  )}
+                  <Search className="w-5 h-5 text-blue-500" />
                 </div>
               </div>
 
@@ -182,10 +192,14 @@ const CreateTripPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={!selectedLocation || !startDate || !endDate}
-              className="pixel-button-primary w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
+              disabled={!selectedLocation || !startDate || !endDate || loading}
+              className="pixel-button-primary w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center"
             >
-              CREATE TRIP
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'CREATE TRIP'
+              )}
             </button>
           </form>
         </div>

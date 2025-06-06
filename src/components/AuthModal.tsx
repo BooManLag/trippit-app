@@ -11,9 +11,11 @@ interface AuthModalProps {
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [isSignUp, setIsSignUp] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -21,30 +23,74 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        // Sign up the user
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`
+            data: {
+              display_name: displayName || email.split('@')[0]
+            }
           }
         });
-        if (error) throw error;
-        // After successful signup, switch to sign in view
-        setIsSignUp(false);
-        setError('Please check your email and verify your account before signing in.');
+
+        if (signUpError) {
+          throw signUpError;
+        }
+
+        if (data.user) {
+          // User was created successfully
+          setSuccess('Account created successfully! You can now sign in.');
+          setIsSignUp(false);
+          setEmail('');
+          setPassword('');
+          setDisplayName('');
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        // Sign in the user
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
-        if (error) throw error;
-        onSuccess();
+
+        if (signInError) {
+          throw signInError;
+        }
+
+        if (data.user) {
+          // Check if user profile exists in our users table
+          const { data: userProfile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profileError && profileError.code === 'PGRST116') {
+            // User doesn't exist in our users table, create it
+            const { error: insertError } = await supabase
+              .from('users')
+              .insert({
+                id: data.user.id,
+                email: data.user.email!,
+                display_name: data.user.user_metadata?.display_name || data.user.email!.split('@')[0]
+              });
+
+            if (insertError) {
+              console.error('Error creating user profile:', insertError);
+              // Don't throw here, user is still authenticated
+            }
+          }
+
+          onSuccess();
+        }
       }
     } catch (error: any) {
-      setError(error.message);
+      console.error('Auth error:', error);
+      setError(error.message || 'An error occurred during authentication');
     } finally {
       setLoading(false);
     }
@@ -75,6 +121,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignUp && (
+            <div>
+              <label className="block pixel-text text-sm mb-2 text-blue-400">
+                DISPLAY NAME
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+                placeholder="Your name (optional)"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block pixel-text text-sm mb-2 text-blue-400">
               EMAIL
@@ -103,8 +164,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           </div>
 
           {error && (
-            <div className={`text-sm outfit-text ${error.includes('verify') ? 'text-blue-500' : 'text-red-500'}`}>
+            <div className="text-sm outfit-text text-red-500">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="text-sm outfit-text text-green-500">
+              {success}
             </div>
           )}
 
@@ -123,7 +190,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           <div className="text-center outfit-text">
             <button
               type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+                setSuccess(null);
+              }}
               className="text-blue-400 hover:text-blue-300"
             >
               {isSignUp

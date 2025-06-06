@@ -18,7 +18,7 @@ interface UserDare {
   id: string;
   user_id: string;
   trip_id: string;
-  dare_id: string;
+  bucket_item_id: string; // This is the dare_id from JSON
   completed_at: string | null;
   notes: string | null;
   created_at: string;
@@ -119,6 +119,36 @@ const TripDashboardPage: React.FC = () => {
             : ud
         )
       );
+    }
+  };
+
+  const addRandomDare = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get dares that user hasn't added yet
+    const usedDareIds = userDares.map(ud => ud.bucket_item_id);
+    const availableDares = daresData.filter(dare => !usedDareIds.includes(dare.id));
+    
+    if (availableDares.length === 0) return;
+
+    // Pick a random dare
+    const randomDare = availableDares[Math.floor(Math.random() * availableDares.length)];
+
+    const { data, error } = await supabase
+      .from('user_bucket_progress')
+      .insert({
+        user_id: user.id,
+        trip_id: tripId,
+        bucket_item_id: randomDare.id,
+        completed_at: null,
+        notes: null
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setUserDares(prev => [data, ...prev]);
     }
   };
 
@@ -382,14 +412,22 @@ const TripDashboardPage: React.FC = () => {
                 </span>
               )}
             </div>
-            {totalDares > 4 && (
+            <div className="flex items-center gap-2">
+              {totalDares > 4 && (
+                <button
+                  onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
+                  className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+                >
+                  VIEW ALL {totalDares}
+                </button>
+              )}
               <button
-                onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
-                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+                onClick={addRandomDare}
+                className="pixel-button-secondary text-xs px-3 py-1"
               >
-                VIEW ALL {totalDares}
+                + RANDOM DARE
               </button>
-            )}
+            </div>
           </div>
 
           {loadingDares ? (
@@ -400,7 +438,7 @@ const TripDashboardPage: React.FC = () => {
           ) : incompleteDares.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {incompleteDares.map(userDare => {
-                const dare = daresData.find(d => d.id === userDare.dare_id);
+                const dare = daresData.find(d => d.id === userDare.bucket_item_id);
                 if (!dare) return null;
                 
                 const completed = !!userDare.completed_at;
@@ -461,18 +499,18 @@ const TripDashboardPage: React.FC = () => {
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🏆</div>
               <h3 className="pixel-text text-red-400 mb-2 text-sm sm:text-base">ALL DARES CONQUERED!</h3>
-              <p className="outfit-text text-gray-500 text-sm">Amazing! You've conquered all your travel dares for {trip?.destination}!</p>
+              <p className="outfit-text text-gray-500 text-sm">Amazing! You've conquered all your dares for {trip?.destination}!</p>
             </div>
           ) : (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🎯</div>
               <h3 className="pixel-text text-red-400 mb-2 text-sm sm:text-base">NO DARES YET</h3>
-              <p className="outfit-text text-gray-500 text-sm">Create your first epic dare for {trip?.destination}!</p>
+              <p className="outfit-text text-gray-500 text-sm">Add your first epic dare for {trip?.destination}!</p>
               <button
-                onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
+                onClick={addRandomDare}
                 className="pixel-button-primary mt-4"
               >
-                ADD DARES
+                ADD RANDOM DARE
               </button>
             </div>
           )}

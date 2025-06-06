@@ -11,6 +11,7 @@ import GamePage from './pages/GamePage';
 import TipsPage from './pages/TipsPage';
 import ChecklistPage from './pages/ChecklistPage';
 import BucketListPage from './pages/BucketListPage';
+import RedditCallbackPage from './pages/RedditCallbackPage';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/tips" element={<TipsPage />} />
         <Route path="/checklist" element={<ChecklistPage />} />
         <Route path="/bucket-list" element={<BucketListPage />} />
+        <Route path="/auth/reddit/callback" element={<RedditCallbackPage />} />
       </Routes>
     </Router>
   );

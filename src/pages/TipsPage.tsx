@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Filter, Loader2, ExternalLink, ArrowLeft, Search } from 'lucide-react';
+import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import RedditAuthModal from '../components/RedditAuthModal';
 
 interface RedditTip {
   id: string;
@@ -25,6 +26,14 @@ const TipsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [trip, setTrip] = useState<any>(null);
+  const [showRedditAuth, setShowRedditAuth] = useState(false);
+  const [redditConnected, setRedditConnected] = useState(false);
+
+  useEffect(() => {
+    // Check if user has Reddit session
+    const redditSession = localStorage.getItem('reddit_session');
+    setRedditConnected(!!redditSession);
+  }, []);
 
   useEffect(() => {
     const fetchTripAndTips = async () => {
@@ -44,15 +53,23 @@ const TipsPage: React.FC = () => {
           setTrip(tripData);
           const [city, country] = tripData.destination.split(', ');
           
-          // Fetch Reddit tips
+          // Fetch Reddit tips with optional authentication
+          const headers: Record<string, string> = {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          };
+
+          // Add Reddit session token if available
+          const redditSession = localStorage.getItem('reddit_session');
+          if (redditSession) {
+            headers['x-reddit-session'] = redditSession;
+          }
+
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
             {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-              },
+              headers,
               body: JSON.stringify({ city, country }),
             }
           );
@@ -60,6 +77,8 @@ const TipsPage: React.FC = () => {
           if (response.ok) {
             const tips = await response.json();
             setRedditTips(tips);
+          } else {
+            console.error('Failed to fetch tips:', response.status);
           }
         }
       } catch (error) {
@@ -71,6 +90,13 @@ const TipsPage: React.FC = () => {
 
     fetchTripAndTips();
   }, [tripId]);
+
+  const handleRedditAuthSuccess = () => {
+    setShowRedditAuth(false);
+    setRedditConnected(true);
+    // Refresh tips with authentication
+    window.location.reload();
+  };
 
   // Get unique categories from Reddit tips
   const categories = ['All', ...Array.from(new Set(redditTips.map(tip => tip.category)))];
@@ -134,7 +160,7 @@ const TipsPage: React.FC = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-1">
             <h2 className="pixel-text text-2xl">CITY TIPS</h2>
             {trip && (
               <p className="outfit-text text-gray-400 mt-1">
@@ -142,7 +168,55 @@ const TipsPage: React.FC = () => {
               </p>
             )}
           </div>
+          
+          {!redditConnected && (
+            <button
+              onClick={() => {
+                localStorage.setItem('reddit_auth_return_to', window.location.pathname + window.location.search);
+                setShowRedditAuth(true);
+              }}
+              className="pixel-button-secondary flex items-center gap-2 bg-orange-600 hover:bg-orange-500"
+            >
+              <Shield className="w-4 h-4" />
+              CONNECT REDDIT
+            </button>
+          )}
         </div>
+
+        {/* Reddit Connection Status */}
+        {!redditConnected && (
+          <div className="pixel-card bg-orange-900/20 p-4 mb-6 border-2 border-orange-500/20">
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-orange-400" />
+              <div>
+                <h3 className="pixel-text text-sm text-orange-400">ENHANCED TIPS AVAILABLE</h3>
+                <p className="outfit-text text-sm text-gray-300 mt-1">
+                  Connect with Reddit to access more detailed tips and location-specific advice from real travelers.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowRedditAuth(true)}
+                className="pixel-button-secondary text-sm bg-orange-600 hover:bg-orange-500"
+              >
+                CONNECT
+              </button>
+            </div>
+          </div>
+        )}
+
+        {redditConnected && (
+          <div className="pixel-card bg-green-900/20 p-4 mb-6 border-2 border-green-500/20">
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-green-400" />
+              <div>
+                <h3 className="pixel-text text-sm text-green-400">REDDIT CONNECTED</h3>
+                <p className="outfit-text text-sm text-gray-300 mt-1">
+                  You're now getting enhanced tips from Reddit communities!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search and Filter Controls */}
         <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
@@ -199,9 +273,11 @@ const TipsPage: React.FC = () => {
             <span className="pixel-text text-sm text-blue-400">
               • Real traveler experiences
             </span>
-            <span className="pixel-text text-sm text-yellow-400">
-              • Location-specific advice
-            </span>
+            {redditConnected && (
+              <span className="pixel-text text-sm text-orange-400">
+                • Enhanced with Reddit OAuth
+              </span>
+            )}
           </div>
         </div>
 
@@ -233,14 +309,16 @@ const TipsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <a 
-                  href={tip.reddit_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-gray-500 hover:text-blue-400 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                {tip.reddit_url !== '#' && (
+                  <a 
+                    href={tip.reddit_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-gray-500 hover:text-blue-400 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
               </div>
 
               <h3 className="outfit-text font-semibold text-white mb-3 leading-tight">
@@ -253,7 +331,7 @@ const TipsPage: React.FC = () => {
 
               <div className="mt-4 pt-3 border-t border-gray-700">
                 <span className="pixel-text text-xs text-gray-500">
-                  From Reddit • {new Date(tip.created_at).toLocaleDateString()}
+                  {tip.source === 'Trippit' ? 'Trippit Tips' : 'From Reddit'} • {new Date(tip.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -270,29 +348,12 @@ const TipsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Show message when no tips are available */}
-        {!loading && redditTips.length === 0 && (
-          <div className="pixel-card bg-gray-900/50 p-6 mt-8 border-2 border-yellow-500/20">
-            <div className="text-center">
-              <span className="text-2xl mb-2 block">🌐</span>
-              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING WISDOM</h3>
-              <p className="outfit-text text-gray-400 text-sm">
-                We're searching for the best traveler advice about {trip?.destination}. 
-                This might take a moment as we gather insights from real travelers!
-              </p>
-              <div className="mt-4 pixel-text text-xs text-blue-400">
-                Searching travel communities for location-specific tips...
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Attribution */}
         {redditTips.length > 0 && (
           <div className="pixel-card bg-gray-900/30 p-4 mt-8 border border-gray-700">
             <div className="text-center">
               <p className="outfit-text text-gray-500 text-sm">
-                💡 All tips sourced from Reddit communities • 
+                💡 Tips sourced from Reddit communities • 
                 <a 
                   href="https://reddit.com/r/travel" 
                   target="_blank" 
@@ -306,6 +367,12 @@ const TipsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <RedditAuthModal
+        isOpen={showRedditAuth}
+        onClose={() => setShowRedditAuth(false)}
+        onSuccess={handleRedditAuthSuccess}
+      />
     </div>
   );
 };

@@ -257,7 +257,7 @@ const TipsPage: React.FC = () => {
 
               <div className="mt-4 pt-3 border-t border-gray-700">
                 <span className="pixel-text text-xs text-gray-500">
-                  {tip.source === 'Trippit' ? 'Trippit Tips' : 'From Reddit'} • {new Date(tip.created_at).toLocaleDateString()}
+                  {tip.source === 'Trippit' ? 'Trippit Tips' : 'Travel Community'} • {new Date(tip.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -279,7 +279,7 @@ const TipsPage: React.FC = () => {
           <div className="pixel-card bg-gray-900/30 p-4 mt-8 border border-gray-700">
             <div className="text-center">
               <p className="outfit-text text-gray-500 text-sm">
-                💡 Tips sourced from Reddit communities • 
+                💡 Tips sourced from travel communities • 
                 <a 
                   href="https://reddit.com/r/travel" 
                   target="_blank" 

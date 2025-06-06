@@ -209,13 +209,6 @@ const TripDashboardPage: React.FC = () => {
     return icons[category] || '💡';
   };
 
-  // Determine how many tips to show in preview and if "View All" should appear
-  const getPreviewConfig = () => {
-    if (tips.length === 0) return { showCount: 0, showViewAll: false };
-    if (tips.length <= 3) return { showCount: tips.length, showViewAll: false };
-    return { showCount: 3, showViewAll: true }; // Show 3 as preview if 4+ available
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -225,7 +218,6 @@ const TripDashboardPage: React.FC = () => {
   }
 
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
-  const { showCount, showViewAll } = getPreviewConfig();
 
   return (
     <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
@@ -303,7 +295,7 @@ const TripDashboardPage: React.FC = () => {
               <h3 className="pixel-text text-lg">WHERE'D I GO?</h3>
             </div>
             <p className="outfit-text text-gray-400 mb-6">
-              Practice handling travel scenarios and learn from experienced travelers!
+              Practice handling travel scenarios specific to {trip?.destination.split(', ')[1] || 'your destination'}!
             </p>
             <button
               onClick={() => navigate(`/game?tripId=${tripId}`)}
@@ -326,17 +318,6 @@ const TripDashboardPage: React.FC = () => {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3">
-              {showViewAll && (
-                <button 
-                  onClick={() => navigate(`/tips?tripId=${tripId}`)}
-                  className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
-                >
-                  View All {tips.length} Tips
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </button>
-              )}
-            </div>
           </div>
 
           {loadingTips ? (
@@ -346,7 +327,7 @@ const TripDashboardPage: React.FC = () => {
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {tips.slice(0, showCount).map(tip => (
+              {tips.slice(0, 3).map(tip => (
                 <div key={tip.id} className="pixel-card bg-gray-800 p-4 border border-blue-500/10 hover:border-blue-500/30 transition-all">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -377,7 +358,7 @@ const TripDashboardPage: React.FC = () => {
                 </div>
               ))}
               
-              {showViewAll && (
+              {tips.length > 3 && (
                 <div className="text-center pt-4">
                   <button
                     onClick={() => navigate(`/tips?tripId=${tripId}`)}

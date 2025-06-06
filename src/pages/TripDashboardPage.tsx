@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
-import TipCard from '../components/TipCard';
-import { ChecklistItem, Tip } from '../types';
-import { defaultChecklist } from '../data/defaultChecklist';
-import { mockTips } from '../data/mockData';
+import { ChecklistItem } from '../types';
 
 interface TripDetails {
   id: string;
@@ -21,6 +18,17 @@ interface BucketListGoal {
   completed: boolean;
 }
 
+interface RedditTip {
+  id: string;
+  category: string;
+  title: string;
+  content: string;
+  source: string;
+  reddit_url: string;
+  score: number;
+  created_at: string;
+}
+
 const TripDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tripId } = useParams();
@@ -28,7 +36,7 @@ const TripDashboardPage: React.FC = () => {
   const [tripCount, setTripCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
-  const [tips, setTips] = useState<Tip[]>([]);
+  const [tips, setTips] = useState<RedditTip[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [bucketListGoals, setBucketListGoals] = useState<BucketListGoal[]>([
     { id: '1', title: 'Visit the main attractions', completed: false },
@@ -39,6 +47,7 @@ const TripDashboardPage: React.FC = () => {
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
+      setLoadingTips(true);
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
         {
@@ -53,10 +62,11 @@ const TripDashboardPage: React.FC = () => {
 
       if (!response.ok) throw new Error('Failed to fetch tips');
 
-      const tips = await response.json();
-      setTips(tips);
+      const redditTips = await response.json();
+      setTips(redditTips);
     } catch (error) {
       console.error('Error fetching Reddit tips:', error);
+      setTips([]);
     } finally {
       setLoadingTips(false);
     }
@@ -148,10 +158,6 @@ const TripDashboardPage: React.FC = () => {
     return { totalTasks, completedTasks, remainingTasks };
   };
 
-  const getRelevantTips = () => {
-    return mockTips.slice(0, 4);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
@@ -226,7 +232,7 @@ const TripDashboardPage: React.FC = () => {
               <div className="w-full bg-gray-700 h-2 mt-2 rounded-full overflow-hidden">
                 <div 
                   className="bg-green-500 h-full transition-all duration-300"
-                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
+                  style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
                 />
               </div>
             </div>
@@ -256,19 +262,56 @@ const TripDashboardPage: React.FC = () => {
               <Lightbulb className="h-6 w-6 text-yellow-400" />
               <h3 className="pixel-text text-lg">CITY TIPS</h3>
             </div>
-            <button 
-              onClick={() => navigate(`/tips?tripId=${tripId}`)}
-              className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
-            >
-              View All
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </button>
+            {!loadingTips && tips.length > 4 && (
+              <button 
+                onClick={() => navigate(`/tips?tripId=${tripId}`)}
+                className="flex items-center text-blue-400 hover:text-blue-300 outfit-text text-sm"
+              >
+                View All
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </button>
+            )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {getRelevantTips().map(tip => (
-              <TipCard key={tip.id} tip={tip} />
-            ))}
-          </div>
+
+          {loadingTips ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
+              <span className="pixel-text text-blue-400">LOADING TIPS...</span>
+            </div>
+          ) : tips.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {tips.slice(0, 4).map(tip => (
+                <div key={tip.id} className="pixel-card bg-gray-800 p-4 border border-blue-500/10 hover:border-blue-500/30 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="pixel-text text-xs text-blue-400">{tip.source}</span>
+                      <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
+                    </div>
+                    <a 
+                      href={tip.reddit_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-gray-500 hover:text-blue-400 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                  <h4 className="outfit-text font-semibold text-white mb-2 text-sm">
+                    {tip.title.length > 60 ? `${tip.title.substring(0, 60)}...` : tip.title}
+                  </h4>
+                  <p className="outfit-text text-gray-300 text-sm leading-relaxed">
+                    {tip.content.length > 150 ? `${tip.content.substring(0, 150)}...` : tip.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Lightbulb className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="outfit-text text-gray-500">No tips found for this destination yet.</p>
+              <p className="outfit-text text-gray-600 text-sm mt-2">Try checking back later or explore our general travel tips!</p>
+            </div>
+          )}
         </div>
 
         <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">

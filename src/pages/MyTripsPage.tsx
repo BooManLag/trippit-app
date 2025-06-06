@@ -123,16 +123,16 @@ const MyTripsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
-      <div className="w-full max-w-3xl">
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center">
+      <div className="w-full max-w-4xl">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 gap-4">
           <div className="flex items-center gap-4">
             <BackButton to="/" />
-            <h2 className="pixel-text text-2xl">MY TRIPS</h2>
+            <h2 className="pixel-text mobile-heading">MY TRIPS</h2>
           </div>
           <button
             onClick={() => navigate('/create-trip')}
-            className="pixel-button-secondary flex items-center gap-2"
+            className="pixel-button-secondary flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <PlusCircle className="w-4 h-4" />
             NEW TRIP
@@ -141,33 +141,34 @@ const MyTripsPage: React.FC = () => {
 
         {loading ? (
           <div className="flex justify-center items-center h-[60vh]">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin" />
           </div>
         ) : trips.length > 0 ? (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {upcoming.length > 0 && (
               <section>
-                <h3 className="pixel-text text-blue-400 mb-4">🛫 UPCOMING TRIPS</h3>
+                <h3 className="pixel-text text-blue-400 mb-4 text-sm sm:text-base">🛫 UPCOMING TRIPS</h3>
                 <div className="space-y-4">
                   {upcoming.map(trip => (
                     <div
                       key={trip.id}
-                      className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all"
+                      className="pixel-card bg-gray-900 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="pixel-text text-yellow-400 mb-2">{trip.destination}</h4>
-                          <p className="outfit-text text-gray-400">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                        <div className="flex-1">
+                          <h4 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base break-words">{trip.destination}</h4>
+                          <p className="outfit-text text-gray-400 text-sm sm:text-base">
                             {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                           </p>
-                          <p className={`outfit-text text-sm mt-2 ${getStatusColor(trip.status)}`}>
+                          <p className={`outfit-text text-xs sm:text-sm mt-2 ${getStatusColor(trip.status)}`}>
                             {getStatusText(trip.status)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 justify-end sm:justify-start">
                           <button
                             onClick={() => handlePlayTrip(trip.id)}
-                            className="text-green-500 hover:text-green-400 transition-colors"
+                            className="text-green-500 hover:text-green-400 transition-colors p-2"
+                            title="View trip dashboard"
                           >
                             {trip.status === 'in_progress' ? (
                               <Play className="w-5 h-5 fill-current" />
@@ -177,7 +178,8 @@ const MyTripsPage: React.FC = () => {
                           </button>
                           <button
                             onClick={() => handleDeleteClick(trip.id)}
-                            className="text-red-500 hover:text-red-400 transition-colors"
+                            className="text-red-500 hover:text-red-400 transition-colors p-2"
+                            title="Delete trip"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -191,26 +193,27 @@ const MyTripsPage: React.FC = () => {
 
             {past.length > 0 && (
               <section>
-                <h3 className="pixel-text text-blue-400 mb-4">🗂️ PAST TRIPS</h3>
+                <h3 className="pixel-text text-blue-400 mb-4 text-sm sm:text-base">🗂️ PAST TRIPS</h3>
                 <div className="space-y-4">
                   {past.map(trip => (
                     <div
                       key={trip.id}
-                      className="pixel-card bg-gray-900/50 p-6 border-2 border-blue-500/10 hover:border-blue-500/20 transition-all"
+                      className="pixel-card bg-gray-900/50 border-2 border-blue-500/10 hover:border-blue-500/20 transition-all"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="pixel-text text-gray-400 mb-2">{trip.destination}</h4>
-                          <p className="outfit-text text-gray-500">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                        <div className="flex-1">
+                          <h4 className="pixel-text text-gray-400 mb-2 text-sm sm:text-base break-words">{trip.destination}</h4>
+                          <p className="outfit-text text-gray-500 text-sm sm:text-base">
                             {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                           </p>
-                          <p className="outfit-text text-sm mt-2 text-blue-400">
+                          <p className="outfit-text text-xs sm:text-sm mt-2 text-blue-400">
                             COMPLETED
                           </p>
                         </div>
                         <button
                           onClick={() => handleDeleteClick(trip.id)}
-                          className="text-red-500/50 hover:text-red-400 transition-colors"
+                          className="text-red-500/50 hover:text-red-400 transition-colors p-2 self-end sm:self-start"
+                          title="Delete trip"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -222,13 +225,13 @@ const MyTripsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] bg-gray-900 border-2 border-blue-500/20 rounded text-center px-6">
-            <MapPin className="w-12 h-12 text-blue-500 mb-4" />
-            <h3 className="pixel-text text-lg text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
-            <p className="outfit-text text-gray-500 mb-6">Create your first trip and begin your journey!</p>
+          <div className="flex flex-col items-center justify-center h-[60vh] bg-gray-900 border-2 border-blue-500/20 rounded text-center p-6">
+            <MapPin className="w-10 sm:w-12 h-10 sm:h-12 text-blue-500 mb-4" />
+            <h3 className="pixel-text mobile-heading text-gray-300 mb-2">START YOUR FIRST ADVENTURE</h3>
+            <p className="outfit-text text-gray-500 mb-6 text-sm sm:text-base">Create your first trip and begin your journey!</p>
             <button
               onClick={() => navigate('/create-trip')}
-              className="pixel-button-primary"
+              className="pixel-button-primary w-full sm:w-auto"
             >
               CREATE FIRST TRIP
             </button>

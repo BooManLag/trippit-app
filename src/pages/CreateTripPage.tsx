@@ -109,17 +109,17 @@ const CreateTripPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
-        <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
-          <div className="text-center mb-8">
-            <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            <h2 className="pixel-text text-2xl mb-2">PLAN YOUR TRIP</h2>
-            <p className="outfit-text text-gray-400">Let's create your perfect trip</p>
+      <div className="container mx-auto mobile-padding py-8 sm:py-12 max-w-2xl">
+        <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <div className="text-center mb-6 sm:mb-8">
+            <MapPin className="w-10 sm:w-12 h-10 sm:h-12 text-blue-500 mx-auto mb-4" />
+            <h2 className="pixel-text mobile-heading mb-2">PLAN YOUR TRIP</h2>
+            <p className="outfit-text text-gray-400 text-sm sm:text-base">Let's create your perfect trip</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div className="relative">
-              <label className="block pixel-text text-sm mb-2 text-blue-400">
+              <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
                 WHERE ARE YOU GOING?
               </label>
               <div className="relative">
@@ -128,12 +128,12 @@ const CreateTripPage: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() => setShowDropdown(true)}
-                  className="w-full px-4 pr-10 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+                  className="w-full input-pixel"
                   placeholder="Search for a city..."
                   required
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Search className="w-5 h-5 text-blue-500" />
+                  <Search className="w-4 sm:w-5 h-4 sm:h-5 text-blue-500" />
                 </div>
               </div>
 
@@ -143,20 +143,20 @@ const CreateTripPage: React.FC = () => {
                     <button
                       key={index}
                       type="button"
-                      className="w-full px-4 py-3 text-left hover:bg-gray-700"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-700 transition-colors"
                       onClick={() => handleLocationSelect(location)}
                     >
-                      <div className="font-medium text-white">{location.city}</div>
-                      <div className="text-sm text-gray-400">{location.country}</div>
+                      <div className="font-medium text-white text-sm sm:text-base">{location.city}</div>
+                      <div className="text-xs sm:text-sm text-gray-400">{location.country}</div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block pixel-text text-sm mb-2 text-blue-400">
+                <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
                   START DATE
                 </label>
                 <div className="relative">
@@ -165,15 +165,15 @@ const CreateTripPage: React.FC = () => {
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     min={today}
-                    className="w-full px-4 pr-10 py-3 bg-gray-800 border-2 border-blue-500/20 text-white focus:outline-none focus:border-blue-500/50"
+                    className="w-full input-pixel pr-10"
                     required
                   />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-blue-500 pointer-events-none" />
                 </div>
               </div>
 
               <div>
-                <label className="block pixel-text text-sm mb-2 text-blue-400">
+                <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
                   END DATE
                 </label>
                 <div className="relative">
@@ -182,10 +182,10 @@ const CreateTripPage: React.FC = () => {
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     min={startDate || today}
-                    className="w-full px-4 pr-10 py-3 bg-gray-800 border-2 border-blue-500/20 text-white focus:outline-none focus:border-blue-500/50"
+                    className="w-full input-pixel pr-10"
                     required
                   />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500 pointer-events-none" />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-blue-500 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -196,7 +196,7 @@ const CreateTripPage: React.FC = () => {
               className="pixel-button-primary w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center"
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
               ) : (
                 'CREATE TRIP'
               )}

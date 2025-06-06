@@ -23,16 +23,16 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
       <div className="pixel-card max-w-md w-full relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-white"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>
 
-        <div className="text-center mb-8">
-          <h2 className="pixel-text text-2xl mb-4 text-red-500">{title}</h2>
-          <p className="outfit-text text-gray-400 mb-8">{message}</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="pixel-text text-lg sm:text-2xl mb-4 text-red-500">{title}</h2>
+          <p className="outfit-text text-gray-400 mb-6 sm:mb-8 text-sm sm:text-base break-words">{message}</p>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <button
               onClick={onClose}
               className="pixel-button-secondary flex-1"

@@ -23,36 +23,36 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <main className="container mx-auto px-4 py-12 max-w-2xl text-center">
-        <h1 className="pixel-text text-4xl mb-8 leading-relaxed">
+      <main className="container mx-auto mobile-padding py-8 sm:py-12 max-w-4xl text-center">
+        <h1 className="pixel-text text-2xl sm:text-3xl lg:text-4xl mb-6 sm:mb-8 leading-relaxed">
           MAKE EVERY<br />TRIP COUNT.
         </h1>
 
-        <h2 className="pixel-text text-xl mb-8 text-yellow-400">
+        <h2 className="pixel-text text-lg sm:text-xl mb-6 sm:mb-8 text-yellow-400">
           Fun. Memorable. Helpful.
         </h2>
 
-        <p className="outfit-text text-lg mb-12 max-w-lg mx-auto text-gray-300">
+        <p className="outfit-text text-base sm:text-lg mb-8 sm:mb-12 max-w-lg mx-auto text-gray-300 px-4">
           Tripp'it helps first-time travelers prepare smarter and laugh through their mistakes.
         </p>
 
-        <div className="space-y-6 mb-16">
+        <div className="space-y-4 sm:space-y-6 mb-12 sm:mb-16 max-w-md mx-auto">
           <button
             onClick={() => navigate('/game')}
-            className="pixel-button-primary w-full max-w-md"
+            className="pixel-button-primary w-full"
           >
             🧭 TRY A SCENARIO
           </button>
 
           <button
             onClick={handlePlanTrip}
-            className="pixel-button-secondary w-full max-w-md"
+            className="pixel-button-secondary w-full"
           >
             ✈️ PLAN MY TRIP
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
           {[
             {
               icon: "🎮",
@@ -76,16 +76,16 @@ const HomePage: React.FC = () => {
             }
           ].map((feature, index) => (
             <div key={index} className="pixel-card">
-              <div className="text-2xl mb-3">{feature.icon}</div>
-              <h3 className="pixel-text text-sm mb-2 text-white">{feature.title}</h3>
-              <p className="outfit-text text-gray-400 text-sm">{feature.description}</p>
+              <div className="text-xl sm:text-2xl mb-2 sm:mb-3">{feature.icon}</div>
+              <h3 className="pixel-text text-xs sm:text-sm mb-2 text-white">{feature.title}</h3>
+              <p className="outfit-text text-gray-400 text-xs sm:text-sm">{feature.description}</p>
             </div>
           ))}
         </div>
 
-        <section className="mb-16">
-          <h2 className="pixel-text text-2xl mb-8">HOW IT WORKS</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+        <section className="mb-12 sm:mb-16">
+          <h2 className="pixel-text text-lg sm:text-2xl mb-6 sm:mb-8">HOW IT WORKS</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-left">
             {[
               "Choose your destination and trip dates",
               "Discover tips and bucket list goals",
@@ -93,27 +93,27 @@ const HomePage: React.FC = () => {
               "Reflect, share, and prepare for the next one"
             ].map((step, index) => (
               <div key={index} className="flex items-start pixel-card">
-                <span className="pixel-text text-yellow-400 mr-4">{index + 1}.</span>
-                <p className="outfit-text text-gray-300">{step}</p>
+                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm">{index + 1}.</span>
+                <p className="outfit-text text-gray-300 text-sm sm:text-base">{step}</p>
               </div>
             ))}
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-gray-800 py-8 text-center">
+      <footer className="border-t border-gray-800 py-6 sm:py-8 text-center mobile-padding">
         <nav className="mb-4">
           {["About", "Contact", "Terms"].map((link, index) => (
             <a
               key={index}
               href={`/${link.toLowerCase()}`}
-              className="pixel-text text-gray-400 hover:text-white mx-4 text-xs"
+              className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs"
             >
               {link}
             </a>
           ))}
         </nav>
-        <p className="outfit-text text-gray-600 text-sm">
+        <p className="outfit-text text-gray-600 text-xs sm:text-sm">
           © Tripp'it 2025 – Travel with a twist.
         </p>
       </footer>

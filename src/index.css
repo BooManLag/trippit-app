@@ -13,11 +13,11 @@
 /* Custom Components */
 @layer components {
   .pixel-button {
-    @apply pixel-text px-8 py-4 rounded-none relative 
+    @apply pixel-text px-4 sm:px-8 py-3 sm:py-4 rounded-none relative 
            transition-all duration-200 
            before:content-[''] before:absolute before:inset-0
            before:border-2 before:border-white/20
-           hover:translate-y-[-2px];
+           hover:translate-y-[-2px] text-sm sm:text-base;
   }
 
   .pixel-button-primary {
@@ -37,13 +37,14 @@
   }
 
   .pixel-card {
-    @apply bg-gray-900 p-6 rounded-none border-2 border-white/20
+    @apply bg-gray-900 p-4 sm:p-6 rounded-none border-2 border-white/20
            transition-all duration-200 hover:border-white/40;
   }
 
   .input-pixel {
     @apply bg-gray-800 border-2 border-blue-500/20 text-white rounded-none 
-           focus:outline-none focus:border-blue-500/50 transition-colors duration-200;
+           focus:outline-none focus:border-blue-500/50 transition-colors duration-200
+           px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base;
   }
 }
 
@@ -52,7 +53,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0;
   pointer-events: none;
 }
-
 
 /* Pixel Border Utility */
 @layer utilities {
@@ -64,5 +64,44 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   .outfit-text {
     font-family: 'Outfit', sans-serif;
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-heading {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  .mobile-grid {
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+  }
+}
+
+/* Responsive font sizes for pixel text */
+@media (max-width: 640px) {
+  .pixel-text {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .pixel-text {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+}
+
+@media (min-width: 1025px) {
+  .pixel-text {
+    font-size: 1rem;
+    line-height: 1.5;
   }
 }

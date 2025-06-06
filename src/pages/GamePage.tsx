@@ -353,11 +353,11 @@ const GamePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white px-4 py-8">
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
+        <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center h-[60vh]">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400">GENERATING SCENARIOS...</span>
+            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
+            <span className="pixel-text text-blue-400 text-sm sm:text-base">GENERATING SCENARIOS...</span>
           </div>
         </div>
       </div>
@@ -365,19 +365,19 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-6 sm:mb-8">
           <button 
             onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
             className="text-blue-400 hover:text-blue-300"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
           </button>
-          <div>
-            <h2 className="pixel-text text-2xl">WHERE'D I GO?</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="pixel-text mobile-heading">WHERE'D I GO?</h2>
             {trip && (
-              <p className="outfit-text text-gray-400 mt-1">
+              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
                 Travel scenarios for {trip.destination}
               </p>
             )}
@@ -385,23 +385,23 @@ const GamePage: React.FC = () => {
         </div>
 
         {/* Game Stats */}
-        <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-400" />
-                <span className="pixel-text text-yellow-400">SCORE: {score}/{scenarios.length}</span>
+                <Trophy className="w-4 sm:w-5 h-4 sm:h-5 text-yellow-400" />
+                <span className="pixel-text text-yellow-400 text-sm sm:text-base">SCORE: {score}/{scenarios.length}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-blue-400" />
-                <span className="pixel-text text-blue-400">SCENARIO: {Math.min(currentScenarioIndex + 1, scenarios.length)}/{scenarios.length}</span>
+                <Star className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400" />
+                <span className="pixel-text text-blue-400 text-sm sm:text-base">SCENARIO: {Math.min(currentScenarioIndex + 1, scenarios.length)}/{scenarios.length}</span>
               </div>
             </div>
             <button
               onClick={handleRestart}
-              className="pixel-button-secondary flex items-center gap-2"
+              className="pixel-button-secondary flex items-center justify-center gap-2 w-full sm:w-auto"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3 sm:w-4 h-3 sm:h-4" />
               RESTART
             </button>
           </div>
@@ -416,65 +416,65 @@ const GamePage: React.FC = () => {
 
         {/* Game Content */}
         {isGameCompleted ? (
-          <div className="pixel-card bg-gray-900 p-8 border-2 border-green-500/20 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h3 className="pixel-text text-2xl text-green-400 mb-4">GAME COMPLETED!</h3>
-            <p className="outfit-text text-gray-300 mb-6">
+          <div className="pixel-card bg-gray-900 border-2 border-green-500/20 text-center">
+            <div className="text-4xl sm:text-6xl mb-4">🎉</div>
+            <h3 className="pixel-text text-lg sm:text-2xl text-green-400 mb-4">GAME COMPLETED!</h3>
+            <p className="outfit-text text-gray-300 mb-6 text-sm sm:text-base">
               You scored {score} out of {scenarios.length} scenarios correctly!
             </p>
             
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               {score === scenarios.length && (
-                <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 p-4 mb-4">
-                  <p className="pixel-text text-yellow-400">🏆 PERFECT SCORE! You're a travel expert!</p>
+                <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 mb-4">
+                  <p className="pixel-text text-yellow-400 text-sm sm:text-base">🏆 PERFECT SCORE! You're a travel expert!</p>
                 </div>
               )}
               {score >= scenarios.length * 0.7 && score < scenarios.length && (
-                <div className="pixel-card bg-green-500/10 border-green-500/20 p-4 mb-4">
-                  <p className="pixel-text text-green-400">⭐ GREAT JOB! You know how to handle travel situations!</p>
+                <div className="pixel-card bg-green-500/10 border-green-500/20 mb-4">
+                  <p className="pixel-text text-green-400 text-sm sm:text-base">⭐ GREAT JOB! You know how to handle travel situations!</p>
                 </div>
               )}
               {score < scenarios.length * 0.7 && (
-                <div className="pixel-card bg-blue-500/10 border-blue-500/20 p-4 mb-4">
-                  <p className="pixel-text text-blue-400">📚 GOOD EFFORT! Practice makes perfect in travel!</p>
+                <div className="pixel-card bg-blue-500/10 border-blue-500/20 mb-4">
+                  <p className="pixel-text text-blue-400 text-sm sm:text-base">📚 GOOD EFFORT! Practice makes perfect in travel!</p>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={handleRestart}
-                className="pixel-button-primary"
+                className="pixel-button-primary w-full sm:w-auto"
               >
                 PLAY AGAIN
               </button>
               <button
                 onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')}
-                className="pixel-button-secondary"
+                className="pixel-button-secondary w-full sm:w-auto"
               >
                 BACK TO DASHBOARD
               </button>
             </div>
           </div>
         ) : (
-          <div className="pixel-card bg-gray-900 p-8 border-2 border-blue-500/20">
+          <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
             {!showOutcome ? (
               <div>
                 <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="pixel-text text-sm text-blue-400">
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <span className="pixel-text text-xs sm:text-sm text-blue-400">
                       {scenarios[currentScenarioIndex]?.category?.toUpperCase()}
                     </span>
                     {scenarios[currentScenarioIndex]?.country && (
-                      <span className="pixel-text text-sm text-gray-500">
+                      <span className="pixel-text text-xs sm:text-sm text-gray-500">
                         • {scenarios[currentScenarioIndex].country}
                       </span>
                     )}
                   </div>
-                  <h3 className="pixel-text text-xl text-yellow-400 mb-4">
+                  <h3 className="pixel-text text-lg sm:text-xl text-yellow-400 mb-4 break-words">
                     {scenarios[currentScenarioIndex]?.title}
                   </h3>
-                  <p className="outfit-text text-gray-300 leading-relaxed">
+                  <p className="outfit-text text-gray-300 leading-relaxed text-sm sm:text-base">
                     {scenarios[currentScenarioIndex]?.description}
                   </p>
                 </div>
@@ -484,9 +484,9 @@ const GamePage: React.FC = () => {
                     <button
                       key={choice.id}
                       onClick={() => handleChoiceSelect(choice)}
-                      className="w-full text-left p-4 bg-gray-800 border border-blue-500/20 hover:border-blue-500/40 hover:bg-gray-700 transition-all"
+                      className="w-full text-left p-3 sm:p-4 bg-gray-800 border border-blue-500/20 hover:border-blue-500/40 hover:bg-gray-700 transition-all"
                     >
-                      <span className="outfit-text text-white">{choice.text}</span>
+                      <span className="outfit-text text-white text-sm sm:text-base break-words">{choice.text}</span>
                     </button>
                   ))}
                 </div>
@@ -494,21 +494,21 @@ const GamePage: React.FC = () => {
             ) : (
               <div>
                 <div className="text-center mb-6">
-                  <div className="text-4xl mb-4">
+                  <div className="text-3xl sm:text-4xl mb-4">
                     {selectedChoice?.isCorrect ? '✅' : '❌'}
                   </div>
-                  <h3 className="pixel-text text-xl mb-2">
+                  <h3 className="pixel-text text-lg sm:text-xl mb-2">
                     {selectedChoice?.isCorrect ? 'GREAT CHOICE!' : 'LEARNING MOMENT!'}
                   </h3>
                 </div>
 
                 <div className="pixel-card bg-gray-800/50 border-gray-700 mb-6">
-                  <p className="outfit-text text-gray-300 mb-4">
+                  <p className="outfit-text text-gray-300 mb-4 text-sm sm:text-base break-words">
                     {selectedChoice?.outcome}
                   </p>
                   {selectedChoice?.explanation && (
                     <div className="border-t border-gray-700 pt-4">
-                      <p className="outfit-text text-sm text-blue-400">
+                      <p className="outfit-text text-xs sm:text-sm text-blue-400 break-words">
                         💡 {selectedChoice.explanation}
                       </p>
                     </div>
@@ -518,7 +518,7 @@ const GamePage: React.FC = () => {
                 <div className="text-center">
                   <button
                     onClick={handleContinue}
-                    className="pixel-button-primary"
+                    className="pixel-button-primary w-full sm:w-auto"
                   >
                     {currentScenarioIndex < scenarios.length - 1 ? 'NEXT SCENARIO' : 'FINISH GAME'}
                   </button>

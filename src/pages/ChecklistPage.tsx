@@ -135,38 +135,38 @@ const ChecklistPage: React.FC = () => {
   const completedCount = items.filter(item => item.is_completed).length;
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="text-blue-400 hover:text-blue-300">
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
             </button>
-            <h2 className="pixel-text text-xl">TRIP CHECKLIST</h2>
+            <h2 className="pixel-text mobile-heading">TRIP CHECKLIST</h2>
           </div>
-          <div className="pixel-text text-sm text-blue-400">
+          <div className="pixel-text text-xs sm:text-sm text-blue-400">
             {completedCount}/{items.length}
           </div>
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center h-[60vh]">
-            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+            <Loader2 className="w-5 sm:w-6 h-5 sm:h-6 text-blue-500 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {defaultChecklist.map(category => {
               const categoryItems = groupedItems[category.name] || [];
               return (
-                <div key={category.id} className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
-                  <h3 className="pixel-text text-lg text-blue-400 mb-4">
+                <div key={category.id} className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+                  <h3 className="pixel-text text-sm sm:text-lg text-blue-400 mb-4">
                     {category.emoji} {category.name.split(' ').slice(1).join(' ')}
                   </h3>
                   <div className="space-y-3">
                     {categoryItems.map((item) => (
                       <div
                         key={item.id}
-                        className={`flex items-center justify-between px-4 py-3 border ${
+                        className={`flex items-center justify-between px-3 sm:px-4 py-3 border ${
                           item.is_completed
                             ? 'bg-green-500/10 border-green-500/20'
                             : 'bg-gray-800 border-blue-500/10'
@@ -174,24 +174,26 @@ const ChecklistPage: React.FC = () => {
                       >
                         <div
                           onClick={() => toggleComplete(item)}
-                          className="flex items-center gap-3 cursor-pointer flex-1"
+                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
                         >
                           <CheckCircle2
-                            className={`w-5 h-5 ${
+                            className={`w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0 ${
                               item.is_completed ? 'text-green-400' : 'text-gray-500'
                             }`}
                           />
                           <span
-                            className={`outfit-text ${
+                            className={`outfit-text text-sm sm:text-base break-words ${
                               item.is_completed ? 'line-through text-gray-400' : 'text-white'
                             }`}
                           >
                             {item.description}
                           </span>
                         </div>
-                        {/* Allow deletion of ALL items, including default ones */}
-                        <button onClick={() => deleteItem(item.id)} className="text-red-500 hover:text-red-400 transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                        <button 
+                          onClick={() => deleteItem(item.id)} 
+                          className="text-red-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                        >
+                          <Trash2 className="w-3 sm:w-4 h-3 sm:h-4" />
                         </button>
                       </div>
                     ))}
@@ -202,15 +204,15 @@ const ChecklistPage: React.FC = () => {
 
             {/* Show custom items if any */}
             {groupedItems['✨ Custom'] && (
-              <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
-                <h3 className="pixel-text text-lg text-blue-400 mb-4">
+              <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+                <h3 className="pixel-text text-sm sm:text-lg text-blue-400 mb-4">
                   ✨ Custom Items
                 </h3>
                 <div className="space-y-3">
                   {groupedItems['✨ Custom'].map((item) => (
                     <div
                       key={item.id}
-                      className={`flex items-center justify-between px-4 py-3 border ${
+                      className={`flex items-center justify-between px-3 sm:px-4 py-3 border ${
                         item.is_completed
                           ? 'bg-green-500/10 border-green-500/20'
                           : 'bg-gray-800 border-blue-500/10'
@@ -218,23 +220,26 @@ const ChecklistPage: React.FC = () => {
                     >
                       <div
                         onClick={() => toggleComplete(item)}
-                        className="flex items-center gap-3 cursor-pointer flex-1"
+                        className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
                       >
                         <CheckCircle2
-                          className={`w-5 h-5 ${
+                          className={`w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0 ${
                             item.is_completed ? 'text-green-400' : 'text-gray-500'
                           }`}
                         />
                         <span
-                          className={`outfit-text ${
+                          className={`outfit-text text-sm sm:text-base break-words ${
                             item.is_completed ? 'line-through text-gray-400' : 'text-white'
                           }`}
                         >
                           {item.description}
                         </span>
                       </div>
-                      <button onClick={() => deleteItem(item.id)} className="text-red-500">
-                        <Trash2 className="w-4 h-4" />
+                      <button 
+                        onClick={() => deleteItem(item.id)} 
+                        className="text-red-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                      >
+                        <Trash2 className="w-3 sm:w-4 h-3 sm:h-4" />
                       </button>
                     </div>
                   ))}
@@ -245,13 +250,13 @@ const ChecklistPage: React.FC = () => {
         )}
 
         {/* Add new item */}
-        <div className="mt-8 pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
-          <h3 className="pixel-text text-lg text-blue-400 mb-4">ADD NEW ITEM</h3>
+        <div className="mt-6 sm:mt-8 pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <h3 className="pixel-text text-sm sm:text-lg text-blue-400 mb-4">ADD NEW ITEM</h3>
           <div className="space-y-4">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none text-sm sm:text-base"
             >
               {defaultChecklist.map(category => (
                 <option key={category.id} value={category.name}>
@@ -260,19 +265,19 @@ const ChecklistPage: React.FC = () => {
               ))}
               <option value="✨ Custom">✨ Custom</option>
             </select>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <input
                 value={newItem}
                 onChange={(e) => setNewItem(e.target.value)}
                 placeholder="Add a new task..."
-                className="w-full px-4 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none text-sm sm:text-base"
                 onKeyPress={(e) => e.key === 'Enter' && addItem()}
               />
               <button
                 onClick={addItem}
-                className="pixel-button-primary flex items-center gap-2"
+                className="pixel-button-primary flex items-center justify-center gap-2 w-full sm:w-auto"
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="w-3 sm:w-4 h-3 sm:h-4" />
                 Add
               </button>
             </div>

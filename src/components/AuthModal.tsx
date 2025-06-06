@@ -101,19 +101,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
       <div className="pixel-card max-w-md w-full relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-white"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>
 
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-blue-500/20 mb-4">
-            <Mail className="h-8 w-8 text-blue-500" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex items-center justify-center h-12 sm:h-16 w-12 sm:w-16 rounded-full bg-blue-500/20 mb-4">
+            <Mail className="h-6 sm:h-8 w-6 sm:w-8 text-blue-500" />
           </div>
-          <h2 className="pixel-text text-2xl mb-2">
+          <h2 className="pixel-text text-lg sm:text-2xl mb-2">
             {isSignUp ? 'CREATE ACCOUNT' : 'WELCOME BACK'}
           </h2>
-          <p className="outfit-text text-gray-400">
+          <p className="outfit-text text-gray-400 text-sm sm:text-base">
             {isSignUp
               ? 'Join us to save your trips and track your progress'
               : 'Sign in to access your saved trips and checklists'}
@@ -123,54 +123,54 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <div>
-              <label className="block pixel-text text-sm mb-2 text-blue-400">
+              <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
                 DISPLAY NAME
               </label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+                className="w-full input-pixel"
                 placeholder="Your name (optional)"
               />
             </div>
           )}
 
           <div>
-            <label className="block pixel-text text-sm mb-2 text-blue-400">
+            <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
               EMAIL
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+              className="w-full input-pixel"
               required
             />
           </div>
 
           <div>
-            <label className="block pixel-text text-sm mb-2 text-blue-400">
+            <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
               PASSWORD
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-800 border-2 border-blue-500/20 text-white rounded-none focus:outline-none focus:border-blue-500/50"
+              className="w-full input-pixel"
               required
               minLength={6}
             />
           </div>
 
           {error && (
-            <div className="text-sm outfit-text text-red-500">
+            <div className="text-sm outfit-text text-red-500 break-words">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="text-sm outfit-text text-green-500">
+            <div className="text-sm outfit-text text-green-500 break-words">
               {success}
             </div>
           )}
@@ -181,7 +181,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
             className="pixel-button-primary w-full flex items-center justify-center"
           >
             {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
             ) : (
               isSignUp ? 'SIGN UP' : 'SIGN IN'
             )}
@@ -195,7 +195,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                 setError(null);
                 setSuccess(null);
               }}
-              className="text-blue-400 hover:text-blue-300"
+              className="text-blue-400 hover:text-blue-300 text-sm sm:text-base"
             >
               {isSignUp
                 ? 'Already have an account? Sign in'

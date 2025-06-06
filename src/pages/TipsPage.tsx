@@ -127,19 +127,19 @@ const TipsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center gap-4 mb-6 sm:mb-8">
           <button 
             onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
             className="text-blue-400 hover:text-blue-300"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
           </button>
-          <div>
-            <h2 className="pixel-text text-2xl">CITY TIPS</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="pixel-text mobile-heading">CITY TIPS</h2>
             {trip && (
-              <p className="outfit-text text-gray-400 mt-1">
+              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
                 Real traveler advice for {trip.destination}
               </p>
             )}
@@ -147,8 +147,8 @@ const TipsPage: React.FC = () => {
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
-          <div className="flex flex-col md:flex-row gap-4">
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+          <div className="flex flex-col gap-4">
             {/* Search */}
             <div className="flex-1 relative">
               <input
@@ -156,19 +156,19 @@ const TipsPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search tips..."
-                className="w-full px-4 pr-10 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none"
+                className="w-full px-3 sm:px-4 pr-10 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none text-sm sm:text-base"
               />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-blue-500" />
             </div>
 
             {/* Category Filter */}
             <div className="relative">
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 px-4 py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors min-w-[160px] justify-between"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-blue-500/20 text-white hover:border-blue-500/40 transition-colors w-full sm:min-w-[160px] justify-between text-sm sm:text-base"
               >
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
+                  <Filter className="w-3 sm:w-4 h-3 sm:h-4" />
                   <span className="outfit-text">{filter}</span>
                 </div>
                 <span className="text-blue-400">▼</span>
@@ -183,7 +183,7 @@ const TipsPage: React.FC = () => {
                         setFilter(category);
                         setShowDropdown(false);
                       }}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center gap-2"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm sm:text-base"
                     >
                       <span>{category !== 'All' ? getCategoryIcon(category) : '🌟'}</span>
                       <span className="outfit-text">{category}</span>
@@ -195,13 +195,13 @@ const TipsPage: React.FC = () => {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="pixel-text text-sm text-green-400">
+            <span className="pixel-text text-xs sm:text-sm text-green-400">
               🔥 {filteredTips.length} tips found
             </span>
-            <span className="pixel-text text-sm text-blue-400">
+            <span className="pixel-text text-xs sm:text-sm text-blue-400">
               • Real traveler experiences
             </span>
-            <span className="pixel-text text-sm text-yellow-400">
+            <span className="pixel-text text-xs sm:text-sm text-yellow-400">
               • Location-specific advice
             </span>
           </div>
@@ -209,27 +209,27 @@ const TipsPage: React.FC = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400">GATHERING WISDOM...</span>
+          <div className="flex items-center justify-center py-8 sm:py-12">
+            <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
+            <span className="pixel-text text-blue-400 text-sm sm:text-base">GATHERING WISDOM...</span>
           </div>
         )}
 
         {/* Tips Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {filteredTips.map(tip => (
             <div 
               key={tip.id} 
-              className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all"
+              className="pixel-card bg-gray-900 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getCategoryIcon(tip.category)}</span>
-                  <div>
-                    <span className={`pixel-text text-sm ${getCategoryColor(tip.category)}`}>
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <span className="text-lg sm:text-2xl flex-shrink-0">{getCategoryIcon(tip.category)}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className={`pixel-text text-xs sm:text-sm ${getCategoryColor(tip.category)} block`}>
                       {tip.category}
                     </span>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
                       <span className="pixel-text text-xs text-green-400">{tip.source}</span>
                       <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
                     </div>
@@ -240,18 +240,18 @@ const TipsPage: React.FC = () => {
                     href={tip.reddit_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-blue-400 transition-colors"
+                    className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3 sm:w-4 h-3 sm:h-4" />
                   </a>
                 )}
               </div>
 
-              <h3 className="outfit-text font-semibold text-white mb-3 leading-tight">
+              <h3 className="outfit-text font-semibold text-white mb-3 leading-tight text-sm sm:text-base break-words">
                 {tip.title}
               </h3>
 
-              <p className="outfit-text text-gray-300 text-sm leading-relaxed">
+              <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed break-words">
                 {tip.content}
               </p>
 
@@ -265,10 +265,10 @@ const TipsPage: React.FC = () => {
         </div>
 
         {filteredTips.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">🔍</div>
-            <h3 className="pixel-text text-lg text-gray-400 mb-2">NO TIPS FOUND</h3>
-            <p className="outfit-text text-gray-500">
+          <div className="text-center py-8 sm:py-12">
+            <div className="text-3xl sm:text-4xl mb-4">🔍</div>
+            <h3 className="pixel-text text-sm sm:text-lg text-gray-400 mb-2">NO TIPS FOUND</h3>
+            <p className="outfit-text text-gray-500 text-sm sm:text-base">
               Try adjusting your search or filter criteria
             </p>
           </div>
@@ -276,9 +276,9 @@ const TipsPage: React.FC = () => {
 
         {/* Attribution */}
         {redditTips.length > 0 && (
-          <div className="pixel-card bg-gray-900/30 p-4 mt-8 border border-gray-700">
+          <div className="pixel-card bg-gray-900/30 mt-6 sm:mt-8 border border-gray-700">
             <div className="text-center">
-              <p className="outfit-text text-gray-500 text-sm">
+              <p className="outfit-text text-gray-500 text-xs sm:text-sm">
                 💡 Tips sourced from travel communities • 
                 <a 
                   href="https://reddit.com/r/travel" 

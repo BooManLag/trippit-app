@@ -211,8 +211,8 @@ const TripDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center items-center">
-        <div className="pixel-text">LOADING...</div>
+      <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center items-center">
+        <div className="pixel-text text-sm sm:text-base">LOADING...</div>
       </div>
     );
   }
@@ -220,64 +220,64 @@ const TripDashboardPage: React.FC = () => {
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
 
   return (
-    <div className="min-h-screen w-full px-4 py-12 bg-black text-white flex justify-center">
-      <div className="w-full max-w-5xl">
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center">
+      <div className="w-full max-w-6xl">
+        <div className="flex items-center gap-4 mb-6 sm:mb-8">
           <BackButton to="/my-trips" />
-          <h2 className="pixel-text text-2xl">TRIP DASHBOARD</h2>
+          <h2 className="pixel-text mobile-heading">TRIP DASHBOARD</h2>
         </div>
 
-        <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
-          <div className="flex items-center gap-4 mb-6">
-            <Trophy className="h-12 w-12 text-yellow-400" />
-            <div>
-              <h3 className="pixel-text text-yellow-400 mb-2">
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-6">
+            <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">
                 TRIP #{tripCount}
               </h3>
-              <p className="outfit-text text-gray-400">
+              <p className="outfit-text text-gray-400 text-sm sm:text-base">
                 {tripCount === 1 ? "Congratulations on starting your first adventure!" : "Keep exploring, adventurer!"}
               </p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-blue-500" />
-              <span className="outfit-text text-lg">{trip?.destination}</span>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-start gap-3">
+              <MapPin className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500 flex-shrink-0 mt-1" />
+              <span className="outfit-text text-sm sm:text-lg break-words">{trip?.destination}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-green-500" />
-              <span className="outfit-text">
+            <div className="flex items-start gap-3">
+              <Calendar className="h-4 sm:h-5 w-4 sm:w-5 text-green-500 flex-shrink-0 mt-1" />
+              <span className="outfit-text text-sm sm:text-base">
                 {trip && `${formatDate(trip.start_date)} - ${formatDate(trip.end_date)}`}
               </span>
             </div>
-            <div className="pixel-text text-sm text-blue-400 mt-4">
+            <div className="pixel-text text-xs sm:text-sm text-blue-400 mt-4">
               {getTripStatus()}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
-            <div className="flex items-center justify-between mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
+          <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center gap-3">
-                <CheckSquare className="h-6 w-6 text-green-500" />
-                <h3 className="pixel-text text-lg">CHECKLIST</h3>
+                <CheckSquare className="h-5 sm:h-6 w-5 sm:w-6 text-green-500" />
+                <h3 className="pixel-text text-sm sm:text-lg">CHECKLIST</h3>
               </div>
               <button 
                 onClick={() => navigate(`/checklist?tripId=${tripId}`)}
-                className="pixel-text text-sm text-blue-400 hover:text-blue-300"
+                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
               >
                 VIEW ALL
               </button>
             </div>
 
-            <div className="text-center p-4 bg-gray-800 border border-blue-500/10 mb-6">
-              <div className="pixel-text text-4xl text-yellow-400 mb-2">
+            <div className="text-center p-3 sm:p-4 bg-gray-800 border border-blue-500/10 mb-4 sm:mb-6">
+              <div className="pixel-text text-2xl sm:text-4xl text-yellow-400 mb-2">
                 {remainingTasks}
               </div>
-              <p className="outfit-text text-gray-300">Tasks remaining</p>
-              <div className="mt-3 outfit-text text-sm text-gray-400">
+              <p className="outfit-text text-gray-300 text-sm sm:text-base">Tasks remaining</p>
+              <div className="mt-2 sm:mt-3 outfit-text text-xs sm:text-sm text-gray-400">
                 {completedTasks} of {totalTasks} completed
               </div>
               <div className="w-full bg-gray-700 h-2 mt-2 rounded-full overflow-hidden">
@@ -289,31 +289,31 @@ const TripDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
-            <div className="flex items-center gap-3 mb-6">
-              <Gamepad2 className="h-6 w-6 text-yellow-500" />
-              <h3 className="pixel-text text-lg">WHERE'D I GO?</h3>
+          <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
+              <h3 className="pixel-text text-sm sm:text-lg">WHERE'D I GO?</h3>
             </div>
-            <p className="outfit-text text-gray-400 mb-6">
+            <p className="outfit-text text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">
               Practice handling travel scenarios specific to {trip?.destination.split(', ')[1] || 'your destination'}!
             </p>
             <button
               onClick={() => navigate(`/game?tripId=${tripId}`)}
               className="pixel-button-primary w-full flex items-center justify-center gap-2"
             >
-              <Gamepad2 className="w-5 h-5" />
+              <Gamepad2 className="w-4 sm:w-5 h-4 sm:h-5" />
               PLAY GAME
             </button>
           </div>
         </div>
 
-        <div className="pixel-card bg-gray-900 p-6 mb-8 border-2 border-blue-500/20">
-          <div className="flex items-center justify-between mb-6">
+        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
-              <Lightbulb className="h-6 w-6 text-yellow-400" />
-              <h3 className="pixel-text text-lg">CITY TIPS</h3>
+              <Lightbulb className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-400" />
+              <h3 className="pixel-text text-sm sm:text-lg">CITY TIPS</h3>
               {!loadingTips && tips.length > 0 && (
-                <span className="pixel-text text-sm text-green-400">
+                <span className="pixel-text text-xs sm:text-sm text-green-400">
                   {tips.length} tips found
                 </span>
               )}
@@ -321,18 +321,18 @@ const TripDashboardPage: React.FC = () => {
           </div>
 
           {loadingTips ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-              <span className="pixel-text text-blue-400">GATHERING WISDOM...</span>
+            <div className="flex items-center justify-center py-8 sm:py-12">
+              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
+              <span className="pixel-text text-blue-400 text-sm sm:text-base">GATHERING WISDOM...</span>
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {tips.slice(0, 3).map(tip => (
-                <div key={tip.id} className="pixel-card bg-gray-800 p-4 border border-blue-500/10 hover:border-blue-500/30 transition-all">
+                <div key={tip.id} className="pixel-card bg-gray-800 border border-blue-500/10 hover:border-blue-500/30 transition-all">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{getCategoryIcon(tip.category)}</span>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <span className="text-base sm:text-lg">{getCategoryIcon(tip.category)}</span>
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                         <span className="pixel-text text-xs text-green-400">{tip.source}</span>
                         <span className="pixel-text text-xs text-yellow-400">↑{tip.score}</span>
                         <span className="pixel-text text-xs text-blue-400">{tip.category}</span>
@@ -343,16 +343,16 @@ const TripDashboardPage: React.FC = () => {
                         href={tip.reddit_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-gray-500 hover:text-blue-400 transition-colors"
+                        className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
                   </div>
-                  <h4 className="outfit-text font-semibold text-white mb-2 text-sm">
+                  <h4 className="outfit-text font-semibold text-white mb-2 text-sm leading-tight">
                     {tip.title.length > 80 ? `${tip.title.substring(0, 80)}...` : tip.title}
                   </h4>
-                  <p className="outfit-text text-gray-300 text-sm leading-relaxed">
+                  <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed">
                     {tip.content.length > 200 ? `${tip.content.substring(0, 200)}...` : tip.content}
                   </p>
                 </div>
@@ -362,7 +362,7 @@ const TripDashboardPage: React.FC = () => {
                 <div className="text-center pt-4">
                   <button
                     onClick={() => navigate(`/tips?tripId=${tripId}`)}
-                    className="pixel-button-secondary"
+                    className="pixel-button-secondary w-full sm:w-auto"
                   >
                     VIEW ALL {tips.length} CITY TIPS
                   </button>
@@ -370,36 +370,36 @@ const TripDashboardPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4">🌐</div>
-              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING WISDOM</h3>
-              <p className="outfit-text text-gray-500">Searching for tips about {trip?.destination}...</p>
-              <p className="outfit-text text-gray-600 text-sm mt-2">This might take a moment as we gather insights from real travelers!</p>
+            <div className="text-center py-8 sm:py-12">
+              <div className="text-3xl sm:text-4xl mb-4">🌐</div>
+              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">GATHERING WISDOM</h3>
+              <p className="outfit-text text-gray-500 text-sm">Searching for tips about {trip?.destination}...</p>
+              <p className="outfit-text text-gray-600 text-xs sm:text-sm mt-2">This might take a moment as we gather insights from real travelers!</p>
             </div>
           )}
         </div>
 
-        <div className="pixel-card bg-gray-900 p-6 border-2 border-blue-500/20">
-          <div className="flex items-center gap-3 mb-6">
-            <Star className="h-6 w-6 text-yellow-400" />
-            <h3 className="pixel-text text-lg">BUCKET LIST GOALS</h3>
+        <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
+            <Star className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-400" />
+            <h3 className="pixel-text text-sm sm:text-lg">BUCKET LIST GOALS</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {bucketListGoals.map(goal => (
               <button
                 key={goal.id}
                 onClick={() => toggleBucketListGoal(goal.id)}
-                className={`p-4 border ${
+                className={`p-3 sm:p-4 border ${
                   goal.completed 
                     ? 'bg-green-500/10 border-green-500/20' 
                     : 'bg-gray-800 border-blue-500/20'
-                } hover:border-blue-500/40 transition-colors`}
+                } hover:border-blue-500/40 transition-colors text-left`}
               >
                 <div className="flex items-center">
-                  <div className={`w-5 h-5 border-2 ${
+                  <div className={`w-4 sm:w-5 h-4 sm:h-5 border-2 ${
                     goal.completed ? 'bg-green-500 border-green-500' : 'border-gray-500'
-                  } mr-3`} />
-                  <span className={`outfit-text text-left ${
+                  } mr-3 flex-shrink-0`} />
+                  <span className={`outfit-text text-sm sm:text-base ${
                     goal.completed ? 'text-gray-400 line-through' : 'text-white'
                   }`}>
                     {goal.title}

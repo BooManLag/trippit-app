@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2, ExternalLink, Target } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { ChecklistItem } from '../types';
@@ -122,6 +122,50 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
+  const toggleBucketItem = async (item: BucketListItem) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const existingProgress = userProgress.find(p => p.bucket_item_id === item.id);
+    
+    if (existingProgress) {
+      // Toggle completion
+      const newCompletedAt = existingProgress.completed_at ? null : new Date().toISOString();
+      
+      const { error } = await supabase
+        .from('user_bucket_progress')
+        .update({ completed_at: newCompletedAt })
+        .eq('user_id', user.id)
+        .eq('bucket_item_id', item.id);
+
+      if (!error) {
+        setUserProgress(prev => 
+          prev.map(p => 
+            p.bucket_item_id === item.id 
+              ? { ...p, completed_at: newCompletedAt }
+              : p
+          )
+        );
+      }
+    } else {
+      // Create new progress entry
+      const { data, error } = await supabase
+        .from('user_bucket_progress')
+        .insert({
+          user_id: user.id,
+          trip_id: tripId,
+          bucket_item_id: item.id,
+          completed_at: new Date().toISOString()
+        })
+        .select('bucket_item_id, completed_at')
+        .single();
+
+      if (!error && data) {
+        setUserProgress(prev => [...prev, data]);
+      }
+    }
+  };
+
   useEffect(() => {
     const fetchTripDetails = async () => {
       try {
@@ -240,6 +284,11 @@ const TripDashboardPage: React.FC = () => {
     ).slice(0, 4);
   };
 
+  const isItemCompleted = (itemId: string) => {
+    const progress = userProgress.find(p => p.bucket_item_id === itemId);
+    return progress?.completed_at !== null;
+  };
+
   const getCategoryIcon = (category: string) => {
     const icons: { [key: string]: string } = {
       'Documents': '📄',
@@ -273,6 +322,15 @@ const TripDashboardPage: React.FC = () => {
       case 'Easy': return 'text-green-400';
       case 'Medium': return 'text-yellow-400';
       case 'Hard': return 'text-red-400';
+      default: return 'text-blue-400';
+    }
+  };
+
+  const getCostColor = (cost: string) => {
+    switch (cost) {
+      case 'Free': return 'text-green-400';
+      case 'Budget': return 'text-yellow-400';
+      case 'Expensive': return 'text-red-400';
       default: return 'text-blue-400';
     }
   };
@@ -379,7 +437,7 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bucket List Section */}
+        {/* Bucket List Section - 2x2 Compact Cards */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
@@ -407,52 +465,61 @@ const TripDashboardPage: React.FC = () => {
               <span className="pixel-text text-purple-400 text-sm sm:text-base">LOADING EPIC EXPERIENCES...</span>
             </div>
           ) : incompleteBucketItems.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {incompleteBucketItems.map(item => (
-                <div key={item.id} className="pixel-card bg-gray-800 border border-purple-500/10 hover:border-purple-500/30 transition-all">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                      <span className="text-base sm:text-lg">{getCategoryIcon(item.category)}</span>
-                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                        <span className="pixel-text text-xs text-purple-400">{item.category}</span>
-                        <span className={`pixel-text text-xs ${getDifficultyColor(item.difficulty_level)}`}>
-                          {item.difficulty_level}
-                        </span>
-                        {item.source !== 'Trippit' && (
-                          <span className="pixel-text text-xs text-green-400">↑{item.score}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {incompleteBucketItems.map(item => {
+                const completed = isItemCompleted(item.id);
+                return (
+                  <div 
+                    key={item.id} 
+                    className={`pixel-card transition-all cursor-pointer ${
+                      completed 
+                        ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
+                        : 'bg-gray-800 border-purple-500/10 hover:border-purple-500/30'
+                    }`}
+                    onClick={() => toggleBucketItem(item)}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Checkbox */}
+                      <div className="flex-shrink-0 mt-1">
+                        {completed ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <Circle className="w-4 h-4 text-gray-500" />
                         )}
                       </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm">{getCategoryIcon(item.category)}</span>
+                          <span className="pixel-text text-xs text-purple-400">{item.category}</span>
+                          <span className={`pixel-text text-xs ${getDifficultyColor(item.difficulty_level)}`}>
+                            {item.difficulty_level}
+                          </span>
+                        </div>
+
+                        <h4 className={`outfit-text font-semibold mb-1 leading-tight text-xs break-words ${
+                          completed ? 'text-gray-400 line-through' : 'text-white'
+                        }`}>
+                          {item.title}
+                        </h4>
+
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="pixel-text text-xs text-gray-500">
+                            {item.source === 'Trippit' ? 'Trippit' : `r/${item.source.replace('r/', '')}`}
+                          </span>
+                          {item.source !== 'Trippit' && (
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 text-yellow-400" />
+                              <span className="pixel-text text-xs text-yellow-400">{item.score}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {item.reddit_url !== '#' && (
-                      <a 
-                        href={item.reddit_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
                   </div>
-                  <h4 className="outfit-text font-semibold text-white mb-2 text-sm leading-tight">
-                    {item.title}
-                  </h4>
-                  <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed">
-                    {item.description.length > 120 ? `${item.description.substring(0, 120)}...` : item.description}
-                  </p>
-                </div>
-              ))}
-              
-              {totalItems > 4 && (
-                <div className="text-center pt-4">
-                  <button
-                    onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
-                    className="pixel-button-secondary w-full sm:w-auto"
-                  >
-                    VIEW ALL {totalItems} EXPERIENCES
-                  </button>
-                </div>
-              )}
+                );
+              })}
             </div>
           ) : totalItems > 0 ? (
             <div className="text-center py-8 sm:py-12">
@@ -465,6 +532,17 @@ const TripDashboardPage: React.FC = () => {
               <div className="text-3xl sm:text-4xl mb-4">🎯</div>
               <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">GATHERING EXPERIENCES</h3>
               <p className="outfit-text text-gray-500 text-sm">Searching for epic bucket list items for {trip?.destination}...</p>
+            </div>
+          )}
+
+          {totalItems > 4 && incompleteBucketItems.length > 0 && (
+            <div className="text-center mt-4">
+              <button
+                onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
+                className="pixel-button-secondary"
+              >
+                VIEW ALL {totalItems} EXPERIENCES
+              </button>
             </div>
           )}
         </div>

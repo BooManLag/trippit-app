@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Star, Trophy, Target, MapPin, DollarSign, Zap, CheckCircle2, Plus, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface BucketListItem {
@@ -297,8 +297,8 @@ const BucketListPage: React.FC = () => {
           </div>
         )}
 
-        {/* Bucket List Items */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Bucket List Items - Compact Checklist Style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredItems.map(item => {
             const completed = isItemCompleted(item.id);
             return (
@@ -311,70 +311,54 @@ const BucketListPage: React.FC = () => {
                 }`}
                 onClick={() => toggleItemCompletion(item)}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                    <span className="text-lg sm:text-2xl flex-shrink-0">{getCategoryIcon(item.category)}</span>
-                    <div className="min-w-0 flex-1">
-                      <span className="pixel-text text-xs sm:text-sm text-blue-400 block">
-                        {item.category}
+                <div className="flex items-start gap-3">
+                  {/* Checkbox */}
+                  <div className="flex-shrink-0 mt-1">
+                    {completed ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-gray-500" />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">{getCategoryIcon(item.category)}</span>
+                      <span className="pixel-text text-xs text-blue-400">{item.category}</span>
+                      <span className={`pixel-text text-xs ${getDifficultyColor(item.difficulty_level)}`}>
+                        {item.difficulty_level}
                       </span>
-                      <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
-                        <span className={`pixel-text text-xs ${getDifficultyColor(item.difficulty_level)}`}>
-                          {item.difficulty_level}
-                        </span>
-                        <span className={`pixel-text text-xs ${getCostColor(item.estimated_cost)}`}>
-                          {item.estimated_cost}
-                        </span>
-                        {item.source !== 'Trippit' && (
-                          <span className="pixel-text text-xs text-green-400">
-                            ↑{item.score}
-                          </span>
-                        )}
-                      </div>
+                      <span className={`pixel-text text-xs ${getCostColor(item.estimated_cost)}`}>
+                        {item.estimated_cost}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {item.reddit_url !== '#' && (
-                      <a 
-                        href={item.reddit_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-gray-500 hover:text-blue-400 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-3 sm:w-4 h-3 sm:h-4" />
-                      </a>
+
+                    <h3 className={`outfit-text font-semibold mb-2 leading-tight text-sm break-words ${
+                      completed ? 'text-gray-400 line-through' : 'text-white'
+                    }`}>
+                      {item.title}
+                    </h3>
+
+                    {item.description && (
+                      <p className={`outfit-text text-xs leading-relaxed break-words ${
+                        completed ? 'text-gray-500' : 'text-gray-300'
+                      }`}>
+                        {item.description.length > 80 ? `${item.description.substring(0, 80)}...` : item.description}
+                      </p>
                     )}
-                    <CheckCircle2 
-                      className={`w-5 sm:w-6 h-5 sm:h-6 ${
-                        completed ? 'text-green-400' : 'text-gray-500'
-                      }`}
-                    />
-                  </div>
-                </div>
 
-                <h3 className={`outfit-text font-semibold mb-3 leading-tight text-sm sm:text-base break-words ${
-                  completed ? 'text-gray-400 line-through' : 'text-white'
-                }`}>
-                  {item.title}
-                </h3>
-
-                <p className={`outfit-text text-xs sm:text-sm leading-relaxed break-words ${
-                  completed ? 'text-gray-500' : 'text-gray-300'
-                }`}>
-                  {item.description}
-                </p>
-
-                <div className="mt-4 pt-3 border-t border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <span className="pixel-text text-xs text-gray-500">
-                      {item.source === 'Trippit' ? 'Trippit Curated' : `Community • ${item.source}`}
-                    </span>
-                    {completed && (
-                      <span className="pixel-text text-xs text-green-400">
-                        ✅ COMPLETED
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="pixel-text text-xs text-gray-500">
+                        {item.source === 'Trippit' ? 'Trippit' : `r/${item.source.replace('r/', '')}`}
                       </span>
-                    )}
+                      {item.source !== 'Trippit' && (
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-400" />
+                          <span className="pixel-text text-xs text-yellow-400">{item.score}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

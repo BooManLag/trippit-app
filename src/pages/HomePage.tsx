@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthModal from '../components/AuthModal';
 import { supabase } from '../lib/supabase';
@@ -6,6 +6,11 @@ import { supabase } from '../lib/supabase';
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
@@ -22,69 +27,132 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <main className="container mx-auto mobile-padding py-8 sm:py-12 max-w-4xl text-center">
-        <h1 className="pixel-text text-2xl sm:text-3xl lg:text-4xl mb-6 sm:mb-8 leading-relaxed">
-          MAKE EVERY<br />TRIP COUNT.
-        </h1>
+    <div className="min-h-screen bg-black text-white overflow-hidden">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-10 left-10 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-60"></div>
+        <div className="absolute top-32 right-20 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-40"></div>
+        <div className="absolute bottom-40 left-1/4 w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce opacity-50"></div>
+        <div className="absolute top-1/2 right-10 w-1 h-1 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+        <div className="absolute bottom-20 right-1/3 w-2 h-2 bg-pink-500 rounded-full animate-ping opacity-40"></div>
+      </div>
 
-        <h2 className="pixel-text text-lg sm:text-xl mb-6 sm:mb-8 text-yellow-400">
-          Fun. Memorable. Helpful.
-        </h2>
+      <main className="container mx-auto mobile-padding py-8 sm:py-12 max-w-4xl text-center relative z-10">
+        {/* Animated Logo/Title */}
+        <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className="relative inline-block mb-6 sm:mb-8">
+            {/* Glowing background effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg blur-xl opacity-30 animate-pulse"></div>
+            
+            {/* Main title with bouncy animation */}
+            <h1 className="relative pixel-text text-3xl sm:text-4xl lg:text-6xl leading-relaxed transform hover:scale-105 transition-transform duration-300 cursor-default">
+              <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>T</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '100ms' }}>r</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '200ms' }}>i</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>p</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '400ms' }}>p</span>
+              <span className="inline-block animate-bounce text-yellow-400" style={{ animationDelay: '500ms' }}>'</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '600ms' }}>i</span>
+              <span className="inline-block animate-bounce" style={{ animationDelay: '700ms' }}>t</span>
+            </h1>
+            
+            {/* Sparkle effects */}
+            <div className="absolute -top-2 -right-2 text-yellow-400 animate-spin">✨</div>
+            <div className="absolute -bottom-2 -left-2 text-blue-400 animate-pulse">🌟</div>
+          </div>
+        </div>
 
-        <p className="outfit-text text-base sm:text-lg mb-8 sm:mb-12 max-w-lg mx-auto text-gray-300 px-4">
-          Tripp'it helps first-time travelers prepare smarter and laugh through their mistakes.
-        </p>
+        {/* Animated subtitle */}
+        <div className={`transform transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <h2 className="pixel-text text-lg sm:text-xl mb-6 sm:mb-8 text-yellow-400 animate-pulse">
+            Fun. Memorable. Helpful.
+          </h2>
+        </div>
 
-        <div className="space-y-4 sm:space-y-6 mb-12 sm:mb-16 max-w-md mx-auto">
+        {/* Animated description */}
+        <div className={`transform transition-all duration-1000 delay-500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <p className="outfit-text text-base sm:text-lg mb-8 sm:mb-12 max-w-lg mx-auto text-gray-300 px-4">
+            Tripp'it helps first-time travelers prepare smarter and laugh through their mistakes.
+          </p>
+        </div>
+
+        {/* Animated action buttons */}
+        <div className={`space-y-4 sm:space-y-6 mb-12 sm:mb-16 max-w-md mx-auto transform transition-all duration-1000 delay-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <button
             onClick={() => navigate('/game')}
-            className="pixel-button-primary w-full"
+            className="pixel-button-primary w-full group relative overflow-hidden"
           >
-            🎮 SURVIVE A SCENARIO
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              🎮 SURVIVE A SCENARIO
+              <span className="group-hover:animate-bounce">🎯</span>
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
           </button>
 
           <button
             onClick={handlePlanTrip}
-            className="pixel-button-secondary w-full"
+            className="pixel-button-secondary w-full group relative overflow-hidden"
           >
-            ✈️ PLAN MY TRIP
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              ✈️ PLAN MY TRIP
+              <span className="group-hover:animate-bounce">🗺️</span>
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16">
+        {/* Animated feature cards */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-12 sm:mb-16 transform transition-all duration-1000 delay-900 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           {[
             {
               icon: "🤪",
               title: "Where'd I Go?",
-              description: "Survive hilarious travel disasters"
+              description: "Survive hilarious travel disasters",
+              delay: "0ms"
             },
             {
               icon: "📍",
               title: "City Mode",
-              description: "Get city-specific survival tips"
+              description: "Get city-specific survival tips",
+              delay: "100ms"
             },
             {
               icon: "🎒",
               title: "Trip Planner",
-              description: "Track trips and collect badges"
+              description: "Track trips and collect badges",
+              delay: "200ms"
             },
             {
               icon: "💬",
               title: "Travel Stories",
-              description: "Learn from epic fails and wins"
+              description: "Learn from epic fails and wins",
+              delay: "300ms"
             }
           ].map((feature, index) => (
-            <div key={index} className="pixel-card">
-              <div className="text-xl sm:text-2xl mb-2 sm:mb-3">{feature.icon}</div>
-              <h3 className="pixel-text text-xs sm:text-sm mb-2 text-white">{feature.title}</h3>
-              <p className="outfit-text text-gray-400 text-xs sm:text-sm">{feature.description}</p>
+            <div 
+              key={index} 
+              className="pixel-card group hover:scale-105 transition-all duration-300 cursor-pointer hover:border-blue-500/40"
+              style={{ animationDelay: feature.delay }}
+            >
+              <div className="text-xl sm:text-2xl mb-2 sm:mb-3 group-hover:animate-bounce transition-all duration-300">
+                {feature.icon}
+              </div>
+              <h3 className="pixel-text text-xs sm:text-sm mb-2 text-white group-hover:text-blue-400 transition-colors">
+                {feature.title}
+              </h3>
+              <p className="outfit-text text-gray-400 text-xs sm:text-sm group-hover:text-gray-300 transition-colors">
+                {feature.description}
+              </p>
             </div>
           ))}
         </div>
 
-        <section className="mb-12 sm:mb-16">
-          <h2 className="pixel-text text-lg sm:text-2xl mb-6 sm:mb-8">HOW IT WORKS</h2>
+        {/* Animated how it works section */}
+        <section className={`mb-12 sm:mb-16 transform transition-all duration-1000 delay-1100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <h2 className="pixel-text text-lg sm:text-2xl mb-6 sm:mb-8 relative">
+            HOW IT WORKS
+            <span className="absolute -top-2 -right-8 text-yellow-400 animate-spin text-sm">⚡</span>
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-left">
             {[
               "Choose your destination and trip dates",
@@ -92,22 +160,48 @@ const HomePage: React.FC = () => {
               "Survive your trip and earn badges",
               "Reflect, share, and prepare for the next one"
             ].map((step, index) => (
-              <div key={index} className="flex items-start pixel-card">
-                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm">{index + 1}.</span>
-                <p className="outfit-text text-gray-300 text-sm sm:text-base">{step}</p>
+              <div 
+                key={index} 
+                className="flex items-start pixel-card group hover:scale-105 transition-all duration-300 hover:border-green-500/40"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm group-hover:animate-pulse">
+                  {index + 1}.
+                </span>
+                <p className="outfit-text text-gray-300 text-sm sm:text-base group-hover:text-white transition-colors">
+                  {step}
+                </p>
               </div>
             ))}
           </div>
         </section>
+
+        {/* Floating call-to-action */}
+        <div className={`transform transition-all duration-1000 delay-1300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className="pixel-card bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 hover:scale-105">
+            <div className="text-2xl mb-4 animate-bounce">🚀</div>
+            <h3 className="pixel-text text-lg mb-4 text-purple-400">READY FOR ADVENTURE?</h3>
+            <p className="outfit-text text-gray-300 mb-6 text-sm">
+              Join thousands of travelers who've survived their trips with style!
+            </p>
+            <button
+              onClick={handlePlanTrip}
+              className="pixel-button-primary bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transform hover:scale-105 transition-all duration-300"
+            >
+              START YOUR JOURNEY 🌟
+            </button>
+          </div>
+        </div>
       </main>
 
-      <footer className="border-t border-gray-800 py-6 sm:py-8 text-center mobile-padding">
+      {/* Animated footer */}
+      <footer className={`border-t border-gray-800 py-6 sm:py-8 text-center mobile-padding transform transition-all duration-1000 delay-1500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
         <nav className="mb-4">
           {["About", "Contact", "Terms"].map((link, index) => (
             <a
               key={index}
               href={`/${link.toLowerCase()}`}
-              className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs"
+              className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs transition-all duration-300 hover:scale-110 inline-block"
             >
               {link}
             </a>
@@ -115,6 +209,7 @@ const HomePage: React.FC = () => {
         </nav>
         <p className="outfit-text text-gray-600 text-xs sm:text-sm">
           © Tripp'it 2025 – Travel with a twist.
+          <span className="inline-block ml-2 animate-pulse">✨</span>
         </p>
       </footer>
 

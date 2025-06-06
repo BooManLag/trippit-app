@@ -310,7 +310,7 @@ const TripDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-6 w-6 text-yellow-400" />
-              <h3 className="pixel-text text-lg">REDDIT TRAVEL TIPS</h3>
+              <h3 className="pixel-text text-lg">CITY TIPS</h3>
               {!loadingTips && tips.length > 0 && (
                 <span className="pixel-text text-sm text-green-400">
                   {tips.length} tips found
@@ -331,7 +331,7 @@ const TripDashboardPage: React.FC = () => {
           {loadingTips ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-              <span className="pixel-text text-blue-400">GATHERING REDDIT WISDOM...</span>
+              <span className="pixel-text text-blue-400">GATHERING WISDOM...</span>
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
@@ -370,7 +370,7 @@ const TripDashboardPage: React.FC = () => {
                     onClick={() => navigate(`/tips?tripId=${tripId}`)}
                     className="pixel-button-secondary"
                   >
-                    VIEW ALL {tips.length} REDDIT TIPS
+                    VIEW ALL {tips.length} CITY TIPS
                   </button>
                 </div>
               )}
@@ -378,8 +378,8 @@ const TripDashboardPage: React.FC = () => {
           ) : (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">🌐</div>
-              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING REDDIT WISDOM</h3>
-              <p className="outfit-text text-gray-500">Searching Reddit for tips about {trip?.destination}...</p>
+              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING WISDOM</h3>
+              <p className="outfit-text text-gray-500">Searching for tips about {trip?.destination}...</p>
               <p className="outfit-text text-gray-600 text-sm mt-2">This might take a moment as we gather insights from real travelers!</p>
             </div>
           )}

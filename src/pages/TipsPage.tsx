@@ -135,7 +135,7 @@ const TipsPage: React.FC = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="pixel-text text-2xl">REDDIT TRAVEL TIPS</h2>
+            <h2 className="pixel-text text-2xl">CITY TIPS</h2>
             {trip && (
               <p className="outfit-text text-gray-400 mt-1">
                 Real traveler advice for {trip.destination}
@@ -153,7 +153,7 @@ const TipsPage: React.FC = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search Reddit tips..."
+                placeholder="Search tips..."
                 className="w-full px-4 pr-10 py-3 bg-gray-800 border border-blue-500/20 text-white rounded-none outline-none"
               />
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
@@ -194,7 +194,7 @@ const TipsPage: React.FC = () => {
 
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="pixel-text text-sm text-green-400">
-              🔥 {filteredTips.length} Reddit tips found
+              🔥 {filteredTips.length} tips found
             </span>
             <span className="pixel-text text-sm text-blue-400">
               • Real traveler experiences
@@ -209,7 +209,7 @@ const TipsPage: React.FC = () => {
         {loading && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-            <span className="pixel-text text-blue-400">GATHERING REDDIT WISDOM...</span>
+            <span className="pixel-text text-blue-400">GATHERING WISDOM...</span>
           </div>
         )}
 
@@ -263,31 +263,31 @@ const TipsPage: React.FC = () => {
         {filteredTips.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">🔍</div>
-            <h3 className="pixel-text text-lg text-gray-400 mb-2">NO REDDIT TIPS FOUND</h3>
+            <h3 className="pixel-text text-lg text-gray-400 mb-2">NO TIPS FOUND</h3>
             <p className="outfit-text text-gray-500">
               Try adjusting your search or filter criteria
             </p>
           </div>
         )}
 
-        {/* Show message when no Reddit tips are available */}
+        {/* Show message when no tips are available */}
         {!loading && redditTips.length === 0 && (
           <div className="pixel-card bg-gray-900/50 p-6 mt-8 border-2 border-yellow-500/20">
             <div className="text-center">
               <span className="text-2xl mb-2 block">🌐</span>
-              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING REDDIT WISDOM</h3>
+              <h3 className="pixel-text text-yellow-400 mb-2">GATHERING WISDOM</h3>
               <p className="outfit-text text-gray-400 text-sm">
-                We're searching Reddit for the best traveler advice about {trip?.destination}. 
+                We're searching for the best traveler advice about {trip?.destination}. 
                 This might take a moment as we gather insights from real travelers!
               </p>
               <div className="mt-4 pixel-text text-xs text-blue-400">
-                Searching r/travel, r/solotravel, r/backpacking and location-specific subreddits...
+                Searching travel communities for location-specific tips...
               </div>
             </div>
           </div>
         )}
 
-        {/* Reddit Attribution */}
+        {/* Attribution */}
         {redditTips.length > 0 && (
           <div className="pixel-card bg-gray-900/30 p-4 mt-8 border border-gray-700">
             <div className="text-center">

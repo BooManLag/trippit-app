@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2, ExternalLink } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, ChevronRight, Star, Loader2, ExternalLink, Target } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { ChecklistItem } from '../types';
@@ -13,10 +13,21 @@ interface TripDetails {
   end_date: string;
 }
 
-interface BucketListGoal {
+interface BucketListItem {
   id: string;
   title: string;
-  completed: boolean;
+  description: string;
+  category: string;
+  difficulty_level: string;
+  estimated_cost: string;
+  source: string;
+  reddit_url: string;
+  score: number;
+}
+
+interface UserProgress {
+  bucket_item_id: string;
+  completed_at: string | null;
 }
 
 interface RedditTip {
@@ -37,20 +48,16 @@ const TripDashboardPage: React.FC = () => {
   const [tripCount, setTripCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
+  const [loadingBucketList, setLoadingBucketList] = useState(true);
   const [tips, setTips] = useState<RedditTip[]>([]);
+  const [bucketItems, setBucketItems] = useState<BucketListItem[]>([]);
+  const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [bucketListGoals, setBucketListGoals] = useState<BucketListGoal[]>([
-    { id: '1', title: 'Visit the main attractions', completed: false },
-    { id: '2', title: 'Try local cuisine', completed: false },
-    { id: '3', title: 'Take iconic photos', completed: false },
-    { id: '4', title: 'Learn basic phrases', completed: false }
-  ]);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
       setLoadingTips(true);
       
-      // Bearer token is now handled server-side via environment variables
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
         {
@@ -66,13 +73,52 @@ const TripDashboardPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch tips');
 
       const redditTips = await response.json();
-      console.log(`Received ${redditTips.length} tips for ${city}, ${country}`);
       setTips(redditTips);
     } catch (error) {
       console.error('Error fetching Reddit tips:', error);
       setTips([]);
     } finally {
       setLoadingTips(false);
+    }
+  };
+
+  const fetchBucketList = async (city: string, country: string) => {
+    try {
+      setLoadingBucketList(true);
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-bucket-list`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ city, country }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch bucket list');
+
+      const items = await response.json();
+      setBucketItems(items);
+
+      // Fetch user progress
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: progressData } = await supabase
+          .from('user_bucket_progress')
+          .select('bucket_item_id, completed_at')
+          .eq('user_id', user.id)
+          .eq('trip_id', tripId);
+
+        setUserProgress(progressData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching bucket list:', error);
+      setBucketItems([]);
+    } finally {
+      setLoadingBucketList(false);
     }
   };
 
@@ -99,7 +145,10 @@ const TripDashboardPage: React.FC = () => {
 
         setTrip(tripData);
         const [city, country] = tripData.destination.split(', ');
+        
+        // Fetch tips and bucket list in parallel
         fetchRedditTips(city, country);
+        fetchBucketList(city, country);
 
         // Fetch existing checklist items
         const { data: existingItems } = await supabase
@@ -111,13 +160,10 @@ const TripDashboardPage: React.FC = () => {
         if (existingItems && existingItems.length > 0) {
           setChecklistItems(existingItems);
         } else {
-          // If no items exist, we know we have default items to create
-          // Calculate the total from default checklist
           const totalDefaultItems = defaultChecklist.reduce((total, category) => {
             return total + category.items.length;
           }, 0);
           
-          // Create placeholder items to show correct count
           const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
             id: `placeholder_${index}`,
             category: 'Loading...',
@@ -172,14 +218,6 @@ const TripDashboardPage: React.FC = () => {
     return 'Trip in progress';
   };
 
-  const toggleBucketListGoal = (id: string) => {
-    setBucketListGoals(goals =>
-      goals.map(goal =>
-        goal.id === id ? { ...goal, completed: !goal.completed } : goal
-      )
-    );
-  };
-
   const getChecklistSummary = () => {
     const totalTasks = checklistItems.length;
     const completedTasks = checklistItems.filter(item => item.is_completed).length;
@@ -187,13 +225,28 @@ const TripDashboardPage: React.FC = () => {
     return { totalTasks, completedTasks, remainingTasks };
   };
 
-  // Get category icon for tips
+  const getBucketListSummary = () => {
+    const totalItems = bucketItems.length;
+    const completedItems = bucketItems.filter(item => 
+      userProgress.some(p => p.bucket_item_id === item.id && p.completed_at)
+    ).length;
+    const remainingItems = totalItems - completedItems;
+    return { totalItems, completedItems, remainingItems };
+  };
+
+  const getIncompleteBucketItems = () => {
+    return bucketItems.filter(item => 
+      !userProgress.some(p => p.bucket_item_id === item.id && p.completed_at)
+    ).slice(0, 4);
+  };
+
   const getCategoryIcon = (category: string) => {
     const icons: { [key: string]: string } = {
       'Documents': '📄',
       'Safety': '🛡️',
       'Budget': '💰',
       'Culture': '🌍',
+      'Food & Drink': '🍽️',
       'Food': '🍽️',
       'Transport': '🚌',
       'Technology': '📱',
@@ -204,9 +257,24 @@ const TripDashboardPage: React.FC = () => {
       'Mindset': '🧠',
       'Things to Do': '🎯',
       'General': '💡',
-      'Weather': '🌤️'
+      'Weather': '🌤️',
+      'Sightseeing': '👁️',
+      'Adventure': '🏔️',
+      'Shopping': '🛍️',
+      'Nightlife': '🌙',
+      'Nature': '🌿',
+      'Experience': '✨'
     };
     return icons[category] || '💡';
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'Easy': return 'text-green-400';
+      case 'Medium': return 'text-yellow-400';
+      case 'Hard': return 'text-red-400';
+      default: return 'text-blue-400';
+    }
   };
 
   if (loading) {
@@ -218,6 +286,8 @@ const TripDashboardPage: React.FC = () => {
   }
 
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
+  const { totalItems, completedItems, remainingItems } = getBucketListSummary();
+  const incompleteBucketItems = getIncompleteBucketItems();
 
   return (
     <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center">
@@ -258,6 +328,7 @@ const TripDashboardPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
+          {/* Checklist Card */}
           <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center gap-3">
@@ -289,6 +360,7 @@ const TripDashboardPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Game Card */}
           <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
             <div className="flex items-center gap-3 mb-4 sm:mb-6">
               <Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
@@ -307,7 +379,98 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Bucket List Section */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <Target className="h-5 sm:h-6 w-5 sm:w-6 text-purple-400" />
+              <h3 className="pixel-text text-sm sm:text-lg">BUCKET LIST</h3>
+              {!loadingBucketList && totalItems > 0 && (
+                <span className="pixel-text text-xs sm:text-sm text-purple-400">
+                  {completedItems}/{totalItems} completed
+                </span>
+              )}
+            </div>
+            {totalItems > 4 && (
+              <button
+                onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
+                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+              >
+                VIEW ALL {totalItems}
+              </button>
+            )}
+          </div>
+
+          {loadingBucketList ? (
+            <div className="flex items-center justify-center py-8 sm:py-12">
+              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-purple-500 animate-spin mr-3" />
+              <span className="pixel-text text-purple-400 text-sm sm:text-base">LOADING EPIC EXPERIENCES...</span>
+            </div>
+          ) : incompleteBucketItems.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {incompleteBucketItems.map(item => (
+                <div key={item.id} className="pixel-card bg-gray-800 border border-purple-500/10 hover:border-purple-500/30 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <span className="text-base sm:text-lg">{getCategoryIcon(item.category)}</span>
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                        <span className="pixel-text text-xs text-purple-400">{item.category}</span>
+                        <span className={`pixel-text text-xs ${getDifficultyColor(item.difficulty_level)}`}>
+                          {item.difficulty_level}
+                        </span>
+                        {item.source !== 'Trippit' && (
+                          <span className="pixel-text text-xs text-green-400">↑{item.score}</span>
+                        )}
+                      </div>
+                    </div>
+                    {item.reddit_url !== '#' && (
+                      <a 
+                        href={item.reddit_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                  <h4 className="outfit-text font-semibold text-white mb-2 text-sm leading-tight">
+                    {item.title}
+                  </h4>
+                  <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed">
+                    {item.description.length > 120 ? `${item.description.substring(0, 120)}...` : item.description}
+                  </p>
+                </div>
+              ))}
+              
+              {totalItems > 4 && (
+                <div className="text-center pt-4">
+                  <button
+                    onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
+                    className="pixel-button-secondary w-full sm:w-auto"
+                  >
+                    VIEW ALL {totalItems} EXPERIENCES
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : totalItems > 0 ? (
+            <div className="text-center py-8 sm:py-12">
+              <div className="text-3xl sm:text-4xl mb-4">🎉</div>
+              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">ALL EXPERIENCES COMPLETED!</h3>
+              <p className="outfit-text text-gray-500 text-sm">Amazing! You've completed all bucket list items for {trip?.destination}!</p>
+            </div>
+          ) : (
+            <div className="text-center py-8 sm:py-12">
+              <div className="text-3xl sm:text-4xl mb-4">🎯</div>
+              <h3 className="pixel-text text-purple-400 mb-2 text-sm sm:text-base">GATHERING EXPERIENCES</h3>
+              <p className="outfit-text text-gray-500 text-sm">Searching for epic bucket list items for {trip?.destination}...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Tips Section */}
+        <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-400" />
@@ -318,6 +481,14 @@ const TripDashboardPage: React.FC = () => {
                 </span>
               )}
             </div>
+            {tips.length > 3 && (
+              <button
+                onClick={() => navigate(`/tips?tripId=${tripId}`)}
+                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+              >
+                VIEW ALL {tips.length}
+              </button>
+            )}
           </div>
 
           {loadingTips ? (
@@ -357,57 +528,14 @@ const TripDashboardPage: React.FC = () => {
                   </p>
                 </div>
               ))}
-              
-              {tips.length > 3 && (
-                <div className="text-center pt-4">
-                  <button
-                    onClick={() => navigate(`/tips?tripId=${tripId}`)}
-                    className="pixel-button-secondary w-full sm:w-auto"
-                  >
-                    VIEW ALL {tips.length} CITY TIPS
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">🌐</div>
               <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">GATHERING WISDOM</h3>
               <p className="outfit-text text-gray-500 text-sm">Searching for tips about {trip?.destination}...</p>
-              <p className="outfit-text text-gray-600 text-xs sm:text-sm mt-2">This might take a moment as we gather insights from real travelers!</p>
             </div>
           )}
-        </div>
-
-        <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
-          <div className="flex items-center gap-3 mb-4 sm:mb-6">
-            <Star className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-400" />
-            <h3 className="pixel-text text-sm sm:text-lg">BUCKET LIST GOALS</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {bucketListGoals.map(goal => (
-              <button
-                key={goal.id}
-                onClick={() => toggleBucketListGoal(goal.id)}
-                className={`p-3 sm:p-4 border ${
-                  goal.completed 
-                    ? 'bg-green-500/10 border-green-500/20' 
-                    : 'bg-gray-800 border-blue-500/20'
-                } hover:border-blue-500/40 transition-colors text-left`}
-              >
-                <div className="flex items-center">
-                  <div className={`w-4 sm:w-5 h-4 sm:h-5 border-2 ${
-                    goal.completed ? 'bg-green-500 border-green-500' : 'border-gray-500'
-                  } mr-3 flex-shrink-0`} />
-                  <span className={`outfit-text text-sm sm:text-base ${
-                    goal.completed ? 'text-gray-400 line-through' : 'text-white'
-                  }`}>
-                    {goal.title}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>

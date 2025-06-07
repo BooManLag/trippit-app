@@ -18,6 +18,7 @@ const ChecklistPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState(defaultChecklist[0].name);
   const [loading, setLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -28,6 +29,11 @@ const ChecklistPage: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !tripId) {
         navigate('/');
+        return;
+      }
+
+      // Prevent multiple initializations
+      if (hasInitialized) {
         return;
       }
 
@@ -43,7 +49,6 @@ const ChecklistPage: React.FC = () => {
 
         if (error) {
           console.error('Error fetching checklist:', error);
-          setLoading(false);
           return;
         }
 
@@ -82,6 +87,8 @@ const ChecklistPage: React.FC = () => {
           // Items exist, use them directly
           setItems(existingItems);
         }
+
+        setHasInitialized(true);
       } catch (error) {
         console.error('Error in fetchItems:', error);
         setItems([]);
@@ -90,11 +97,11 @@ const ChecklistPage: React.FC = () => {
       }
     };
 
-    // Only fetch if we have both user and tripId
-    if (tripId) {
+    // Only fetch if we have both user and tripId and haven't initialized yet
+    if (tripId && !hasInitialized) {
       fetchItems();
     }
-  }, [tripId, navigate]);
+  }, [tripId, navigate, hasInitialized]);
 
   const toggleComplete = async (item: ChecklistItem) => {
     const { error } = await supabase

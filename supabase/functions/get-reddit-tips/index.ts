@@ -71,8 +71,13 @@ async function fetchTopPostsWithAuth(
     if (!response.ok) {
       if (response.status === 401 && bearerToken) {
         console.warn(`🔑 Bearer token expired or invalid for r/${subredditName}`);
-        // Fall back to public API
-        return fetchTopPostsWithAuth(subredditName, searchQuery, limit, timeframe);
+        // Don't retry with public API to avoid infinite recursion
+        return [];
+      }
+      if (response.status === 429) {
+        console.warn(`⏰ Rate limited for r/${subredditName}, waiting...`);
+        // Wait a bit and return empty for now
+        return [];
       }
       console.warn(`❌ Failed to fetch from r/${subredditName}: ${response.status}`);
       return [];
@@ -396,7 +401,7 @@ Deno.serve(async (req) => {
     if (bearerToken) {
       console.log(`🔑 Using Reddit bearer token from environment for enhanced access`);
     } else {
-      console.log('ℹ️ No Reddit bearer token in environment, using public API');
+      console.log('ℹ️ No Reddit bearer token in environment, using public API with rate limiting');
     }
 
     console.log(`🚀 Starting tip search for: ${city}, ${country} ${bearerToken ? '(authenticated)' : '(public)'}`);
@@ -426,23 +431,50 @@ Deno.serve(async (req) => {
     console.log(`🎯 Will search in subreddits: ${subreddits.join(', ')}`);
     console.log(`🔍 Using search queries: ${searchQueries.join(', ')}`);
 
-    // Create fetch promises
+    // Create fetch promises with delays to avoid rate limiting
     const fetchPromises: Promise<RedditPost[]>[] = [];
+    let delayMs = 0;
 
     // Search in travel subreddits with city-specific queries
     for (const subreddit of ['travel', 'solotravel']) {
       for (const query of searchQueries.slice(0, 2)) {
-        fetchPromises.push(fetchTopPostsWithAuth(subreddit, query, 8, 'year'));
+        fetchPromises.push(
+          new Promise(resolve => {
+            setTimeout(async () => {
+              try {
+                const result = await fetchTopPostsWithAuth(subreddit, query, 8, 'year');
+                resolve(result);
+              } catch (error) {
+                console.error(`Error fetching from ${subreddit}:`, error);
+                resolve([]);
+              }
+            }, delayMs);
+          })
+        );
+        delayMs += bearerToken ? 100 : 500; // Longer delays for public API
       }
     }
 
     // Search in location-specific subreddits
     const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking'].includes(s));
     for (const subreddit of locationSubreddits.slice(0, 2)) {
-      fetchPromises.push(fetchTopPostsWithAuth(subreddit, '', 10, 'year'));
+      fetchPromises.push(
+        new Promise(resolve => {
+          setTimeout(async () => {
+            try {
+              const result = await fetchTopPostsWithAuth(subreddit, '', 10, 'year');
+              resolve(result);
+            } catch (error) {
+              console.error(`Error fetching from ${subreddit}:`, error);
+              resolve([]);
+            }
+          }, delayMs);
+        })
+      );
+      delayMs += bearerToken ? 100 : 500;
     }
 
-    console.log(`📡 Created ${fetchPromises.length} fetch requests`);
+    console.log(`📡 Created ${fetchPromises.length} fetch requests with staggered delays`);
 
     // Execute all fetches with timeout
     const results = await Promise.allSettled(
@@ -450,7 +482,7 @@ Deno.serve(async (req) => {
         Promise.race([
           promise,
           new Promise<RedditPost[]>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 12000)
+            setTimeout(() => reject(new Error('Timeout')), 15000)
           )
         ])
       )

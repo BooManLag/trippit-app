@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -16,20 +18,55 @@ interface RedditPost {
   subreddit: string;
 }
 
+// Initialize Supabase client with service role key for token access
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
 // Enhanced cache with better key management
 const cache = new Map<string, any>();
-const CACHE_DURATION = 60 * 60 * 1000; // 1 hour for better caching
+const CACHE_DURATION = 3 * 60 * 60 * 1000; // 3 hours for better caching
 
-// Rate limiting tracker
-const rateLimitTracker = new Map<string, number>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_MINUTE = 10;
+// Rate limiting with Reddit header respect
+let lastRequestTime = 0;
+let remainingRequests = 60;
+let resetTime = 0;
 
-// Token refresh functionality
-let cachedToken: string | null = null;
-let tokenExpiry: number = 0;
+async function getValidRedditToken(): Promise<string | null> {
+  try {
+    // First check database for valid token
+    const { data, error } = await supabase
+      .from('tokens')
+      .select('access_token, expires_at')
+      .eq('service', 'reddit')
+      .single();
 
-async function refreshRedditToken(): Promise<string | null> {
+    if (error) {
+      console.log('📭 No stored Reddit token, will refresh');
+      await refreshToken();
+      return await getValidRedditToken();
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(data.expires_at);
+    
+    // If token expires in less than 5 minutes, refresh it
+    if (expiresAt.getTime() <= now.getTime() + (5 * 60 * 1000)) {
+      console.log('⏰ Token expiring soon, refreshing...');
+      await refreshToken();
+      return await getValidRedditToken();
+    }
+
+    console.log('✅ Using valid stored Reddit token');
+    return data.access_token;
+  } catch (error) {
+    console.error('❌ Error getting valid token:', error);
+    return null;
+  }
+}
+
+async function refreshToken(): Promise<void> {
   try {
     console.log('🔄 Refreshing Reddit token...');
     
@@ -44,54 +81,54 @@ async function refreshRedditToken(): Promise<string | null> {
       }
     );
 
-    if (response.ok) {
-      const result = await response.json();
-      if (result.success) {
-        console.log('✅ Token refreshed successfully');
-        // In production, you'd get the actual token from the response
-        // For now, we'll use the environment variable
-        return Deno.env.get('REDDIT_BEARER_TOKEN');
-      }
+    if (!response.ok) {
+      throw new Error(`Token refresh failed: ${response.status}`);
     }
-    
-    console.warn('⚠️ Token refresh failed, using existing token');
-    return Deno.env.get('REDDIT_BEARER_TOKEN');
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(`Token refresh unsuccessful: ${result.error}`);
+    }
+
+    console.log('✅ Token refreshed successfully');
   } catch (error) {
     console.error('❌ Error refreshing token:', error);
-    return Deno.env.get('REDDIT_BEARER_TOKEN');
+    throw error;
   }
 }
 
-async function getValidToken(): Promise<string | null> {
+function respectRateLimit(headers: Headers): void {
+  const remaining = headers.get('x-ratelimit-remaining');
+  const reset = headers.get('x-ratelimit-reset');
+  const used = headers.get('x-ratelimit-used');
+
+  if (remaining) remainingRequests = parseInt(remaining, 10);
+  if (reset) resetTime = Date.now() + (parseInt(reset, 10) * 1000);
+  
+  console.log(`📊 Rate limit: ${remainingRequests} remaining, resets in ${reset}s, used: ${used}`);
+}
+
+async function waitForRateLimit(): Promise<void> {
   const now = Date.now();
   
-  // Check if we need to refresh the token (every 3.5 hours)
-  if (!cachedToken || now > tokenExpiry) {
-    console.log('🔑 Token expired or missing, refreshing...');
-    cachedToken = await refreshRedditToken();
-    tokenExpiry = now + (3.5 * 60 * 60 * 1000); // 3.5 hours
+  // Respect minimum delay between requests
+  const timeSinceLastRequest = now - lastRequestTime;
+  const minDelay = 1000; // 1 second minimum between requests
+  
+  if (timeSinceLastRequest < minDelay) {
+    const waitTime = minDelay - timeSinceLastRequest;
+    console.log(`⏰ Waiting ${waitTime}ms for rate limit...`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
   }
   
-  return cachedToken;
-}
-
-function isRateLimited(): boolean {
-  const now = Date.now();
-  const windowStart = now - RATE_LIMIT_WINDOW;
-  
-  // Clean old entries
-  for (const [timestamp] of rateLimitTracker) {
-    if (parseInt(timestamp) < windowStart) {
-      rateLimitTracker.delete(timestamp);
-    }
+  // If we're low on requests, wait for reset
+  if (remainingRequests < 5 && resetTime > now) {
+    const waitTime = resetTime - now;
+    console.log(`⏰ Low on requests (${remainingRequests}), waiting ${waitTime}ms for reset...`);
+    await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 60000))); // Max 1 minute wait
   }
   
-  // Check if we're over the limit
-  return rateLimitTracker.size >= MAX_REQUESTS_PER_MINUTE;
-}
-
-function recordRequest(): void {
-  rateLimitTracker.set(Date.now().toString(), 1);
+  lastRequestTime = Date.now();
 }
 
 async function fetchTopPostsWithAuth(
@@ -107,14 +144,11 @@ async function fetchTopPostsWithAuth(
     return cached.data;
   }
 
-  // Check rate limiting
-  if (isRateLimited()) {
-    console.warn(`⏰ Rate limited, skipping request to r/${subredditName}`);
-    return [];
-  }
+  // Wait for rate limit before making request
+  await waitForRateLimit();
 
-  // Get valid bearer token (auto-refresh if needed)
-  const bearerToken = await getValidToken();
+  // Get valid bearer token from database
+  const bearerToken = await getValidRedditToken();
   
   // Use OAuth endpoints if we have a token, otherwise fall back to public API
   const baseUrl = bearerToken ? 'https://oauth.reddit.com' : 'https://api.reddit.com';
@@ -132,9 +166,6 @@ async function fetchTopPostsWithAuth(
   console.log(`🔍 Fetching from ${bearerToken ? 'OAuth' : 'public'} API: r/${subredditName}`);
   
   try {
-    // Record this request for rate limiting
-    recordRequest();
-
     const headers: Record<string, string> = {
       'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLagg)',
       'Accept': 'application/json',
@@ -142,25 +173,28 @@ async function fetchTopPostsWithAuth(
 
     if (bearerToken) {
       headers['Authorization'] = `Bearer ${bearerToken}`;
-      console.log('🔑 Using bearer token (auto-refreshed)');
+      console.log('🔑 Using stored bearer token');
     } else {
-      console.log('ℹ️ No bearer token available, using public API with strict rate limiting');
+      console.log('ℹ️ No bearer token available, using public API');
     }
 
     const response = await fetch(url, { headers });
 
     console.log(`📡 Response status: ${response.status} ${response.statusText}`);
 
+    // Respect Reddit's rate limit headers
+    respectRateLimit(response.headers);
+
     if (!response.ok) {
       if (response.status === 401 && bearerToken) {
-        console.warn(`🔑 Bearer token invalid for r/${subredditName}, will refresh on next request`);
-        // Reset token cache to force refresh on next request
-        cachedToken = null;
-        tokenExpiry = 0;
-        return [];
+        console.warn(`🔑 Bearer token invalid for r/${subredditName}, refreshing...`);
+        await refreshToken();
+        return []; // Return empty for this request, next request will use new token
       }
       if (response.status === 429) {
-        console.warn(`⏰ Rate limited for r/${subredditName} - backing off`);
+        const retryAfter = parseInt(response.headers.get('retry-after') || '60', 10);
+        console.warn(`⏰ Rate limited for r/${subredditName} - backing off ${retryAfter}s`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         return [];
       }
       if (response.status === 403) {
@@ -505,19 +539,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get valid token (auto-refresh if needed)
-    const bearerToken = await getValidToken();
-    
-    if (bearerToken) {
-      console.log(`🔑 Using Reddit bearer token (auto-refreshed) for enhanced access`);
-    } else {
-      console.log('ℹ️ No Reddit bearer token available, using public API with strict rate limiting');
-    }
-
-    console.log(`🚀 Starting tip search for: ${city}, ${country} ${bearerToken ? '(authenticated)' : '(public)'}`);
+    console.log(`🚀 Starting tip search for: ${city}, ${country} with database-managed tokens`);
 
     // Check cache first with longer duration
-    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_${bearerToken ? 'auth' : 'public'}`;
+    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_v2`;
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -547,11 +572,6 @@ Deno.serve(async (req) => {
 
     // Fetch from travel subreddits first (most reliable)
     for (const subreddit of ['travel', 'solotravel']) {
-      if (isRateLimited()) {
-        console.log(`⏰ Rate limited, skipping remaining requests`);
-        break;
-      }
-
       try {
         console.log(`🔍 Searching r/${subreddit} for "${city} tips"`);
         const posts = await fetchTopPostsWithAuth(subreddit, `${city} tips`, 5, 'year');
@@ -568,10 +588,8 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Add delay between requests to avoid rate limiting
-        if (!bearerToken) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay for public API
-        }
+        // Add delay between requests to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
       } catch (error) {
         console.error(`❌ Error fetching from r/${subreddit}:`, error);
       }

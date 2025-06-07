@@ -39,7 +39,7 @@ const TripDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tripId } = useParams();
   const [trip, setTrip] = useState<TripDetails | null>(null);
-  const [tripCount, setTripCount] = useState<number>(0);
+  const [tripNumber, setTripNumber] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
@@ -207,12 +207,19 @@ const TripDashboardPage: React.FC = () => {
           setChecklistItems(placeholderItems);
         }
 
-        const { count } = await supabase
+        // Get all user trips ordered by creation date to determine this trip's number
+        const { data: allTrips } = await supabase
           .from('trips')
-          .select('*', { count: 'exact' })
-          .eq('user_id', user.id);
+          .select('id, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
 
-        setTripCount(count || 0);
+        if (allTrips) {
+          // Find the index of current trip in the chronologically ordered list
+          const currentTripIndex = allTrips.findIndex(t => t.id === tripId);
+          setTripNumber(currentTripIndex + 1); // +1 because arrays are 0-indexed
+        }
+
       } catch (error) {
         console.error('Error fetching trip details:', error);
         navigate('/my-trips');
@@ -323,10 +330,10 @@ const TripDashboardPage: React.FC = () => {
             <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
             <div className="flex-1">
               <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">
-                TRIP #{tripCount}
+                TRIP #{tripNumber}
               </h3>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
-                {tripCount === 1 ? "Congratulations on starting your first adventure!" : "Keep exploring, adventurer!"}
+                {tripNumber === 1 ? "Congratulations on starting your first adventure!" : "Keep exploring, adventurer!"}
               </p>
             </div>
           </div>

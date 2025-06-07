@@ -70,8 +70,11 @@ async function refreshToken(): Promise<void> {
   try {
     console.log('🔄 Refreshing Reddit token...');
     
+    // Use the correct Supabase Functions URL
+    const functionsUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.functions.supabase.co');
+    
     const response = await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/functions/v1/refresh-reddit-token`,
+      `${functionsUrl}/refresh-reddit-token`,
       {
         method: 'POST',
         headers: {
@@ -81,11 +84,17 @@ async function refreshToken(): Promise<void> {
       }
     );
 
+    console.log(`📡 Refresh response status: ${response.status}`);
+    
     if (!response.ok) {
-      throw new Error(`Token refresh failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Token refresh failed: ${response.status} - ${errorText}`);
+      throw new Error(`Token refresh failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
+    console.log('📋 Refresh result:', result);
+    
     if (!result.success) {
       throw new Error(`Token refresh unsuccessful: ${result.error}`);
     }
@@ -93,7 +102,164 @@ async function refreshToken(): Promise<void> {
     console.log('✅ Token refreshed successfully');
   } catch (error) {
     console.error('❌ Error refreshing token:', error);
-    throw error;
+    // Don't throw here - we'll fall back to public API
+  }
+}
+
+// Embedded token refresh logic to avoid external function calls
+async function ensureValidTokenDirect(): Promise<string | null> {
+  try {
+    // Check database for valid token
+    const { data, error } = await supabase
+      .from('tokens')
+      .select('access_token, refresh_token, expires_at')
+      .eq('service', 'reddit')
+      .single();
+
+    if (error) {
+      console.log('📭 No stored Reddit token, creating new one...');
+      return await createNewRedditToken();
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(data.expires_at);
+    
+    // If token is still valid (with 5 minute buffer), use it
+    if (expiresAt.getTime() > now.getTime() + (5 * 60 * 1000)) {
+      console.log('✅ Using valid stored token');
+      return data.access_token;
+    }
+    
+    // Token is expired, try to refresh or create new
+    console.log('🔄 Token expired, refreshing...');
+    if (data.refresh_token) {
+      const newToken = await refreshRedditTokenDirect(data.refresh_token);
+      if (newToken) return newToken;
+    }
+    
+    // Refresh failed, create new token
+    return await createNewRedditToken();
+  } catch (error) {
+    console.error('❌ Error ensuring valid token:', error);
+    return null;
+  }
+}
+
+async function createNewRedditToken(): Promise<string | null> {
+  try {
+    console.log('🆕 Creating new Reddit token with password grant...');
+    
+    const REDDIT_USERNAME = 'BooManLagg';
+    const REDDIT_PASSWORD = 'Joshua152foe!';
+    const REDDIT_CLIENT_ID = 'VqkcjSqTaWGym_Y1UNGt5A';
+    const REDDIT_CLIENT_SECRET = 'mfmgrvATE39u-S5B-oGWvvFGyNxtEA';
+    
+    const auth = btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`);
+    const params = new URLSearchParams();
+    params.append('grant_type', 'password');
+    params.append('username', REDDIT_USERNAME);
+    params.append('password', REDDIT_PASSWORD);
+    params.append('scope', 'read');
+    params.append('duration', 'permanent');
+
+    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLagg)',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Password grant failed: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`✅ Successfully obtained new token`);
+    
+    // Store the token
+    const expiresAt = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
+    
+    const { error } = await supabase
+      .from('tokens')
+      .upsert({
+        service: 'reddit',
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || null,
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('❌ Error storing token:', error);
+      return data.access_token; // Still return the token even if storage failed
+    }
+
+    console.log(`✅ Token stored successfully`);
+    return data.access_token;
+  } catch (error) {
+    console.error('💥 Error creating new token:', error);
+    return null;
+  }
+}
+
+async function refreshRedditTokenDirect(refreshToken: string): Promise<string | null> {
+  try {
+    console.log('🔄 Using refresh token to get new access token...');
+    
+    const REDDIT_CLIENT_ID = 'VqkcjSqTaWGym_Y1UNGt5A';
+    const REDDIT_CLIENT_SECRET = 'mfmgrvATE39u-S5B-oGWvvFGyNxtEA';
+    
+    const auth = btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`);
+    const params = new URLSearchParams();
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', refreshToken);
+
+    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLagg)',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Refresh token request failed: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`✅ Successfully refreshed token`);
+    
+    // Store the refreshed token
+    const expiresAt = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
+    
+    const { error } = await supabase
+      .from('tokens')
+      .update({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || refreshToken,
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString()
+      })
+      .eq('service', 'reddit');
+
+    if (error) {
+      console.error('❌ Error updating token:', error);
+      return data.access_token; // Still return the token even if storage failed
+    }
+
+    return data.access_token;
+  } catch (error) {
+    console.error('💥 Error refreshing token:', error);
+    return null;
   }
 }
 
@@ -113,7 +279,7 @@ async function waitForRateLimit(): Promise<void> {
   
   // Respect minimum delay between requests
   const timeSinceLastRequest = now - lastRequestTime;
-  const minDelay = 1000; // 1 second minimum between requests
+  const minDelay = 2000; // 2 seconds minimum between requests
   
   if (timeSinceLastRequest < minDelay) {
     const waitTime = minDelay - timeSinceLastRequest;
@@ -123,9 +289,9 @@ async function waitForRateLimit(): Promise<void> {
   
   // If we're low on requests, wait for reset
   if (remainingRequests < 5 && resetTime > now) {
-    const waitTime = resetTime - now;
+    const waitTime = Math.min(resetTime - now, 60000); // Max 1 minute wait
     console.log(`⏰ Low on requests (${remainingRequests}), waiting ${waitTime}ms for reset...`);
-    await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 60000))); // Max 1 minute wait
+    await new Promise(resolve => setTimeout(resolve, waitTime));
   }
   
   lastRequestTime = Date.now();
@@ -147,8 +313,8 @@ async function fetchTopPostsWithAuth(
   // Wait for rate limit before making request
   await waitForRateLimit();
 
-  // Get valid bearer token from database
-  const bearerToken = await getValidRedditToken();
+  // Get valid bearer token using embedded logic
+  const bearerToken = await ensureValidTokenDirect();
   
   // Use OAuth endpoints if we have a token, otherwise fall back to public API
   const baseUrl = bearerToken ? 'https://oauth.reddit.com' : 'https://api.reddit.com';
@@ -187,9 +353,10 @@ async function fetchTopPostsWithAuth(
 
     if (!response.ok) {
       if (response.status === 401 && bearerToken) {
-        console.warn(`🔑 Bearer token invalid for r/${subredditName}, refreshing...`);
-        await refreshToken();
-        return []; // Return empty for this request, next request will use new token
+        console.warn(`🔑 Bearer token invalid for r/${subredditName}, will refresh on next request`);
+        // Clear the invalid token from database
+        await supabase.from('tokens').delete().eq('service', 'reddit');
+        return [];
       }
       if (response.status === 429) {
         const retryAfter = parseInt(response.headers.get('retry-after') || '60', 10);
@@ -542,7 +709,7 @@ Deno.serve(async (req) => {
     console.log(`🚀 Starting tip search for: ${city}, ${country} with database-managed tokens`);
 
     // Check cache first with longer duration
-    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_v2`;
+    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_v3`;
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -589,7 +756,7 @@ Deno.serve(async (req) => {
         }
 
         // Add delay between requests to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
       } catch (error) {
         console.error(`❌ Error fetching from r/${subreddit}:`, error);
       }

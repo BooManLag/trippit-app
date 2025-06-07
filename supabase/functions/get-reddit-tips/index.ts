@@ -18,7 +18,31 @@ interface RedditPost {
 
 // Enhanced cache with better key management
 const cache = new Map<string, any>();
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour for better caching
+
+// Rate limiting tracker
+const rateLimitTracker = new Map<string, number>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 10;
+
+function isRateLimited(): boolean {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW;
+  
+  // Clean old entries
+  for (const [timestamp] of rateLimitTracker) {
+    if (parseInt(timestamp) < windowStart) {
+      rateLimitTracker.delete(timestamp);
+    }
+  }
+  
+  // Check if we're over the limit
+  return rateLimitTracker.size >= MAX_REQUESTS_PER_MINUTE;
+}
+
+function recordRequest(): void {
+  rateLimitTracker.set(Date.now().toString(), 1);
+}
 
 async function fetchTopPostsWithAuth(
   subredditName: string,
@@ -31,6 +55,12 @@ async function fetchTopPostsWithAuth(
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     console.log(`📦 Cache hit for ${cacheKey} - returning ${cached.data.length} posts`);
     return cached.data;
+  }
+
+  // Check rate limiting
+  if (isRateLimited()) {
+    console.warn(`⏰ Rate limited, skipping request to r/${subredditName}`);
+    return [];
   }
 
   // Get bearer token from environment
@@ -49,9 +79,12 @@ async function fetchTopPostsWithAuth(
       `limit=${limit}&t=${timeframe}`;
   }
 
-  console.log(`🔍 Fetching from ${bearerToken ? 'OAuth' : 'public'} API: ${url}`);
+  console.log(`🔍 Fetching from ${bearerToken ? 'OAuth' : 'public'} API: r/${subredditName}`);
   
   try {
+    // Record this request for rate limiting
+    recordRequest();
+
     const headers: Record<string, string> = {
       'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLaggg)',
       'Accept': 'application/json',
@@ -61,7 +94,7 @@ async function fetchTopPostsWithAuth(
       headers['Authorization'] = `Bearer ${bearerToken}`;
       console.log('🔑 Using bearer token from environment');
     } else {
-      console.log('ℹ️ No bearer token found, using public API');
+      console.log('ℹ️ No bearer token found, using public API with strict rate limiting');
     }
 
     const response = await fetch(url, { headers });
@@ -71,12 +104,14 @@ async function fetchTopPostsWithAuth(
     if (!response.ok) {
       if (response.status === 401 && bearerToken) {
         console.warn(`🔑 Bearer token expired or invalid for r/${subredditName}`);
-        // Don't retry with public API to avoid infinite recursion
         return [];
       }
       if (response.status === 429) {
-        console.warn(`⏰ Rate limited for r/${subredditName}, waiting...`);
-        // Wait a bit and return empty for now
+        console.warn(`⏰ Rate limited for r/${subredditName} - backing off`);
+        return [];
+      }
+      if (response.status === 403) {
+        console.warn(`🚫 Access forbidden for r/${subredditName} - may be private or banned`);
         return [];
       }
       console.warn(`❌ Failed to fetch from r/${subredditName}: ${response.status}`);
@@ -112,7 +147,7 @@ async function fetchTopPostsWithAuth(
 
     console.log(`✅ Filtered posts from r/${subredditName}: ${posts.length} (from ${rawPosts.length} raw)`);
 
-    // Cache the result
+    // Cache the result for longer
     cache.set(cacheKey, { data: posts, timestamp: Date.now() });
     return posts;
   } catch (err) {
@@ -122,7 +157,7 @@ async function fetchTopPostsWithAuth(
 }
 
 async function generateOptimizedSubreddits(city: string, country: string): Promise<string[]> {
-  const baseSubreddits = ['travel', 'solotravel', 'backpacking'];
+  const baseSubreddits = ['travel', 'solotravel'];
   
   const cityClean = city.toLowerCase().replace(/[^a-z]/g, '');
   const countryClean = country.toLowerCase().replace(/[^a-z]/g, '');
@@ -142,7 +177,7 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
   
   locationSubreddits.push(...countryVariations.filter(name => name.length >= 2));
   
-  const finalSubreddits = [...baseSubreddits, ...locationSubreddits.slice(0, 2)];
+  const finalSubreddits = [...baseSubreddits, ...locationSubreddits.slice(0, 1)]; // Reduced to avoid rate limits
   console.log(`🎯 Target subreddits: ${finalSubreddits.join(', ')}`);
   
   return finalSubreddits;
@@ -361,6 +396,28 @@ function generateFallbackTips(city: string, country: string): any[] {
       score: 12,
       created_at: new Date().toISOString(),
       relevance_score: 40
+    },
+    {
+      id: `fallback_${city}_4`,
+      category: 'Culture',
+      title: `Cultural etiquette in ${city}`,
+      content: `Learn basic greetings and cultural norms for ${city}. Understanding local customs will enhance your travel experience and help you connect with locals.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 9,
+      created_at: new Date().toISOString(),
+      relevance_score: 42
+    },
+    {
+      id: `fallback_${city}_5`,
+      category: 'Transport',
+      title: `Getting around ${city}`,
+      content: `Research public transportation options in ${city}. Download local transport apps and consider getting a transit card for convenience.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 7,
+      created_at: new Date().toISOString(),
+      relevance_score: 38
     }
   ];
 
@@ -401,12 +458,12 @@ Deno.serve(async (req) => {
     if (bearerToken) {
       console.log(`🔑 Using Reddit bearer token from environment for enhanced access`);
     } else {
-      console.log('ℹ️ No Reddit bearer token in environment, using public API with rate limiting');
+      console.log('ℹ️ No Reddit bearer token in environment, using public API with strict rate limiting');
     }
 
     console.log(`🚀 Starting tip search for: ${city}, ${country} ${bearerToken ? '(authenticated)' : '(public)'}`);
 
-    // Check cache first
+    // Check cache first with longer duration
     const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_${bearerToken ? 'auth' : 'public'}`;
     const cached = cache.get(cacheKey);
     
@@ -424,94 +481,50 @@ Deno.serve(async (req) => {
     const subreddits = await generateOptimizedSubreddits(city, country);
     const searchQueries = [
       `${city} tips`,
-      `${city} travel`,
-      `visiting ${city}`
+      `${city} travel advice`
     ];
 
     console.log(`🎯 Will search in subreddits: ${subreddits.join(', ')}`);
     console.log(`🔍 Using search queries: ${searchQueries.join(', ')}`);
 
-    // Create fetch promises with delays to avoid rate limiting
-    const fetchPromises: Promise<RedditPost[]>[] = [];
-    let delayMs = 0;
-
-    // Search in travel subreddits with city-specific queries
-    for (const subreddit of ['travel', 'solotravel']) {
-      for (const query of searchQueries.slice(0, 2)) {
-        fetchPromises.push(
-          new Promise(resolve => {
-            setTimeout(async () => {
-              try {
-                const result = await fetchTopPostsWithAuth(subreddit, query, 8, 'year');
-                resolve(result);
-              } catch (error) {
-                console.error(`Error fetching from ${subreddit}:`, error);
-                resolve([]);
-              }
-            }, delayMs);
-          })
-        );
-        delayMs += bearerToken ? 100 : 500; // Longer delays for public API
-      }
-    }
-
-    // Search in location-specific subreddits
-    const locationSubreddits = subreddits.filter(s => !['travel', 'solotravel', 'backpacking'].includes(s));
-    for (const subreddit of locationSubreddits.slice(0, 2)) {
-      fetchPromises.push(
-        new Promise(resolve => {
-          setTimeout(async () => {
-            try {
-              const result = await fetchTopPostsWithAuth(subreddit, '', 10, 'year');
-              resolve(result);
-            } catch (error) {
-              console.error(`Error fetching from ${subreddit}:`, error);
-              resolve([]);
-            }
-          }, delayMs);
-        })
-      );
-      delayMs += bearerToken ? 100 : 500;
-    }
-
-    console.log(`📡 Created ${fetchPromises.length} fetch requests with staggered delays`);
-
-    // Execute all fetches with timeout
-    const results = await Promise.allSettled(
-      fetchPromises.map(promise => 
-        Promise.race([
-          promise,
-          new Promise<RedditPost[]>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
-        ])
-      )
-    );
-
-    // Process results
+    // Create sequential fetch strategy to avoid rate limiting
     const allTips = [];
     let successfulFetches = 0;
     let totalPosts = 0;
-    
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i];
-      if (result.status === 'fulfilled') {
-        const posts = result.value;
-        successfulFetches++;
-        totalPosts += posts.length;
-        console.log(`✅ Fetch ${i + 1}: Got ${posts.length} posts`);
+
+    // Fetch from travel subreddits first (most reliable)
+    for (const subreddit of ['travel', 'solotravel']) {
+      if (isRateLimited()) {
+        console.log(`⏰ Rate limited, skipping remaining requests`);
+        break;
+      }
+
+      try {
+        console.log(`🔍 Searching r/${subreddit} for "${city} tips"`);
+        const posts = await fetchTopPostsWithAuth(subreddit, `${city} tips`, 5, 'year');
         
-        // Extract tips from each post
-        for (const post of posts.slice(0, 3)) {
-          const tips = extractTipsFromPost(post, city);
-          allTips.push(...tips);
+        if (posts.length > 0) {
+          successfulFetches++;
+          totalPosts += posts.length;
+          console.log(`✅ Got ${posts.length} posts from r/${subreddit}`);
+          
+          // Extract tips from each post
+          for (const post of posts.slice(0, 2)) {
+            const tips = extractTipsFromPost(post, city);
+            allTips.push(...tips);
+          }
         }
-      } else {
-        console.log(`❌ Fetch ${i + 1} failed: ${result.reason}`);
+
+        // Add delay between requests to avoid rate limiting
+        if (!bearerToken) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay for public API
+        }
+      } catch (error) {
+        console.error(`❌ Error fetching from r/${subreddit}:`, error);
       }
     }
 
-    console.log(`📊 SUMMARY: ${successfulFetches}/${results.length} successful fetches, ${totalPosts} total posts, ${allTips.length} raw tips extracted`);
+    console.log(`📊 SUMMARY: ${successfulFetches} successful fetches, ${totalPosts} total posts, ${allTips.length} raw tips extracted`);
 
     // Process and filter tips
     let processedTips = deduplicateTips(allTips)
@@ -529,25 +542,32 @@ Deno.serve(async (req) => {
         const bTotal = (b.relevance_score || 0) + Math.log(b.score + 1) * 3;
         return bTotal - aTotal;
       })
-      .slice(0, 30);
+      .slice(0, 15); // Reduced to focus on quality
 
-    // If we got very few tips, supplement with fallback tips
-    if (processedTips.length < 3) {
-      console.log(`⚠️ Only got ${processedTips.length} tips from Reddit, adding fallback tips`);
-      const fallbackTips = generateFallbackTips(city, country);
-      processedTips = [...processedTips, ...fallbackTips].slice(0, 30);
-    }
+    // Always supplement with fallback tips for reliability
+    console.log(`💡 Adding fallback tips to ensure good user experience`);
+    const fallbackTips = generateFallbackTips(city, country);
+    
+    // Merge tips, prioritizing Reddit tips but ensuring we have good coverage
+    const finalTips = [...processedTips, ...fallbackTips]
+      .slice(0, 20)
+      .sort((a, b) => {
+        // Prioritize Reddit tips but mix in fallbacks
+        if (a.source === 'Trippit' && b.source !== 'Trippit') return 1;
+        if (a.source !== 'Trippit' && b.source === 'Trippit') return -1;
+        return b.score - a.score;
+      });
 
-    console.log(`✅ FINAL RESULT: ${processedTips.length} quality tips for ${city}, ${country}`);
+    console.log(`✅ FINAL RESULT: ${finalTips.length} quality tips for ${city}, ${country} (${processedTips.length} from Reddit, ${fallbackTips.length} fallback)`);
 
-    // Cache the result
+    // Cache the result with longer duration
     cache.set(cacheKey, {
-      data: processedTips,
+      data: finalTips,
       timestamp: Date.now()
     });
 
     return new Response(
-      JSON.stringify(processedTips),
+      JSON.stringify(finalTips),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }

@@ -1,9 +1,9 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 interface RedditPost {
   id: string;
@@ -172,6 +172,8 @@ async function createNewRedditToken(): Promise<string | null> {
       body: params.toString(),
     });
 
+    console.log(`📡 Reddit API response status: ${response.status}`);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Password grant failed: ${response.status} - ${errorText}`);
@@ -179,12 +181,20 @@ async function createNewRedditToken(): Promise<string | null> {
     }
 
     const data = await response.json();
-    console.log(`✅ Successfully obtained new token`, { 
+    console.log(`📋 Reddit API response:`, {
       hasAccessToken: !!data.access_token,
       hasRefreshToken: !!data.refresh_token,
       expiresIn: data.expires_in,
-      tokenType: data.token_type
+      tokenType: data.token_type,
+      error: data.error,
+      errorDescription: data.error_description
     });
+
+    // Validate that we actually got an access token
+    if (!data.access_token) {
+      console.error('❌ No access_token in Reddit API response:', data);
+      return null;
+    }
     
     // Validate expires_in and provide fallback
     let expiresIn = data.expires_in;
@@ -206,16 +216,25 @@ async function createNewRedditToken(): Promise<string | null> {
     const expiresAtISO = expiresAt.toISOString();
     console.log(`📅 Token will expire at: ${expiresAtISO}`);
     
-    // Store the token
+    // Store the token with proper validation
+    const tokenData = {
+      service: 'reddit',
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || null,
+      expires_at: expiresAtISO,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('💾 Storing token data:', {
+      service: tokenData.service,
+      hasAccessToken: !!tokenData.access_token,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresAt: tokenData.expires_at
+    });
+
     const { error } = await supabase
       .from('tokens')
-      .upsert({
-        service: 'reddit',
-        access_token: data.access_token,
-        refresh_token: data.refresh_token || null,
-        expires_at: expiresAtISO,
-        updated_at: new Date().toISOString()
-      });
+      .upsert(tokenData);
 
     if (error) {
       console.error('❌ Error storing token:', error);
@@ -259,11 +278,18 @@ async function refreshRedditTokenDirect(refreshToken: string): Promise<string | 
     }
 
     const data = await response.json();
-    console.log(`✅ Successfully refreshed token`, {
+    console.log(`📋 Refresh response:`, {
       hasAccessToken: !!data.access_token,
       hasRefreshToken: !!data.refresh_token,
-      expiresIn: data.expires_in
+      expiresIn: data.expires_in,
+      error: data.error
     });
+
+    // Validate that we actually got an access token
+    if (!data.access_token) {
+      console.error('❌ No access_token in refresh response:', data);
+      return null;
+    }
     
     // Validate expires_in and provide fallback
     let expiresIn = data.expires_in;

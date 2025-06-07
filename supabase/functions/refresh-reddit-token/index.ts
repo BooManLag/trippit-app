@@ -6,11 +6,13 @@ const corsHeaders = {
 };
 
 interface RedditTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  scope: string;
+  access_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  scope?: string;
   refresh_token?: string;
+  error?: string;
+  error_description?: string;
 }
 
 // Reddit API credentials
@@ -47,6 +49,12 @@ async function getStoredToken(): Promise<{ access_token: string; refresh_token?:
 
 async function storeToken(accessToken: string, refreshToken: string | null, expiresIn: number): Promise<boolean> {
   try {
+    // Validate that we have an access token
+    if (!accessToken || typeof accessToken !== 'string' || accessToken.trim() === '') {
+      console.error('❌ Cannot store invalid access token:', { accessToken: !!accessToken, type: typeof accessToken });
+      return false;
+    }
+
     // Validate expires_in and provide fallback
     let validExpiresIn = expiresIn;
     if (!validExpiresIn || typeof validExpiresIn !== 'number' || validExpiresIn <= 0) {
@@ -67,15 +75,25 @@ async function storeToken(accessToken: string, refreshToken: string | null, expi
     const expiresAtISO = expiresAt.toISOString();
     console.log(`📅 Token will expire at: ${expiresAtISO}`);
     
+    const tokenData = {
+      service: 'reddit',
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAtISO,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('💾 Storing token data:', {
+      service: tokenData.service,
+      hasAccessToken: !!tokenData.access_token,
+      accessTokenLength: tokenData.access_token?.length,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresAt: tokenData.expires_at
+    });
+    
     const { error } = await supabase
       .from('tokens')
-      .upsert({
-        service: 'reddit',
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        expires_at: expiresAtISO,
-        updated_at: new Date().toISOString()
-      });
+      .upsert(tokenData);
 
     if (error) {
       console.error('❌ Error storing token:', error);
@@ -109,6 +127,8 @@ async function refreshWithRefreshToken(refreshToken: string): Promise<RedditToke
       body: params.toString(),
     });
 
+    console.log(`📡 Refresh response status: ${response.status}`);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Refresh token request failed: ${response.status} - ${errorText}`);
@@ -116,11 +136,27 @@ async function refreshWithRefreshToken(refreshToken: string): Promise<RedditToke
     }
 
     const data: RedditTokenResponse = await response.json();
-    console.log(`✅ Successfully refreshed token using refresh_token`, {
+    console.log(`📋 Refresh response data:`, {
       hasAccessToken: !!data.access_token,
       hasRefreshToken: !!data.refresh_token,
-      expiresIn: data.expires_in
+      expiresIn: data.expires_in,
+      error: data.error,
+      errorDescription: data.error_description
     });
+
+    // Check for API errors
+    if (data.error) {
+      console.error(`❌ Reddit API error during refresh: ${data.error} - ${data.error_description}`);
+      return null;
+    }
+
+    // Validate that we got an access token
+    if (!data.access_token) {
+      console.error('❌ No access_token in refresh response');
+      return null;
+    }
+
+    console.log(`✅ Successfully refreshed token using refresh_token`);
     return data;
   } catch (error) {
     console.error('💥 Error refreshing with refresh token:', error);
@@ -140,6 +176,8 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     params.append('scope', 'read');
     params.append('duration', 'permanent');
 
+    console.log('📡 Making password grant request to Reddit API...');
+
     const response = await fetch('https://www.reddit.com/api/v1/access_token', {
       method: 'POST',
       headers: {
@@ -150,6 +188,8 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
       body: params.toString(),
     });
 
+    console.log(`📡 Password grant response status: ${response.status}`);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Password grant failed: ${response.status} - ${errorText}`);
@@ -157,12 +197,30 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     }
 
     const data: RedditTokenResponse = await response.json();
-    console.log(`✅ Successfully obtained new token with password grant`, {
+    console.log(`📋 Password grant response data:`, {
       hasAccessToken: !!data.access_token,
+      accessTokenLength: data.access_token?.length,
       hasRefreshToken: !!data.refresh_token,
       expiresIn: data.expires_in,
-      tokenType: data.token_type
+      tokenType: data.token_type,
+      scope: data.scope,
+      error: data.error,
+      errorDescription: data.error_description
     });
+
+    // Check for API errors
+    if (data.error) {
+      console.error(`❌ Reddit API error during password grant: ${data.error} - ${data.error_description}`);
+      return null;
+    }
+
+    // Validate that we got an access token
+    if (!data.access_token) {
+      console.error('❌ No access_token in password grant response');
+      return null;
+    }
+
+    console.log(`✅ Successfully obtained new token with password grant`);
     return data;
   } catch (error) {
     console.error('💥 Error getting new token:', error);
@@ -190,11 +248,11 @@ async function ensureValidToken(): Promise<string | null> {
         console.log('🔄 Token expired, attempting refresh...');
         const refreshedToken = await refreshWithRefreshToken(storedToken.refresh_token);
         
-        if (refreshedToken) {
+        if (refreshedToken && refreshedToken.access_token) {
           const stored = await storeToken(
             refreshedToken.access_token,
             refreshedToken.refresh_token || storedToken.refresh_token,
-            refreshedToken.expires_in
+            refreshedToken.expires_in || 3600
           );
           
           if (stored) {
@@ -208,11 +266,11 @@ async function ensureValidToken(): Promise<string | null> {
     console.log('🆕 Getting new token with password grant...');
     const newToken = await getNewTokenWithPassword();
     
-    if (newToken) {
+    if (newToken && newToken.access_token) {
       const stored = await storeToken(
         newToken.access_token,
         newToken.refresh_token || null,
-        newToken.expires_in
+        newToken.expires_in || 3600
       );
       
       if (stored) {

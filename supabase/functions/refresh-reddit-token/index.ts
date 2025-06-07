@@ -47,7 +47,25 @@ async function getStoredToken(): Promise<{ access_token: string; refresh_token?:
 
 async function storeToken(accessToken: string, refreshToken: string | null, expiresIn: number): Promise<boolean> {
   try {
-    const expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+    // Validate expires_in and provide fallback
+    let validExpiresIn = expiresIn;
+    if (!validExpiresIn || typeof validExpiresIn !== 'number' || validExpiresIn <= 0) {
+      console.warn('⚠️ Invalid expires_in value, using default 1 hour');
+      validExpiresIn = 3600; // Default to 1 hour
+    }
+    
+    // Calculate expiration time with validation
+    const expirationTime = Date.now() + (validExpiresIn * 1000);
+    const expiresAt = new Date(expirationTime);
+    
+    // Validate the date before converting to ISO string
+    if (isNaN(expiresAt.getTime())) {
+      console.error('❌ Invalid expiration date calculated');
+      return false;
+    }
+    
+    const expiresAtISO = expiresAt.toISOString();
+    console.log(`📅 Token will expire at: ${expiresAtISO}`);
     
     const { error } = await supabase
       .from('tokens')
@@ -55,7 +73,7 @@ async function storeToken(accessToken: string, refreshToken: string | null, expi
         service: 'reddit',
         access_token: accessToken,
         refresh_token: refreshToken,
-        expires_at: expiresAt,
+        expires_at: expiresAtISO,
         updated_at: new Date().toISOString()
       });
 
@@ -64,7 +82,7 @@ async function storeToken(accessToken: string, refreshToken: string | null, expi
       return false;
     }
 
-    console.log(`✅ Token stored successfully, expires at: ${expiresAt}`);
+    console.log(`✅ Token stored successfully, expires at: ${expiresAtISO}`);
     return true;
   } catch (error) {
     console.error('💥 Error in storeToken:', error);
@@ -98,7 +116,11 @@ async function refreshWithRefreshToken(refreshToken: string): Promise<RedditToke
     }
 
     const data: RedditTokenResponse = await response.json();
-    console.log(`✅ Successfully refreshed token using refresh_token`);
+    console.log(`✅ Successfully refreshed token using refresh_token`, {
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      expiresIn: data.expires_in
+    });
     return data;
   } catch (error) {
     console.error('💥 Error refreshing with refresh token:', error);
@@ -135,7 +157,12 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     }
 
     const data: RedditTokenResponse = await response.json();
-    console.log(`✅ Successfully obtained new token with password grant`);
+    console.log(`✅ Successfully obtained new token with password grant`, {
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type
+    });
     return data;
   } catch (error) {
     console.error('💥 Error getting new token:', error);

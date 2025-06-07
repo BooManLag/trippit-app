@@ -179,18 +179,41 @@ async function createNewRedditToken(): Promise<string | null> {
     }
 
     const data = await response.json();
-    console.log(`✅ Successfully obtained new token`);
+    console.log(`✅ Successfully obtained new token`, { 
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type
+    });
+    
+    // Validate expires_in and provide fallback
+    let expiresIn = data.expires_in;
+    if (!expiresIn || typeof expiresIn !== 'number' || expiresIn <= 0) {
+      console.warn('⚠️ Invalid expires_in value, using default 1 hour');
+      expiresIn = 3600; // Default to 1 hour
+    }
+    
+    // Calculate expiration time with validation
+    const expirationTime = Date.now() + (expiresIn * 1000);
+    const expiresAt = new Date(expirationTime);
+    
+    // Validate the date before converting to ISO string
+    if (isNaN(expiresAt.getTime())) {
+      console.error('❌ Invalid expiration date calculated');
+      return null;
+    }
+    
+    const expiresAtISO = expiresAt.toISOString();
+    console.log(`📅 Token will expire at: ${expiresAtISO}`);
     
     // Store the token
-    const expiresAt = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
-    
     const { error } = await supabase
       .from('tokens')
       .upsert({
         service: 'reddit',
         access_token: data.access_token,
         refresh_token: data.refresh_token || null,
-        expires_at: expiresAt,
+        expires_at: expiresAtISO,
         updated_at: new Date().toISOString()
       });
 
@@ -236,17 +259,38 @@ async function refreshRedditTokenDirect(refreshToken: string): Promise<string | 
     }
 
     const data = await response.json();
-    console.log(`✅ Successfully refreshed token`);
+    console.log(`✅ Successfully refreshed token`, {
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      expiresIn: data.expires_in
+    });
+    
+    // Validate expires_in and provide fallback
+    let expiresIn = data.expires_in;
+    if (!expiresIn || typeof expiresIn !== 'number' || expiresIn <= 0) {
+      console.warn('⚠️ Invalid expires_in value from refresh, using default 1 hour');
+      expiresIn = 3600; // Default to 1 hour
+    }
+    
+    // Calculate expiration time with validation
+    const expirationTime = Date.now() + (expiresIn * 1000);
+    const expiresAt = new Date(expirationTime);
+    
+    // Validate the date before converting to ISO string
+    if (isNaN(expiresAt.getTime())) {
+      console.error('❌ Invalid expiration date calculated during refresh');
+      return null;
+    }
+    
+    const expiresAtISO = expiresAt.toISOString();
     
     // Store the refreshed token
-    const expiresAt = new Date(Date.now() + (data.expires_in * 1000)).toISOString();
-    
     const { error } = await supabase
       .from('tokens')
       .update({
         access_token: data.access_token,
         refresh_token: data.refresh_token || refreshToken,
-        expires_at: expiresAt,
+        expires_at: expiresAtISO,
         updated_at: new Date().toISOString()
       })
       .eq('service', 'reddit');

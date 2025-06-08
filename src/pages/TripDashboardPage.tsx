@@ -4,6 +4,8 @@ import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loa
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
+import AuthModal from '../components/AuthModal';
+import ShareTripLink from '../components/ShareTripLink';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -47,6 +49,7 @@ const TripDashboardPage: React.FC = () => {
   const [tips, setTips] = useState<RedditTip[]>([]);
   const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
@@ -153,83 +156,94 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchTripDetails = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate('/');
-          return;
-        }
+  const fetchTripDetails = async (userId: string) => {
+    try {
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
 
-        const { data: tripData, error: tripError } = await supabase
-          .from('trips')
-          .select('*')
-          .eq('id', tripId)
-          .single();
-
-        if (tripError || !tripData) {
-          console.error('Trip not found:', tripError);
-          navigate('/my-trips');
-          return;
-        }
-
-        setTrip(tripData);
-        const [city, country] = tripData.destination.split(', ');
-        
-        // Fetch tips and dares in parallel
-        fetchRedditTips(city, country);
-        fetchUserDares(user.id, tripId!);
-
-        // Fetch existing checklist items
-        const { data: existingItems } = await supabase
-          .from('checklist_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('trip_id', tripId);
-
-        if (existingItems && existingItems.length > 0) {
-          setChecklistItems(existingItems);
-        } else {
-          const totalDefaultItems = defaultChecklist.reduce((total, category) => {
-            return total + category.items.length;
-          }, 0);
-          
-          const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
-            id: `placeholder_${index}`,
-            category: 'Loading...',
-            description: 'Loading...',
-            is_completed: false,
-            is_default: true,
-            user_id: user.id,
-            trip_id: tripId
-          }));
-          
-          setChecklistItems(placeholderItems);
-        }
-
-        // Get all user trips ordered by creation date to determine this trip's number
-        const { data: allTrips } = await supabase
-          .from('trips')
-          .select('id, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
-
-        if (allTrips) {
-          // Find the index of current trip in the chronologically ordered list
-          const currentTripIndex = allTrips.findIndex(t => t.id === tripId);
-          setTripNumber(currentTripIndex + 1); // +1 because arrays are 0-indexed
-        }
-
-      } catch (error) {
-        console.error('Error fetching trip details:', error);
+      if (tripError || !tripData) {
+        console.error('Trip not found:', tripError);
         navigate('/my-trips');
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
-    fetchTripDetails();
+      setTrip(tripData);
+      const [city, country] = tripData.destination.split(', ');
+
+      // Fetch tips and dares in parallel
+      fetchRedditTips(city, country);
+      fetchUserDares(userId, tripId!);
+
+      // Fetch existing checklist items
+      const { data: existingItems } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('trip_id', tripId);
+
+      if (existingItems && existingItems.length > 0) {
+        setChecklistItems(existingItems);
+      } else {
+        const totalDefaultItems = defaultChecklist.reduce((total, category) => {
+          return total + category.items.length;
+        }, 0);
+
+        const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
+          id: `placeholder_${index}`,
+          category: 'Loading...',
+          description: 'Loading...',
+          is_completed: false,
+          is_default: true,
+          user_id: userId,
+          trip_id: tripId,
+        }));
+
+        setChecklistItems(placeholderItems);
+      }
+
+      // Get all user trips ordered by creation date to determine this trip's number
+      const { data: allTrips } = await supabase
+        .from('trips')
+        .select('id, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (allTrips) {
+        // Find the index of current trip in the chronologically ordered list
+        const currentTripIndex = allTrips.findIndex((t) => t.id === tripId);
+        setTripNumber(currentTripIndex + 1); // +1 because arrays are 0-indexed
+      }
+
+    } catch (error) {
+      console.error('Error fetching trip details:', error);
+      navigate('/my-trips');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTrip = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      setShowAuthModal(true);
+      return;
+    }
+
+    await fetchTripDetails(user.id);
+  };
+
+  const handleAuthSuccess = async () => {
+    setShowAuthModal(false);
+    setLoading(true);
+    await loadTrip();
+  };
+
+  useEffect(() => {
+    loadTrip();
   }, [tripId, navigate]);
 
   const formatDate = (dateString: string) => {
@@ -332,6 +346,13 @@ const TripDashboardPage: React.FC = () => {
             <h2 className="pixel-text mobile-heading">TRIP DASHBOARD</h2>
           </div>
           <AuthStatus className="flex-shrink-0" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <ShareTripLink tripId={tripId!} />
+          <div className="pixel-card bg-gray-900 border-2 border-purple-500/20 flex items-center justify-center">
+            <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
+          </div>
         </div>
 
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
@@ -636,6 +657,11 @@ const TripDashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

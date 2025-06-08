@@ -355,7 +355,7 @@ async function generateOptimizedSubreddits(city: string, country: string): Promi
   return finalSubreddits;
 }
 
-function extractTipsFromPost(post: RedditPost, city: string): any[] {
+function extractTipsFromPost(post: RedditPost, city: string, country: string): any[] {
   const tips = [];
   const content = post.selftext;
   const title = post.title;
@@ -397,6 +397,13 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
         
         tipText = tipText.replace(/\s+/g, ' ').trim();
         
+        // Check if tip mentions the specific location
+        const mentionsLocation = checkLocationRelevance(tipText, title, city, country);
+        if (!mentionsLocation) {
+          console.log(`  ⚠️ Skipping tip - doesn't mention ${city} or ${country}`);
+          continue;
+        }
+        
         tips.push({
           id: `${post.id}_tip_${foundTips}`,
           category: categorizeTip(title, tipText),
@@ -406,7 +413,7 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
           reddit_url: `https://reddit.com${post.permalink}`,
           score: post.score,
           created_at: new Date(post.created_utc * 1000).toISOString(),
-          relevance_score: calculateRelevanceScore(tipText, title, city)
+          relevance_score: calculateRelevanceScore(tipText, title, city, country)
         });
         
         foundTips++;
@@ -417,18 +424,17 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
     }
   }
 
-  // Fallback for valuable posts
+  // Fallback for valuable posts - but only if they mention the location
   if (foundTips === 0 && post.score > 3 && content.length > 50 && content.length < 1000) {
     const helpfulKeywords = ['tip', 'advice', 'recommend', 'experience', 'guide', 'helpful', 'must', 'should', 'avoid'];
     const hasHelpfulContent = helpfulKeywords.some(keyword => 
       title.toLowerCase().includes(keyword) || content.toLowerCase().includes(keyword)
     );
 
-    const cityMentioned = title.toLowerCase().includes(city.toLowerCase()) || 
-                         content.toLowerCase().includes(city.toLowerCase());
+    const mentionsLocation = checkLocationRelevance(content, title, city, country);
 
-    if (hasHelpfulContent || cityMentioned) {
-      console.log(`  💡 Using entire post as tip (score: ${post.score}, helpful: ${hasHelpfulContent}, city mentioned: ${cityMentioned})`);
+    if (hasHelpfulContent && mentionsLocation) {
+      console.log(`  💡 Using entire post as tip (score: ${post.score}, helpful: ${hasHelpfulContent}, mentions location: ${mentionsLocation})`);
       
       let cleanContent = content.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
       if (cleanContent.length > 250) {
@@ -444,13 +450,38 @@ function extractTipsFromPost(post: RedditPost, city: string): any[] {
         reddit_url: `https://reddit.com${post.permalink}`,
         score: post.score,
         created_at: new Date(post.created_utc * 1000).toISOString(),
-        relevance_score: calculateRelevanceScore(content, title, city)
+        relevance_score: calculateRelevanceScore(content, title, city, country)
       });
     }
   }
 
   console.log(`  ✅ Extracted ${tips.length} tips from post`);
   return tips;
+}
+
+function checkLocationRelevance(content: string, title: string, city: string, country: string): boolean {
+  const text = `${title} ${content}`.toLowerCase();
+  const cityLower = city.toLowerCase();
+  const countryLower = country.toLowerCase();
+  
+  // Check for exact city or country mentions
+  const mentionsCity = text.includes(cityLower);
+  const mentionsCountry = text.includes(countryLower);
+  
+  // Also check for common variations
+  const cityVariations = [cityLower];
+  const countryVariations = [countryLower];
+  
+  // Add common country variations
+  if (countryLower === 'united states') countryVariations.push('usa', 'america', 'us');
+  if (countryLower === 'united kingdom') countryVariations.push('uk', 'britain', 'england');
+  if (countryLower === 'south korea') countryVariations.push('korea');
+  
+  const mentionsAnyVariation = [...cityVariations, ...countryVariations].some(variation => 
+    text.includes(variation)
+  );
+  
+  return mentionsCity || mentionsCountry || mentionsAnyVariation;
 }
 
 function generateTipTitle(content: string, city: string, subreddit: string): string {
@@ -471,13 +502,17 @@ function generateTipTitle(content: string, city: string, subreddit: string): str
   return `Travel tip for ${city}`;
 }
 
-function calculateRelevanceScore(content: string, title: string, city: string): number {
+function calculateRelevanceScore(content: string, title: string, city: string, country: string): number {
   let score = 0;
   const text = `${title} ${content}`.toLowerCase();
   const cityLower = city.toLowerCase();
+  const countryLower = country.toLowerCase();
   
+  // Higher score for location mentions
   const cityMentions = (text.match(new RegExp(cityLower, 'g')) || []).length;
-  score += cityMentions * 15;
+  const countryMentions = (text.match(new RegExp(countryLower, 'g')) || []).length;
+  score += cityMentions * 20; // City mentions are more valuable
+  score += countryMentions * 10;
   
   const helpfulWords = ['tip', 'advice', 'recommend', 'must', 'should', 'avoid', 'best', 'good', 'experience'];
   helpfulWords.forEach(word => {
@@ -590,6 +625,61 @@ function generateFallbackTips(city: string, country: string): any[] {
       score: 7,
       created_at: new Date().toISOString(),
       relevance_score: 38
+    },
+    {
+      id: `fallback_${city}_6`,
+      category: 'Food',
+      title: `Local cuisine in ${city}`,
+      content: `Try authentic local dishes and visit traditional markets in ${city}. Ask locals for restaurant recommendations to discover hidden gems.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 8,
+      created_at: new Date().toISOString(),
+      relevance_score: 36
+    },
+    {
+      id: `fallback_${city}_7`,
+      category: 'Things to Do',
+      title: `Must-see attractions in ${city}`,
+      content: `Visit the top landmarks and attractions in ${city}. Consider booking tickets in advance for popular sites to avoid long queues.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 6,
+      created_at: new Date().toISOString(),
+      relevance_score: 34
+    },
+    {
+      id: `fallback_${city}_8`,
+      category: 'Accommodation',
+      title: `Where to stay in ${city}`,
+      content: `Choose accommodation in ${city} based on your budget and preferred location. Read reviews and check proximity to public transport.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 5,
+      created_at: new Date().toISOString(),
+      relevance_score: 32
+    },
+    {
+      id: `fallback_${city}_9`,
+      category: 'Technology',
+      title: `Stay connected in ${city}`,
+      content: `Get a local SIM card or international roaming plan for ${city}. Download useful apps like maps, translation, and local transport apps.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 4,
+      created_at: new Date().toISOString(),
+      relevance_score: 30
+    },
+    {
+      id: `fallback_${city}_10`,
+      category: 'Weather',
+      title: `Weather and packing for ${city}`,
+      content: `Check the weather forecast for ${city} and pack accordingly. Consider the season and any special weather conditions in ${country}.`,
+      source: 'Trippit',
+      reddit_url: '#',
+      score: 3,
+      created_at: new Date().toISOString(),
+      relevance_score: 28
     }
   ];
 
@@ -627,7 +717,7 @@ Deno.serve(async (req) => {
     console.log(`🚀 Starting tip search for: ${city}, ${country} with environment-based credentials`);
 
     // Check cache first with longer duration
-    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_v4`;
+    const cacheKey = `tips_${city.toLowerCase()}_${country.toLowerCase()}_v5`;
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -668,7 +758,7 @@ Deno.serve(async (req) => {
           
           // Extract tips from each post
           for (const post of posts.slice(0, 2)) {
-            const tips = extractTipsFromPost(post, city);
+            const tips = extractTipsFromPost(post, city, country);
             allTips.push(...tips);
           }
         }
@@ -694,27 +784,61 @@ Deno.serve(async (req) => {
         return hasGoodLength && hasGoodScore && notDeleted;
       })
       .sort((a, b) => {
+        // Sort by relevance score first, then by recency, then by score
         const aTotal = (a.relevance_score || 0) + Math.log(a.score + 1) * 3;
         const bTotal = (b.relevance_score || 0) + Math.log(b.score + 1) * 3;
+        
+        if (Math.abs(aTotal - bTotal) < 5) {
+          // If relevance scores are close, prefer more recent posts
+          const aDate = new Date(a.created_at).getTime();
+          const bDate = new Date(b.created_at).getTime();
+          return bDate - aDate;
+        }
+        
         return bTotal - aTotal;
-      })
-      .slice(0, 15); // Reduced to focus on quality
-
-    // Always supplement with fallback tips for reliability
-    console.log(`💡 Adding fallback tips to ensure good user experience`);
-    const fallbackTips = generateFallbackTips(city, country);
-    
-    // Merge tips, prioritizing Reddit tips but ensuring we have good coverage
-    const finalTips = [...processedTips, ...fallbackTips]
-      .slice(0, 20)
-      .sort((a, b) => {
-        // Prioritize Reddit tips but mix in fallbacks
-        if (a.source === 'Trippit' && b.source !== 'Trippit') return 1;
-        if (a.source !== 'Trippit' && b.source === 'Trippit') return -1;
-        return b.score - a.score;
       });
 
-    console.log(`✅ FINAL RESULT: ${finalTips.length} quality tips for ${city}, ${country} (${processedTips.length} from Reddit, ${fallbackTips.length} fallback)`);
+    console.log(`✅ Processed ${processedTips.length} quality Reddit tips for ${city}, ${country}`);
+
+    // Only use fallback tips if we have insufficient Reddit tips
+    const MIN_REDDIT_TIPS = 8; // Minimum number of Reddit tips before using fallbacks
+    let finalTips = processedTips;
+
+    if (processedTips.length < MIN_REDDIT_TIPS) {
+      console.log(`💡 Only ${processedTips.length} Reddit tips found (minimum ${MIN_REDDIT_TIPS}), supplementing with fallbacks`);
+      const fallbackTips = generateFallbackTips(city, country);
+      
+      // Add only enough fallbacks to reach our target
+      const neededFallbacks = Math.min(
+        MIN_REDDIT_TIPS - processedTips.length,
+        fallbackTips.length
+      );
+      
+      finalTips = [
+        ...processedTips,
+        ...fallbackTips.slice(0, neededFallbacks)
+      ];
+      
+      console.log(`📝 Added ${neededFallbacks} fallback tips to reach ${finalTips.length} total tips`);
+    } else {
+      console.log(`🎉 Found sufficient Reddit tips (${processedTips.length}), no fallbacks needed`);
+      finalTips = processedTips.slice(0, 20); // Limit to top 20 Reddit tips
+    }
+
+    // Final sort to ensure best tips are first
+    finalTips = finalTips.sort((a, b) => {
+      // Prioritize Reddit tips over fallbacks
+      if (a.source === 'Trippit' && b.source !== 'Trippit') return 1;
+      if (a.source !== 'Trippit' && b.source === 'Trippit') return -1;
+      
+      // Then sort by relevance and score
+      const aTotal = (a.relevance_score || 0) + Math.log(a.score + 1) * 3;
+      const bTotal = (b.relevance_score || 0) + Math.log(b.score + 1) * 3;
+      return bTotal - aTotal;
+    });
+
+    console.log(`✅ FINAL RESULT: ${finalTips.length} quality tips for ${city}, ${country}`);
+    console.log(`📊 Breakdown: ${finalTips.filter(t => t.source !== 'Trippit').length} Reddit tips, ${finalTips.filter(t => t.source === 'Trippit').length} fallback tips`);
 
     // Cache the result with longer duration
     cache.set(cacheKey, {

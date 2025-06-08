@@ -10,16 +10,15 @@ interface RedditTokenResponse {
   token_type?: string;
   expires_in?: number;
   scope?: string;
-  refresh_token?: string;
   error?: string;
   error_description?: string;
 }
 
-// Reddit API credentials
-const REDDIT_USERNAME = 'BooManLagg';
-const REDDIT_PASSWORD = 'Joshua152foe!';
-const REDDIT_CLIENT_ID = 'VqkcjSqTaWGym_Y1UNGt5A';
-const REDDIT_CLIENT_SECRET = 'mfmgrvATE39u-S5B-oGWvvFGyNxtEA';
+// Reddit API credentials from environment variables
+const REDDIT_USERNAME = Deno.env.get('REDDIT_USERNAME');
+const REDDIT_PASSWORD = Deno.env.get('REDDIT_PASSWORD');
+const REDDIT_CLIENT_ID = Deno.env.get('REDDIT_CLIENT_ID');
+const REDDIT_CLIENT_SECRET = Deno.env.get('REDDIT_CLIENT_SECRET');
 
 // Initialize Supabase client with service role key
 const supabase = createClient(
@@ -27,11 +26,11 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-async function getStoredToken(): Promise<{ access_token: string; refresh_token?: string; expires_at: string } | null> {
+async function getStoredToken(): Promise<{ access_token: string; expires_at: string } | null> {
   try {
     const { data, error } = await supabase
       .from('tokens')
-      .select('access_token, refresh_token, expires_at')
+      .select('access_token, expires_at')
       .eq('service', 'reddit')
       .single();
 
@@ -47,7 +46,7 @@ async function getStoredToken(): Promise<{ access_token: string; refresh_token?:
   }
 }
 
-async function storeToken(accessToken: string, refreshToken: string | null, expiresIn: number): Promise<boolean> {
+async function storeToken(accessToken: string, expiresIn: number): Promise<boolean> {
   try {
     // Validate that we have an access token
     if (!accessToken || typeof accessToken !== 'string' || accessToken.trim() === '') {
@@ -78,7 +77,7 @@ async function storeToken(accessToken: string, refreshToken: string | null, expi
     const tokenData = {
       service: 'reddit',
       access_token: accessToken,
-      refresh_token: refreshToken,
+      refresh_token: null, // Password grant doesn't provide refresh tokens
       expires_at: expiresAtISO,
       updated_at: new Date().toISOString()
     };
@@ -87,7 +86,6 @@ async function storeToken(accessToken: string, refreshToken: string | null, expi
       service: tokenData.service,
       hasAccessToken: !!tokenData.access_token,
       accessTokenLength: tokenData.access_token?.length,
-      hasRefreshToken: !!tokenData.refresh_token,
       expiresAt: tokenData.expires_at
     });
     
@@ -108,65 +106,15 @@ async function storeToken(accessToken: string, refreshToken: string | null, expi
   }
 }
 
-async function refreshWithRefreshToken(refreshToken: string): Promise<RedditTokenResponse | null> {
-  try {
-    console.log('🔄 Using refresh token to get new access token...');
-    
-    const auth = btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`);
-    const params = new URLSearchParams();
-    params.append('grant_type', 'refresh_token');
-    params.append('refresh_token', refreshToken);
-
-    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLagg)',
-      },
-      body: params.toString(),
-    });
-
-    console.log(`📡 Refresh response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Refresh token request failed: ${response.status} - ${errorText}`);
-      return null;
-    }
-
-    const data: RedditTokenResponse = await response.json();
-    console.log(`📋 Refresh response data:`, {
-      hasAccessToken: !!data.access_token,
-      hasRefreshToken: !!data.refresh_token,
-      expiresIn: data.expires_in,
-      error: data.error,
-      errorDescription: data.error_description
-    });
-
-    // Check for API errors
-    if (data.error) {
-      console.error(`❌ Reddit API error during refresh: ${data.error} - ${data.error_description}`);
-      return null;
-    }
-
-    // Validate that we got an access token
-    if (!data.access_token) {
-      console.error('❌ No access_token in refresh response');
-      return null;
-    }
-
-    console.log(`✅ Successfully refreshed token using refresh_token`);
-    return data;
-  } catch (error) {
-    console.error('💥 Error refreshing with refresh token:', error);
-    return null;
-  }
-}
-
 async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
   try {
     console.log('🔑 Getting new Reddit token with password grant...');
+    
+    // Validate that we have all required credentials
+    if (!REDDIT_USERNAME || !REDDIT_PASSWORD || !REDDIT_CLIENT_ID || !REDDIT_CLIENT_SECRET) {
+      console.error('❌ Missing Reddit credentials in environment variables');
+      return null;
+    }
     
     const auth = btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`);
     const params = new URLSearchParams();
@@ -174,7 +122,7 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     params.append('username', REDDIT_USERNAME);
     params.append('password', REDDIT_PASSWORD);
     params.append('scope', 'read');
-    params.append('duration', 'permanent');
+    // Note: Removed 'duration=permanent' as it's not valid for password grant
 
     console.log('📡 Making password grant request to Reddit API...');
 
@@ -200,7 +148,6 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     console.log(`📋 Password grant response data:`, {
       hasAccessToken: !!data.access_token,
       accessTokenLength: data.access_token?.length,
-      hasRefreshToken: !!data.refresh_token,
       expiresIn: data.expires_in,
       tokenType: data.token_type,
       scope: data.scope,
@@ -242,34 +189,16 @@ async function ensureValidToken(): Promise<string | null> {
         console.log('✅ Using valid stored token');
         return storedToken.access_token;
       }
-      
-      // Token is expired or about to expire, try to refresh
-      if (storedToken.refresh_token) {
-        console.log('🔄 Token expired, attempting refresh...');
-        const refreshedToken = await refreshWithRefreshToken(storedToken.refresh_token);
-        
-        if (refreshedToken && refreshedToken.access_token) {
-          const stored = await storeToken(
-            refreshedToken.access_token,
-            refreshedToken.refresh_token || storedToken.refresh_token,
-            refreshedToken.expires_in || 3600
-          );
-          
-          if (stored) {
-            return refreshedToken.access_token;
-          }
-        }
-      }
     }
     
-    // No valid token or refresh failed, get new token with password
+    // No valid token or token expired, get new token with password
+    // (Password grant doesn't provide refresh tokens, so we always get a new one)
     console.log('🆕 Getting new token with password grant...');
     const newToken = await getNewTokenWithPassword();
     
     if (newToken && newToken.access_token) {
       const stored = await storeToken(
         newToken.access_token,
-        newToken.refresh_token || null,
         newToken.expires_in || 3600
       );
       

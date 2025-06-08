@@ -71,10 +71,12 @@ const ChecklistPage: React.FC = () => {
             });
           });
 
-          // Insert all default items
+          // Upsert all default items to avoid duplicates
           const { data: insertedItems, error: insertError } = await supabase
             .from('checklist_items')
-            .insert(defaultItems)
+            .upsert(defaultItems, {
+              onConflict: 'user_id, trip_id, description'
+            })
             .select();
 
           if (insertError) {
@@ -131,14 +133,17 @@ const ChecklistPage: React.FC = () => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('checklist_items')
-      .insert({
-        user_id: user!.id,
-        trip_id: tripId,
-        description: newItem.trim(),
-        category: selectedCategory,
-        is_completed: false,
-        is_default: false
-      })
+      .upsert(
+        {
+          user_id: user!.id,
+          trip_id: tripId,
+          description: newItem.trim(),
+          category: selectedCategory,
+          is_completed: false,
+          is_default: false
+        },
+        { onConflict: 'user_id, trip_id, description' }
+      )
       .select();
 
     if (!error && data) {

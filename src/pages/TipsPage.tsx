@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import AuthStatus from '../components/AuthStatus';
 
 interface RedditTip {
   id: string;
@@ -36,8 +37,6 @@ const TipsPage: React.FC = () => {
       if (!tripId) return;
 
       try {
-        setLoading(true);
-        
         // Fetch trip details
         const { data: tripData } = await supabase
           .from('trips')
@@ -49,7 +48,12 @@ const TipsPage: React.FC = () => {
           setTrip(tripData);
           const [city, country] = tripData.destination.split(', ');
           
-          // Fetch Reddit tips (bearer token is now handled server-side)
+          // Only show loading if we don't have tips yet
+          if (redditTips.length === 0) {
+            setLoading(true);
+          }
+          
+          // Fetch Reddit tips
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
             {
@@ -146,25 +150,28 @@ const TipsPage: React.FC = () => {
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
-        <div className={`flex items-center gap-4 mb-6 sm:mb-8 lg:mb-12 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <button 
-            onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
-            className="text-blue-400 hover:text-blue-300 transition-colors hover:scale-110"
-          >
-            <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <Lightbulb className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-400 animate-pulse" />
-              <h2 className="pixel-text mobile-heading text-yellow-400 glow-text">CITY WISDOM</h2>
-              <Globe className="w-6 sm:w-8 h-6 sm:h-8 text-blue-400 animate-float" />
+        <div className={`flex items-center justify-between mb-6 sm:mb-8 lg:mb-12 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <button 
+              onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
+              className="text-blue-400 hover:text-blue-300 transition-colors hover:scale-110 flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <Lightbulb className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-400 animate-pulse flex-shrink-0" />
+                <h2 className="pixel-text mobile-heading text-yellow-400 glow-text">CITY WISDOM</h2>
+                <Globe className="w-6 sm:w-8 h-6 sm:h-8 text-blue-400 animate-float flex-shrink-0" />
+              </div>
+              {trip && (
+                <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
+                  Real traveler insights for {trip.destination}
+                </p>
+              )}
             </div>
-            {trip && (
-              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
-                Real traveler insights for {trip.destination}
-              </p>
-            )}
           </div>
+          <AuthStatus className="flex-shrink-0" />
         </div>
 
         {/* Search and Filter Controls */}
@@ -246,59 +253,61 @@ const TipsPage: React.FC = () => {
         )}
 
         {/* Tips Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-          {filteredTips.map((tip, index) => (
-            <div 
-              key={tip.id} 
-              className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 group animate-slide-in-up`}
-              style={{ animationDelay: `${index * 50 + 300}ms` }}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl sm:text-2xl flex-shrink-0 animate-float" style={{ animationDelay: `${index * 100}ms` }}>
-                    {getCategoryIcon(tip.category)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <span className={`pixel-text text-xs sm:text-sm ${getCategoryColor(tip.category)} block glow-text`}>
-                      {tip.category}
+        {!loading && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {filteredTips.map((tip, index) => (
+              <div 
+                key={tip.id} 
+                className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 group animate-slide-in-up`}
+                style={{ animationDelay: `${index * 50 + 300}ms` }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="text-xl sm:text-2xl flex-shrink-0 animate-float" style={{ animationDelay: `${index * 100}ms` }}>
+                      {getCategoryIcon(tip.category)}
                     </span>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="pixel-text text-xs text-green-400">{tip.source}</span>
-                      <span className="pixel-text text-xs text-yellow-400 flex items-center gap-1">
-                        <Star className="w-3 h-3" />
-                        {tip.score}
+                    <div className="min-w-0 flex-1">
+                      <span className={`pixel-text text-xs sm:text-sm ${getCategoryColor(tip.category)} block glow-text`}>
+                        {tip.category}
                       </span>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="pixel-text text-xs text-green-400">{tip.source}</span>
+                        <span className="pixel-text text-xs text-yellow-400 flex items-center gap-1">
+                          <Star className="w-3 h-3" />
+                          {tip.score}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {tip.reddit_url !== '#' && (
+                    <a 
+                      href={tip.reddit_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-gray-500 hover:text-blue-400 transition-all duration-300 flex-shrink-0 hover:scale-110"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
                 </div>
-                {tip.reddit_url !== '#' && (
-                  <a 
-                    href={tip.reddit_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-blue-400 transition-all duration-300 flex-shrink-0 hover:scale-110"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
+
+                <h3 className="outfit-text font-semibold text-white mb-3 leading-tight text-sm sm:text-base break-words group-hover:text-yellow-300 transition-colors">
+                  {tip.title}
+                </h3>
+
+                <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed break-words group-hover:text-gray-200 transition-colors">
+                  {tip.content}
+                </p>
+
+                <div className="mt-4 pt-3 border-t border-gray-700">
+                  <span className="pixel-text text-xs text-gray-500">
+                    {tip.source === 'Trippit' ? 'Trippit Tips' : 'Travel Community'} • {new Date(tip.created_at).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
-
-              <h3 className="outfit-text font-semibold text-white mb-3 leading-tight text-sm sm:text-base break-words group-hover:text-yellow-300 transition-colors">
-                {tip.title}
-              </h3>
-
-              <p className="outfit-text text-gray-300 text-xs sm:text-sm leading-relaxed break-words group-hover:text-gray-200 transition-colors">
-                {tip.content}
-              </p>
-
-              <div className="mt-4 pt-3 border-t border-gray-700">
-                <span className="pixel-text text-xs text-gray-500">
-                  {tip.source === 'Trippit' ? 'Trippit Tips' : 'Travel Community'} • {new Date(tip.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {filteredTips.length === 0 && !loading && (
           <div className={`text-center py-12 sm:py-16 animate-bounce-in delay-500`}>

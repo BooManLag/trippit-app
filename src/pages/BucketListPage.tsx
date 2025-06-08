@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle, Zap, Star, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import AuthStatus from '../components/AuthStatus';
 import daresData from '../data/dares.json';
 
 interface DareItem {
@@ -226,21 +227,24 @@ const BucketListPage: React.FC = () => {
     <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6 sm:mb-8">
-          <button 
-            onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
-            className="text-blue-400 hover:text-blue-300"
-          >
-            <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <h2 className="pixel-text mobile-heading text-red-400">DARE BUCKET LIST</h2>
-            {trip && (
-              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
-                Epic dares for {trip.destination}
-              </p>
-            )}
+        <div className="flex items-center justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <button 
+              onClick={() => tripId ? navigate(`/trip/${tripId}`) : navigate('/')} 
+              className="text-blue-400 hover:text-blue-300 flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <h2 className="pixel-text mobile-heading text-red-400">DARE BUCKET LIST</h2>
+              {trip && (
+                <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base break-words">
+                  Epic dares for {trip.destination}
+                </p>
+              )}
+            </div>
           </div>
+          <AuthStatus className="flex-shrink-0" />
         </div>
 
         {/* Progress Stats */}

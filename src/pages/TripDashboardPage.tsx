@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
+import AuthStatus from '../components/AuthStatus';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -273,6 +274,10 @@ const TripDashboardPage: React.FC = () => {
     return userDares.filter(userDare => !userDare.completed_at).slice(0, 4);
   };
 
+  const getCompletedDares = () => {
+    return userDares.filter(userDare => userDare.completed_at).slice(0, 4);
+  };
+
   const getCategoryIcon = (category: string) => {
     const icons: { [key: string]: string } = {
       'Documents': '📄',
@@ -316,13 +321,17 @@ const TripDashboardPage: React.FC = () => {
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
   const { totalDares, completedDares, remainingDares } = getDaresSummary();
   const incompleteDares = getIncompleteDares();
+  const completedDaresList = getCompletedDares();
 
   return (
     <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center">
       <div className="w-full max-w-6xl">
-        <div className="flex items-center gap-4 mb-6 sm:mb-8">
-          <BackButton to="/my-trips" />
-          <h2 className="pixel-text mobile-heading">TRIP DASHBOARD</h2>
+        <div className="flex items-center justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <BackButton to="/my-trips" />
+            <h2 className="pixel-text mobile-heading">TRIP DASHBOARD</h2>
+          </div>
+          <AuthStatus className="flex-shrink-0" />
         </div>
 
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
@@ -443,78 +452,105 @@ const TripDashboardPage: React.FC = () => {
               <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-spin mr-3" />
               <span className="pixel-text text-red-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
             </div>
-          ) : incompleteDares.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {incompleteDares.map(userDare => {
-                const dare = daresData.find(d => d.id === userDare.bucket_item_id);
-                if (!dare) return null;
-                
-                const completed = !!userDare.completed_at;
-                return (
-                  <div 
-                    key={userDare.id} 
-                    className={`pixel-card transition-all cursor-pointer group ${
-                      completed 
-                        ? 'bg-green-500/10 border-green-500/20 hover:border-green-500/40' 
-                        : 'bg-gray-800 border-red-500/10 hover:border-red-500/30'
-                    }`}
-                    onClick={() => toggleDare(userDare)}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Checkbox */}
-                      <div className="flex-shrink-0 mt-1">
-                        {completed ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-400" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-red-500 group-hover:text-red-400" />
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm">{getCategoryIcon(dare.category)}</span>
-                          <span className="pixel-text text-xs text-red-400">{dare.category}</span>
-                          {completed && <span className="pixel-text text-xs text-green-400">CONQUERED!</span>}
-                        </div>
-
-                        <h4 className={`outfit-text font-semibold mb-1 leading-tight text-xs break-words ${
-                          completed ? 'text-gray-400 line-through' : 'text-white'
-                        }`}>
-                          {dare.title}
-                        </h4>
-
-                        {dare.description && (
-                          <p className={`outfit-text text-xs leading-relaxed break-words mb-2 ${
-                            completed ? 'text-gray-500' : 'text-gray-300'
-                          }`}>
-                            {dare.description.length > 60 ? `${dare.description.substring(0, 60)}...` : dare.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="pixel-text text-xs">
-                            {completed ? (
-                              <span className="text-green-400 flex items-center gap-1">
-                                <Star className="w-3 h-3" />
-                                CONQUERED!
-                              </span>
-                            ) : (
-                              <span className="text-red-400">READY TO DARE?</span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           ) : totalDares > 0 ? (
-            <div className="text-center py-8 sm:py-12">
-              <div className="text-3xl sm:text-4xl mb-4">🏆</div>
-              <h3 className="pixel-text text-red-400 mb-2 text-sm sm:text-base">ALL DARES CONQUERED!</h3>
-              <p className="outfit-text text-gray-500 text-sm">Amazing! You've conquered all your dares for {trip?.destination}!</p>
+            <div>
+              {/* Show incomplete dares if any */}
+              {incompleteDares.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="pixel-text text-red-400 text-sm mb-3">🎯 TO DARE</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {incompleteDares.map(userDare => {
+                      const dare = daresData.find(d => d.id === userDare.bucket_item_id);
+                      if (!dare) return null;
+                      
+                      return (
+                        <div 
+                          key={userDare.id} 
+                          className="pixel-card bg-gray-800 border border-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group"
+                          onClick={() => toggleDare(userDare)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              <Circle className="w-5 h-5 text-red-500 group-hover:text-red-400" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm">{getCategoryIcon(dare.category)}</span>
+                                <span className="pixel-text text-xs text-red-400">{dare.category}</span>
+                              </div>
+
+                              <h4 className="outfit-text font-semibold mb-1 leading-tight text-xs break-words text-white group-hover:text-red-300">
+                                {dare.title}
+                              </h4>
+
+                              {dare.description && (
+                                <p className="outfit-text text-xs leading-relaxed break-words mb-2 text-gray-300">
+                                  {dare.description.length > 60 ? `${dare.description.substring(0, 60)}...` : dare.description}
+                                </p>
+                              )}
+
+                              <span className="pixel-text text-xs text-red-400">READY TO DARE?</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Show completed dares if any */}
+              {completedDaresList.length > 0 && (
+                <div>
+                  <h4 className="pixel-text text-green-400 text-sm mb-3">🏆 CONQUERED</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {completedDaresList.map(userDare => {
+                      const dare = daresData.find(d => d.id === userDare.bucket_item_id);
+                      if (!dare) return null;
+                      
+                      return (
+                        <div 
+                          key={userDare.id} 
+                          className="pixel-card bg-green-500/10 border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer group"
+                          onClick={() => toggleDare(userDare)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              <CheckCircle2 className="w-5 h-5 text-green-400" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm">{getCategoryIcon(dare.category)}</span>
+                                <span className="pixel-text text-xs text-green-400">{dare.category}</span>
+                                <span className="pixel-text text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
+                                  CONQUERED!
+                                </span>
+                              </div>
+
+                              <h4 className="outfit-text font-semibold mb-1 leading-tight text-xs break-words text-gray-400 line-through">
+                                {dare.title}
+                              </h4>
+
+                              {dare.description && (
+                                <p className="outfit-text text-xs leading-relaxed break-words mb-2 text-gray-500">
+                                  {dare.description.length > 60 ? `${dare.description.substring(0, 60)}...` : dare.description}
+                                </p>
+                              )}
+
+                              <div className="flex items-center gap-1">
+                                <Star className="w-4 h-4 text-yellow-400" />
+                                <span className="pixel-text text-xs text-green-400">DARE CONQUERED!</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 sm:py-12">
@@ -527,11 +563,6 @@ const TripDashboardPage: React.FC = () => {
               >
                 ADD RANDOM DARE
               </button>
-            </div>
-          )}
-
-          {totalDares > 4 && incompleteDares.length > 0 && (
-            <div className="text-center mt-4">
             </div>
           )}
         </div>

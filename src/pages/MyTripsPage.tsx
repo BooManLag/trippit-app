@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
 import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star } from 'lucide-react';
 import BackButton from '../components/BackButton';
+import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 
 interface Trip {
@@ -152,20 +153,23 @@ const MyTripsPage: React.FC = () => {
       <div className="w-full max-w-6xl relative z-10">
         {/* Header */}
         <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 lg:mb-12 gap-4 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             <BackButton to="/" />
             <div>
               <h2 className="pixel-text mobile-heading text-blue-400 glow-text">MY ADVENTURES</h2>
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">Your travel journey awaits</p>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/create-trip')}
-            className="pixel-button-primary flex items-center justify-center gap-2 w-full sm:w-auto hover-float"
-          >
-            <PlusCircle className="w-4 sm:w-5 h-4 sm:h-5" />
-            NEW ADVENTURE
-          </button>
+          <div className="flex items-center gap-4">
+            <AuthStatus className="flex-shrink-0" />
+            <button
+              onClick={() => navigate('/create-trip')}
+              className="pixel-button-primary flex items-center justify-center gap-2 w-full sm:w-auto hover-float"
+            >
+              <PlusCircle className="w-4 sm:w-5 h-4 sm:h-5" />
+              NEW ADVENTURE
+            </button>
+          </div>
         </div>
 
         {loading ? (

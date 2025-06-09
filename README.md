@@ -53,6 +53,23 @@ This project was created for a hackathon and has plenty of room to grow. Pull re
 
 ## Deployment
 
+
 Trippit is a single-page application. When hosting the built files you need to ensure every route is served by `index.html` so the client side router can resolve the URL. The included `404.html` page automatically redirects unknown routes back to the app and preserves the path, allowing shared links like `/trip/123` to open correctly. Configure your hosting provider to serve both `index.html` and `404.html` for unknown routes. The build script automatically copies `404.html` into the `dist` directory so it can be deployed alongside `index.html`.
 If you're using Netlify, set the build command to `npm run build` and use `dist` as the publish directory so the redirect rule works correctly.
 
+For Netlify deployments create a `netlify.toml` file in the project root with:
+
+```toml
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+Alternatively, add a `_redirects` file under `public` containing the same rule:
+
+```
+/* /index.html 200
+```
+
+Vite automatically copies the `public` directory during `npm run build` so the `_redirects` file is included in the final `dist` output.

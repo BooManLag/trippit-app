@@ -16,6 +16,7 @@ interface TripDetails {
   start_date: string;
   end_date: string;
   max_participants?: number;
+  user_id?: string;
 }
 
 interface UserDare {
@@ -63,6 +64,7 @@ const TripDashboardPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [isUserParticipant, setIsUserParticipant] = useState(false);
+  const [isUserOwner, setIsUserOwner] = useState(false);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
@@ -150,8 +152,9 @@ const TripDashboardPage: React.FC = () => {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const isParticipant = participants.some(p => p.user_id === user.id);
-        setIsUserParticipant(isParticipant);
+        const userParticipant = participants.find(p => p.user_id === user.id);
+        setIsUserParticipant(!!userParticipant);
+        setIsUserOwner(userParticipant?.role === 'owner');
       }
     } catch (error) {
       console.error('Error fetching trip participants:', error);
@@ -267,16 +270,25 @@ const TripDashboardPage: React.FC = () => {
       fetchTripParticipants(tripId!);
 
       if (userId) {
+        // Check if user is the trip owner
+        if (tripData.user_id === userId) {
+          setIsUserOwner(true);
+          setIsUserParticipant(true);
+        }
+
         // Check if user is participant
         const { data: participantCheck } = await supabase
           .from('trip_participants')
-          .select('id')
+          .select('id, role')
           .eq('trip_id', tripId)
           .eq('user_id', userId)
           .single();
 
         if (participantCheck) {
           setIsUserParticipant(true);
+          if (participantCheck.role === 'owner') {
+            setIsUserOwner(true);
+          }
           fetchUserDares(userId, tripId!);
 
           const { data: existingItems } = await supabase

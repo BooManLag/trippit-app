@@ -11,4 +11,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
   },
+  // Ensure public directory files are copied to dist
+  publicDir: 'public',
 });

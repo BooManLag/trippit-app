@@ -169,29 +169,43 @@ const TripDashboardPage: React.FC = () => {
     }
 
     try {
-      const { data, error } = await supabase.rpc('join_trip', {
-        p_trip_id: tripId,
-        p_user_id: currentUser.id
-      });
-
-      if (error) {
-        console.error('Error joining trip:', error);
-        setJoinMessage('Failed to join trip. Please try again.');
+      // First check if trip is full
+      if (trip && participants.length >= (trip.max_participants || 4)) {
+        setJoinMessage('This trip is full. Cannot join.');
+        setTimeout(() => setJoinMessage(null), 3000);
         return;
       }
 
-      const result = data[0] as { success: boolean; message?: string; error?: string };
+      // Use direct insert instead of RPC function
+      const { data, error } = await supabase
+        .from('trip_participants')
+        .insert({
+          trip_id: tripId,
+          user_id: currentUser.id,
+          role: 'participant'
+        })
+        .select()
+        .single();
 
-      if (result.success) {
-        setJoinMessage(result.message || 'Successfully joined the trip!');
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          setJoinMessage('You are already a participant in this trip!');
+        } else {
+          console.error('Error joining trip:', error);
+          setJoinMessage('Failed to join trip. Please try again.');
+        }
+        setTimeout(() => setJoinMessage(null), 3000);
+        return;
+      }
+
+      if (data) {
+        setJoinMessage('Successfully joined the trip!');
         setIsUserParticipant(true);
         await fetchTripParticipants(tripId!);
         
         // Now that user is a participant, fetch their data
         await fetchUserDares(currentUser.id, tripId!);
         await fetchChecklistItems(currentUser.id, tripId!);
-      } else {
-        setJoinMessage(result.error || 'Failed to join trip');
       }
     } catch (error) {
       console.error('Error joining trip:', error);

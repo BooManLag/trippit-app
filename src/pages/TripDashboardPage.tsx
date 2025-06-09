@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
-import ShareTripLink from '../components/ShareTripLink';
+import CopyLinkButton from '../components/CopyLinkButton';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -348,22 +348,18 @@ const TripDashboardPage: React.FC = () => {
           <AuthStatus className="flex-shrink-0" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <ShareTripLink tripId={tripId!} />
-          <div className="pixel-card bg-gray-900 border-2 border-purple-500/20 flex items-center justify-center">
-            <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
-          </div>
-        </div>
-
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-6">
             <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">
-                TRIP #{tripNumber}
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
+                  TRIP #{tripNumber}
+                </h3>
+                <CopyLinkButton tripId={tripId!} />
+              </div>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
-                {tripNumber === 1 ? "Congratulations on starting your first adventure!" : "Keep exploring, adventurer!"}
+                {tripNumber === 1 ? 'Congratulations on starting your first adventure!' : 'Keep exploring, adventurer!'}
               </p>
             </div>
           </div>
@@ -383,6 +379,10 @@ const TripDashboardPage: React.FC = () => {
               {getTripStatus()}
             </div>
           </div>
+        </div>
+
+        <div className="pixel-card bg-gray-900 border-2 border-purple-500/20 flex items-center justify-center mb-6 sm:mb-8">
+          <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">

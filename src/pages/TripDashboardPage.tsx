@@ -15,6 +15,7 @@ interface TripDetails {
   destination: string;
   start_date: string;
   end_date: string;
+  max_participants?: number;
 }
 
 interface UserDare {
@@ -51,7 +52,6 @@ const TripDashboardPage: React.FC = () => {
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [tripNumber, setTripNumber] = useState(1);
   const [participants, setParticipants] = useState<TripParticipant[]>([]);
-  const [maxParticipants] = useState(4); // You can make this configurable later
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
@@ -416,6 +416,7 @@ const TripDashboardPage: React.FC = () => {
   const { totalDares, completedDares, remainingDares } = getDaresSummary();
   const incompleteDares = getIncompleteDares();
   const completedDaresList = getCompletedDares();
+  const maxParticipants = trip?.max_participants || 4;
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">

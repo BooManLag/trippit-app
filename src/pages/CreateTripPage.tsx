@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
-import { MapPin, Calendar, Search, Loader2, Sparkles, Globe } from 'lucide-react';
+import { MapPin, Calendar, Search, Loader2, Sparkles, Globe, Users } from 'lucide-react';
 import { supabase, isAuthenticated, ensureUserProfile } from '../lib/supabase';
 import countries from '../data/countries.min.json';
 
@@ -20,6 +20,7 @@ const CreateTripPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [maxParticipants, setMaxParticipants] = useState(2); // Default to 2 (solo + 1 friend)
   const [showDropdown, setShowDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -94,6 +95,7 @@ const CreateTripPage: React.FC = () => {
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
         end_date: endDate,
+        max_participants: maxParticipants,
       });
 
       if (error) {
@@ -111,6 +113,15 @@ const CreateTripPage: React.FC = () => {
   };
 
   const today = new Date().toISOString().split('T')[0];
+
+  const participantOptions = [
+    { value: 1, label: 'Solo Adventure', icon: '🧳', description: 'Just me' },
+    { value: 2, label: 'Duo Trip', icon: '👫', description: 'Me + 1 friend' },
+    { value: 3, label: 'Small Group', icon: '👥', description: 'Me + 2 friends' },
+    { value: 4, label: 'Squad Goals', icon: '🎉', description: 'Me + 3 friends' },
+    { value: 6, label: 'Big Group', icon: '🎊', description: 'Me + 5 friends' },
+    { value: 8, label: 'Party Mode', icon: '🎈', description: 'Me + 7 friends' },
+  ];
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -225,8 +236,46 @@ const CreateTripPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Participant Limit Selection */}
             <div className={`animate-slide-in-up delay-700`}>
+              <label className="block pixel-text text-xs sm:text-sm mb-3 text-purple-400 glow-text">
+                👥 HOW MANY ADVENTURERS?
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                {participantOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setMaxParticipants(option.value)}
+                    className={`p-3 sm:p-4 border-2 transition-all duration-300 hover:scale-105 group ${
+                      maxParticipants === option.value
+                        ? 'border-purple-500 bg-purple-500/20 text-purple-300'
+                        : 'border-gray-600 hover:border-purple-500/50 text-gray-300 hover:text-purple-300'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-xl sm:text-2xl mb-1 group-hover:animate-bounce">
+                        {option.icon}
+                      </div>
+                      <div className="pixel-text text-xs sm:text-sm mb-1">
+                        {option.label}
+                      </div>
+                      <div className="outfit-text text-xs text-gray-400">
+                        {option.description}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 text-center">
+                <span className="pixel-text text-xs text-purple-400">
+                  Selected: {maxParticipants} total adventurers
+                </span>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className={`animate-slide-in-up delay-800`}>
               <button
                 type="submit"
                 disabled={!selectedLocation || !startDate || !endDate || loading}
@@ -249,7 +298,7 @@ const CreateTripPage: React.FC = () => {
           </form>
 
           {/* Motivational Footer */}
-          <div className={`text-center mt-8 sm:mt-12 animate-slide-in-up delay-800`}>
+          <div className={`text-center mt-8 sm:mt-12 animate-slide-in-up delay-900`}>
             <p className="outfit-text text-gray-500 text-sm sm:text-base">
               ✨ Ready to create memories that will last a lifetime? ✨
             </p>

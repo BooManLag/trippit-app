@@ -6,6 +6,7 @@ import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
 import CopyLinkButton from '../components/CopyLinkButton';
+import ShareTripLink from '../components/ShareTripLink';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -346,6 +347,13 @@ const TripDashboardPage: React.FC = () => {
             <h2 className="pixel-text mobile-heading">TRIP DASHBOARD</h2>
           </div>
           <AuthStatus className="flex-shrink-0" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <ShareTripLink tripId={tripId!} />
+          <div className="pixel-card bg-gray-900 border-2 border-purple-500/20 flex items-center justify-center">
+            <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
+          </div>
         </div>
 
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">

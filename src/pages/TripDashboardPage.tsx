@@ -276,17 +276,20 @@ const TripDashboardPage: React.FC = () => {
           setIsUserParticipant(true);
         }
 
-        // Check if user is participant
-        const { data: participantCheck } = await supabase
+        // Check if user is participant - Fixed: Use limit(1) instead of single()
+        const { data: participantCheck, error: participantError } = await supabase
           .from('trip_participants')
           .select('id, role')
           .eq('trip_id', tripId)
           .eq('user_id', userId)
-          .single();
+          .limit(1);
 
-        if (participantCheck) {
+        if (participantError) {
+          console.error('Error checking participant status:', participantError);
+        } else if (participantCheck && participantCheck.length > 0) {
+          const participant = participantCheck[0];
           setIsUserParticipant(true);
-          if (participantCheck.role === 'owner') {
+          if (participant.role === 'owner') {
             setIsUserOwner(true);
           }
           fetchUserDares(userId, tripId!);

@@ -1,8 +1,40 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
+// Get environment variables with fallbacks and validation
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Validate that required environment variables are present
+if (!supabaseUrl) {
+  throw new Error(
+    'Missing VITE_SUPABASE_URL environment variable. ' +
+    'Please add it to your .env file or Netlify environment variables.'
+  );
+}
+
+if (!supabaseAnonKey) {
+  throw new Error(
+    'Missing VITE_SUPABASE_ANON_KEY environment variable. ' +
+    'Please add it to your .env file or Netlify environment variables.'
+  );
+}
+
+// Validate URL format
+try {
+  new URL(supabaseUrl);
+} catch (error) {
+  throw new Error(
+    `Invalid VITE_SUPABASE_URL format: ${supabaseUrl}. ` +
+    'Please ensure it\'s a valid URL (e.g., https://your-project.supabase.co)'
+  );
+}
+
+console.log('🔧 Supabase configuration:', {
+  url: supabaseUrl,
+  hasAnonKey: !!supabaseAnonKey,
+  anonKeyLength: supabaseAnonKey?.length
+});
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 

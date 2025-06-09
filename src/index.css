@@ -8,6 +8,12 @@
     @apply bg-black text-white;
     image-rendering: pixelated;
   }
+  
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 /* Custom Components */

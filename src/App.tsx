@@ -14,19 +14,21 @@ import BucketListPage from './pages/BucketListPage';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/create-trip" element={<CreateTripPage />} />
-        <Route path="/trip-created" element={<TripCreatedPage />} />
-        <Route path="/my-trips" element={<MyTripsPage />} />
-        <Route path="/trip/:tripId" element={<TripDashboardPage />} />
-        <Route path="/game" element={<GamePage />} />
-        <Route path="/tips" element={<TipsPage />} />
-        <Route path="/checklist" element={<ChecklistPage />} />
-        <Route path="/bucket-list" element={<BucketListPage />} />
-      </Routes>
-    </Router>
+    <div className="min-h-screen bg-black text-white">
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/create-trip" element={<CreateTripPage />} />
+          <Route path="/trip-created" element={<TripCreatedPage />} />
+          <Route path="/my-trips" element={<MyTripsPage />} />
+          <Route path="/trip/:tripId" element={<TripDashboardPage />} />
+          <Route path="/game" element={<GamePage />} />
+          <Route path="/tips" element={<TipsPage />} />
+          <Route path="/checklist" element={<ChecklistPage />} />
+          <Route path="/bucket-list" element={<BucketListPage />} />
+        </Routes>
+      </Router>
+    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
@@ -12,6 +12,9 @@ interface Trip {
   start_date: string;
   end_date: string;
   status?: 'not_started' | 'in_progress' | 'completed';
+  user_role?: 'owner' | 'participant';
+  max_participants?: number;
+  participant_count?: number;
 }
 
 const MyTripsPage: React.FC = () => {
@@ -28,19 +31,55 @@ const MyTripsPage: React.FC = () => {
 
   const fetchTrips = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data, error } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('start_date', { ascending: true });
+    if (!user) return;
 
-    if (error) {
-      console.error('Error fetching trips:', error);
-    } else {
-      // Add status based on dates
-      const tripsWithStatus = (data || []).map(trip => {
-        const startDate = new Date(trip.start_date);
-        const endDate = new Date(trip.end_date);
+    try {
+      // Fetch trips where user is either owner or participant
+      const { data: tripParticipants, error } = await supabase
+        .from('trip_participants')
+        .select(`
+          trip_id,
+          role,
+          trips!inner (
+            id,
+            destination,
+            start_date,
+            end_date,
+            max_participants,
+            user_id
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('joined_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching user trips:', error);
+        return;
+      }
+
+      // Get participant counts for each trip
+      const tripIds = (tripParticipants || []).map(tp => (tp as any).trips.id);
+      
+      let participantCounts: { [key: string]: number } = {};
+      if (tripIds.length > 0) {
+        const { data: counts } = await supabase
+          .from('trip_participants')
+          .select('trip_id')
+          .in('trip_id', tripIds);
+        
+        if (counts) {
+          participantCounts = counts.reduce((acc, item) => {
+            acc[item.trip_id] = (acc[item.trip_id] || 0) + 1;
+            return acc;
+          }, {} as { [key: string]: number });
+        }
+      }
+
+      // Transform the data and add status
+      const tripsWithStatus = (tripParticipants || []).map(tp => {
+        const tripData = (tp as any).trips;
+        const startDate = new Date(tripData.start_date);
+        const endDate = new Date(tripData.end_date);
         const today = new Date();
 
         let status: Trip['status'] = 'not_started';
@@ -50,11 +89,24 @@ const MyTripsPage: React.FC = () => {
           status = 'in_progress';
         }
 
-        return { ...trip, status };
+        return {
+          id: tripData.id,
+          destination: tripData.destination,
+          start_date: tripData.start_date,
+          end_date: tripData.end_date,
+          max_participants: tripData.max_participants,
+          participant_count: participantCounts[tripData.id] || 0,
+          status,
+          user_role: tp.role as 'owner' | 'participant'
+        };
       });
+
       setTrips(tripsWithStatus);
+    } catch (error) {
+      console.error('Error fetching trips:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -78,16 +130,35 @@ const MyTripsPage: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!tripToDelete) return;
 
-    const { error } = await supabase
-      .from('trips')
-      .delete()
-      .eq('id', tripToDelete);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    if (error) {
-      console.error('Error deleting trip:', error);
+    const tripToDeleteData = trips.find(t => t.id === tripToDelete);
+    
+    if (tripToDeleteData?.user_role === 'owner') {
+      // If user is owner, delete the entire trip
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripToDelete);
+
+      if (error) {
+        console.error('Error deleting trip:', error);
+      }
     } else {
-      await fetchTrips();
+      // If user is participant, just remove them from the trip
+      const { error } = await supabase
+        .from('trip_participants')
+        .delete()
+        .eq('trip_id', tripToDelete)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error leaving trip:', error);
+      }
     }
+
+    await fetchTrips();
   };
 
   const handlePlayTrip = (tripId: string) => {
@@ -137,6 +208,18 @@ const MyTripsPage: React.FC = () => {
       default:
         return '⏳';
     }
+  };
+
+  const getRoleIcon = (role: 'owner' | 'participant') => {
+    return role === 'owner' ? <Crown className="w-4 h-4 text-yellow-400" /> : <Users className="w-4 h-4 text-blue-400" />;
+  };
+
+  const getRoleText = (role: 'owner' | 'participant') => {
+    return role === 'owner' ? 'OWNER' : 'PARTICIPANT';
+  };
+
+  const getDeleteButtonText = (role: 'owner' | 'participant') => {
+    return role === 'owner' ? 'Delete Trip' : 'Leave Trip';
   };
 
   return (
@@ -209,10 +292,24 @@ const MyTripsPage: React.FC = () => {
                               {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                             </p>
                           </div>
+                          <div className="flex items-center gap-4 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{getStatusIcon(trip.status)}</span>
+                              <p className={`pixel-text text-xs sm:text-sm ${getStatusColor(trip.status)}`}>
+                                {getStatusText(trip.status)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {getRoleIcon(trip.user_role!)}
+                              <p className="pixel-text text-xs text-gray-400">
+                                {getRoleText(trip.user_role!)}
+                              </p>
+                            </div>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-lg">{getStatusIcon(trip.status)}</span>
-                            <p className={`pixel-text text-xs sm:text-sm ${getStatusColor(trip.status)}`}>
-                              {getStatusText(trip.status)}
+                            <Users className="w-4 h-4 text-purple-400" />
+                            <p className="pixel-text text-xs text-purple-400">
+                              {trip.participant_count}/{trip.max_participants || 4} ADVENTURERS
                             </p>
                           </div>
                         </div>
@@ -231,7 +328,7 @@ const MyTripsPage: React.FC = () => {
                           <button
                             onClick={() => handleDeleteClick(trip.id)}
                             className="text-red-500 hover:text-red-400 transition-all duration-300 p-2 hover:scale-110 hover-wiggle"
-                            title="Delete trip"
+                            title={getDeleteButtonText(trip.user_role!)}
                           >
                             <Trash2 className="w-5 sm:w-6 h-5 sm:h-6" />
                           </button>
@@ -271,20 +368,45 @@ const MyTripsPage: React.FC = () => {
                               {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                             </p>
                           </div>
+                          <div className="flex items-center gap-4 mb-2">
+                            <div className="flex items-center gap-2">
+                              <Star className="w-4 h-4 text-yellow-400" />
+                              <p className="pixel-text text-xs sm:text-sm text-blue-400">
+                                ADVENTURE COMPLETED
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {getRoleIcon(trip.user_role!)}
+                              <p className="pixel-text text-xs text-gray-500">
+                                {getRoleText(trip.user_role!)}
+                              </p>
+                            </div>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <Star className="w-4 h-4 text-yellow-400" />
-                            <p className="pixel-text text-xs sm:text-sm text-blue-400">
-                              ADVENTURE COMPLETED
+                            <Users className="w-4 h-4 text-gray-500" />
+                            <p className="pixel-text text-xs text-gray-500">
+                              {trip.participant_count}/{trip.max_participants || 4} ADVENTURERS
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteClick(trip.id)}
-                          className="text-red-500/50 hover:text-red-400 transition-all duration-300 p-2 self-end sm:self-start hover:scale-110 hover-wiggle flex-shrink-0"
-                          title="Delete trip"
-                        >
-                          <Trash2 className="w-5 sm:w-6 h-5 sm:h-6" />
-                        </button>
+                        <div className="flex items-center gap-2 sm:gap-3 justify-end sm:justify-start flex-shrink-0">
+                          <button
+                            onClick={() => handlePlayTrip(trip.id)}
+                            className="text-gray-500 hover:text-gray-400 transition-all duration-300 p-2 hover:scale-110"
+                            title="View trip dashboard"
+                          >
+                            <Play className="w-5 sm:w-6 h-5 sm:h-6" />
+                          </button>
+                          {trip.user_role === 'owner' && (
+                            <button
+                              onClick={() => handleDeleteClick(trip.id)}
+                              className="text-red-500/50 hover:text-red-400 transition-all duration-300 p-2 self-end sm:self-start hover:scale-110 hover-wiggle flex-shrink-0"
+                              title={getDeleteButtonText(trip.user_role)}
+                            >
+                              <Trash2 className="w-5 sm:w-6 h-5 sm:h-6" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -312,8 +434,12 @@ const MyTripsPage: React.FC = () => {
           isOpen={deleteModalOpen}
           onClose={() => setDeleteModalOpen(false)}
           onConfirm={handleConfirmDelete}
-          title="DELETE ADVENTURE"
-          message="Are you sure you want to delete this adventure? This action cannot be undone and all associated data will be lost."
+          title={trips.find(t => t.id === tripToDelete)?.user_role === 'owner' ? "DELETE ADVENTURE" : "LEAVE ADVENTURE"}
+          message={
+            trips.find(t => t.id === tripToDelete)?.user_role === 'owner' 
+              ? "Are you sure you want to delete this adventure? This action cannot be undone and all associated data will be lost."
+              : "Are you sure you want to leave this adventure? You can rejoin later if there's space available."
+          }
         />
       </div>
     </div>

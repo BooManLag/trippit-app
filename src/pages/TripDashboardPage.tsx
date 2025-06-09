@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
@@ -38,11 +38,20 @@ interface RedditTip {
   created_at: string;
 }
 
+interface TripParticipant {
+  id: string;
+  user_id: string;
+  display_name: string;
+  email: string;
+}
+
 const TripDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tripId } = useParams();
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [tripNumber, setTripNumber] = useState(1);
+  const [participants, setParticipants] = useState<TripParticipant[]>([]);
+  const [maxParticipants] = useState(4); // You can make this configurable later
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
@@ -102,6 +111,73 @@ const TripDashboardPage: React.FC = () => {
       setUserDares([]);
     } finally {
       setLoadingDares(false);
+    }
+  };
+
+  const fetchTripParticipants = async (tripId: string) => {
+    try {
+      // For now, we'll get the trip owner and any users who have bucket list items for this trip
+      // This is a simplified approach - you might want a proper participants table later
+      const { data: tripData } = await supabase
+        .from('trips')
+        .select('user_id')
+        .eq('id', tripId)
+        .single();
+
+      if (!tripData?.user_id) {
+        setParticipants([]);
+        return;
+      }
+
+      // Get trip owner
+      const { data: ownerData } = await supabase
+        .from('users')
+        .select('id, display_name, email')
+        .eq('id', tripData.user_id)
+        .single();
+
+      // Get other participants (users with bucket list items for this trip)
+      const { data: participantData } = await supabase
+        .from('user_bucket_progress')
+        .select(`
+          user_id,
+          users!inner(id, display_name, email)
+        `)
+        .eq('trip_id', tripId)
+        .neq('user_id', tripData.user_id);
+
+      const participants: TripParticipant[] = [];
+      
+      if (ownerData) {
+        participants.push({
+          id: ownerData.id,
+          user_id: ownerData.id,
+          display_name: ownerData.display_name || ownerData.email.split('@')[0],
+          email: ownerData.email
+        });
+      }
+
+      // Add unique participants
+      if (participantData) {
+        const uniqueParticipants = new Map();
+        participantData.forEach(item => {
+          const user = (item as any).users;
+          if (!uniqueParticipants.has(user.id)) {
+            uniqueParticipants.set(user.id, {
+              id: user.id,
+              user_id: user.id,
+              display_name: user.display_name || user.email.split('@')[0],
+              email: user.email
+            });
+          }
+        });
+        participants.push(...Array.from(uniqueParticipants.values()));
+      }
+
+      setParticipants(participants);
+    } catch (error) {
+      console.error('Error fetching trip participants:', error);
+      setParticipants([]);
     }
   };
 
@@ -173,9 +249,10 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Fetch tips and dares in parallel
+      // Fetch tips, dares, and participants in parallel
       fetchRedditTips(city, country);
       fetchUserDares(userId, tripId!);
+      fetchTripParticipants(tripId!);
 
       // Fetch existing checklist items
       const { data: existingItems } = await supabase
@@ -359,11 +436,48 @@ const TripDashboardPage: React.FC = () => {
                 <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
                   TRIP #{tripNumber}
                 </h3>
-                <CopyLinkButton tripId={tripId!} />
+                <div className="flex items-center gap-3">
+                  {/* Participant Counter */}
+                  <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-lg border border-blue-500/20">
+                    <Users className="w-4 h-4 text-blue-400" />
+                    <span className="pixel-text text-xs text-blue-400">
+                      {participants.length}/{maxParticipants}
+                    </span>
+                  </div>
+                  <CopyLinkButton tripId={tripId!} />
+                </div>
               </div>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
                 {tripNumber === 1 ? 'Congratulations on starting your first adventure!' : 'Keep exploring, adventurer!'}
               </p>
+              
+              {/* Participants List */}
+              {participants.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-blue-400" />
+                    <span className="pixel-text text-xs text-blue-400">ADVENTURERS</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {participants.map((participant, index) => (
+                      <div 
+                        key={participant.id}
+                        className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700"
+                      >
+                        {participant.display_name}
+                        {index === 0 && (
+                          <span className="ml-1 text-yellow-400">👑</span>
+                        )}
+                      </div>
+                    ))}
+                    {participants.length < maxParticipants && (
+                      <div className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-500 border border-gray-700 border-dashed">
+                        + {maxParticipants - participants.length} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -440,7 +554,7 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Dare Bucket List Section */}
+        {/* Dare Bucket List Section - Moved below the game */}
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-red-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">

@@ -47,26 +47,10 @@ vite.config.ts   Vite configuration
 
 You are welcome to explore each folder to see how things fit together.
 
-## Deployment
-
-### Netlify Deployment
-
-Trippit is configured for seamless deployment on Netlify with proper SPA routing:
-
-1. **Automatic SPA Routing**: The project includes both `netlify.toml` and `public/_redirects` files that configure Netlify to serve `index.html` for all routes, ensuring shared trip links work correctly.
-
-2. **Build Configuration**: Run `npm run build` to create the production build. Vite automatically copies the `_redirects` file from the `public` directory to the `dist` output.
-
-3. **Shared Links**: Trip sharing links like `/trip/123` will work correctly on the deployed site thanks to the redirect rules.
-
-### Other Hosting Providers
-
-For other hosting providers, ensure your server is configured to:
-- Serve `index.html` for all routes (SPA fallback)
-- Support client-side routing for React Router
-
-The `public/_redirects` file contains the routing rules that work with most static hosting providers.
-
 ## Contributing
 
 This project was created for a hackathon and has plenty of room to grow. Pull requests are welcome if you'd like to experiment or improve the app. Just be sure to install the recommended development dependencies and run `npm run lint` before submitting a patch.
+
+## Deployment
+
+Trippit is a single-page application. When hosting the built files you need to ensure every route is served by `index.html` so the client side router can resolve the URL. The included `404.html` page automatically redirects unknown routes back to the app and preserves the path, allowing shared links like `/trip/123` to open correctly. Configure your hosting provider to serve both `index.html` and `404.html` for unknown routes. The build script automatically copies `404.html` into the `dist` directory so it can be deployed alongside `index.html`.

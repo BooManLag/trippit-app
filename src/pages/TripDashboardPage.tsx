@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
@@ -44,6 +44,8 @@ interface TripParticipant {
   user_id: string;
   display_name: string;
   email: string;
+  role: 'owner' | 'participant';
+  joined_at: string;
 }
 
 const TripDashboardPage: React.FC = () => {
@@ -59,6 +61,8 @@ const TripDashboardPage: React.FC = () => {
   const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [joinMessage, setJoinMessage] = useState<string | null>(null);
+  const [isUserParticipant, setIsUserParticipant] = useState(false);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
@@ -116,69 +120,79 @@ const TripDashboardPage: React.FC = () => {
 
   const fetchTripParticipants = async (tripId: string) => {
     try {
-      // For now, we'll get the trip owner and any users who have bucket list items for this trip
-      // This is a simplified approach - you might want a proper participants table later
-      const { data: tripData } = await supabase
-        .from('trips')
-        .select('user_id')
-        .eq('id', tripId)
-        .single();
+      const { data: participantData, error } = await supabase
+        .from('trip_participants')
+        .select(
+          `id, user_id, role, joined_at, users!inner(id, display_name, email)`
+        )
+        .eq('trip_id', tripId)
+        .order('joined_at', { ascending: true });
 
-      if (!tripData?.user_id) {
+      if (error) {
+        console.error('Error fetching trip participants:', error);
         setParticipants([]);
         return;
       }
 
-      // Get trip owner
-      const { data: ownerData } = await supabase
-        .from('users')
-        .select('id, display_name, email')
-        .eq('id', tripData.user_id)
-        .single();
-
-      // Get other participants (users with bucket list items for this trip)
-      const { data: participantData } = await supabase
-        .from('user_bucket_progress')
-        .select(`
-          user_id,
-          users!inner(id, display_name, email)
-        `)
-        .eq('trip_id', tripId)
-        .neq('user_id', tripData.user_id);
-
-      const participants: TripParticipant[] = [];
-      
-      if (ownerData) {
-        participants.push({
-          id: ownerData.id,
-          user_id: ownerData.id,
-          display_name: ownerData.display_name || ownerData.email.split('@')[0],
-          email: ownerData.email
-        });
-      }
-
-      // Add unique participants
-      if (participantData) {
-        const uniqueParticipants = new Map();
-        participantData.forEach(item => {
-          const user = (item as any).users;
-          if (!uniqueParticipants.has(user.id)) {
-            uniqueParticipants.set(user.id, {
-              id: user.id,
-              user_id: user.id,
-              display_name: user.display_name || user.email.split('@')[0],
-              email: user.email
-            });
-          }
-        });
-        participants.push(...Array.from(uniqueParticipants.values()));
-      }
+      const participants: TripParticipant[] = (participantData || []).map(item => {
+        const user = (item as any).users;
+        return {
+          id: item.id,
+          user_id: item.user_id,
+          display_name: user.display_name || user.email.split('@')[0],
+          email: user.email,
+          role: item.role,
+          joined_at: item.joined_at
+        };
+      });
 
       setParticipants(participants);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const isParticipant = participants.some(p => p.user_id === user.id);
+        setIsUserParticipant(isParticipant);
+      }
     } catch (error) {
       console.error('Error fetching trip participants:', error);
       setParticipants([]);
     }
+  };
+
+  const joinTrip = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('join_trip', {
+        p_trip_id: tripId,
+        p_user_id: user.id
+      });
+
+      if (error) {
+        console.error('Error joining trip:', error);
+        setJoinMessage('Failed to join trip. Please try again.');
+        return;
+      }
+
+      const result = data as { success: boolean; message?: string; error?: string };
+
+      if (result.success) {
+        setJoinMessage(result.message || 'Successfully joined the trip!');
+        setIsUserParticipant(true);
+        await fetchTripParticipants(tripId!);
+      } else {
+        setJoinMessage(result.error || 'Failed to join trip');
+      }
+    } catch (error) {
+      console.error('Error joining trip:', error);
+      setJoinMessage('Failed to join trip. Please try again.');
+    }
+
+    setTimeout(() => setJoinMessage(null), 3000);
   };
 
   const toggleDare = async (userDare: UserDare) => {
@@ -232,7 +246,7 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  const fetchTripDetails = async (userId: string) => {
+  const fetchTripDetails = async (userId: string | null = null) => {
     try {
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
@@ -249,49 +263,59 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Fetch tips, dares, and participants in parallel
       fetchRedditTips(city, country);
-      fetchUserDares(userId, tripId!);
       fetchTripParticipants(tripId!);
 
-      // Fetch existing checklist items
-      const { data: existingItems } = await supabase
-        .from('checklist_items')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('trip_id', tripId);
+      if (userId) {
+        // Check if user is participant
+        const { data: participantCheck } = await supabase
+          .from('trip_participants')
+          .select('id')
+          .eq('trip_id', tripId)
+          .eq('user_id', userId)
+          .single();
 
-      if (existingItems && existingItems.length > 0) {
-        setChecklistItems(existingItems);
-      } else {
-        const totalDefaultItems = defaultChecklist.reduce((total, category) => {
-          return total + category.items.length;
-        }, 0);
+        if (participantCheck) {
+          setIsUserParticipant(true);
+          fetchUserDares(userId, tripId!);
 
-        const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
-          id: `placeholder_${index}`,
-          category: 'Loading...',
-          description: 'Loading...',
-          is_completed: false,
-          is_default: true,
-          user_id: userId,
-          trip_id: tripId,
-        }));
+          const { data: existingItems } = await supabase
+            .from('checklist_items')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('trip_id', tripId);
 
-        setChecklistItems(placeholderItems);
-      }
+          if (existingItems && existingItems.length > 0) {
+            setChecklistItems(existingItems);
+          } else {
+            const totalDefaultItems = defaultChecklist.reduce((total, category) => {
+              return total + category.items.length;
+            }, 0);
 
-      // Get all user trips ordered by creation date to determine this trip's number
-      const { data: allTrips } = await supabase
-        .from('trips')
-        .select('id, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
+            const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
+              id: `placeholder_${index}`,
+              category: 'Loading...',
+              description: 'Loading...',
+              is_completed: false,
+              is_default: true,
+              user_id: userId,
+              trip_id: tripId,
+            }));
 
-      if (allTrips) {
-        // Find the index of current trip in the chronologically ordered list
-        const currentTripIndex = allTrips.findIndex((t) => t.id === tripId);
-        setTripNumber(currentTripIndex + 1); // +1 because arrays are 0-indexed
+            setChecklistItems(placeholderItems);
+          }
+
+          const { data: allTrips } = await supabase
+            .from('trips')
+            .select('id, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
+
+          if (allTrips) {
+            const currentTripIndex = allTrips.findIndex((t) => t.id === tripId);
+            setTripNumber(currentTripIndex + 1);
+          }
+        }
       }
 
     } catch (error) {
@@ -304,13 +328,7 @@ const TripDashboardPage: React.FC = () => {
 
   const loadTrip = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setLoading(false);
-      setShowAuthModal(true);
-      return;
-    }
-
-    await fetchTripDetails(user.id);
+    await fetchTripDetails(user?.id ?? null);
   };
 
   const handleAuthSuccess = async () => {
@@ -421,6 +439,12 @@ const TripDashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Join Message */}
+        {joinMessage && (
+          <div className="pixel-card bg-blue-900/20 border-2 border-blue-500/30 mb-6 text-center">
+            <p className="pixel-text text-blue-400">{joinMessage}</p>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div className="flex items-center gap-4">
             <BackButton />
@@ -445,7 +469,17 @@ const TripDashboardPage: React.FC = () => {
                       {participants.length}/{maxParticipants}
                     </span>
                   </div>
-                  <CopyLinkButton tripId={tripId!} />
+                  {!isUserParticipant ? (
+                    <button
+                      onClick={joinTrip}
+                      className="pixel-button-primary text-xs px-3 py-1 flex items-center gap-1"
+                    >
+                      <UserPlus className="w-3 h-3" />
+                      JOIN TRIP
+                    </button>
+                  ) : (
+                    <CopyLinkButton tripId={tripId!} />
+                  )}
                 </div>
               </div>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
@@ -460,13 +494,13 @@ const TripDashboardPage: React.FC = () => {
                     <span className="pixel-text text-xs text-blue-400">ADVENTURERS</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {participants.map((participant, index) => (
-                      <div 
+                    {participants.map((participant) => (
+                      <div
                         key={participant.id}
                         className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700"
                       >
                         {participant.display_name}
-                        {index === 0 && (
+                        {participant.role === 'owner' && (
                           <span className="ml-1 text-yellow-400">👑</span>
                         )}
                       </div>
@@ -503,6 +537,8 @@ const TripDashboardPage: React.FC = () => {
           <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
         </div>
 
+        {isUserParticipant && (
+          <>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Checklist Card */}
           <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
@@ -705,6 +741,8 @@ const TripDashboardPage: React.FC = () => {
             </div>
           )}
         </div>
+          </>
+        )}
 
         {/* Tips Section */}
         <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">

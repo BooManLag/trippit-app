@@ -141,6 +141,29 @@ export interface Database {
           trip_id?: string | null;
         };
       };
+      trip_participants: {
+        Row: {
+          id: string;
+          trip_id: string;
+          user_id: string;
+          joined_at: string;
+          role: 'owner' | 'participant';
+        };
+        Insert: {
+          id?: string;
+          trip_id: string;
+          user_id: string;
+          joined_at?: string;
+          role?: 'owner' | 'participant';
+        };
+        Update: {
+          id?: string;
+          trip_id?: string;
+          user_id?: string;
+          joined_at?: string;
+          role?: 'owner' | 'participant';
+        };
+      };
     };
   };
 }

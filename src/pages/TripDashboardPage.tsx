@@ -4,6 +4,8 @@ import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loa
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
+import AuthModal from '../components/AuthModal';
+import CopyLinkButton from '../components/CopyLinkButton';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -40,18 +42,19 @@ const TripDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { tripId } = useParams();
   const [trip, setTrip] = useState<TripDetails | null>(null);
-  const [tripNumber, setTripNumber] = useState<number>(1);
+  const [tripNumber, setTripNumber] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
   const [tips, setTips] = useState<RedditTip[]>([]);
   const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
       setLoadingTips(true);
-      
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
         {
@@ -79,7 +82,7 @@ const TripDashboardPage: React.FC = () => {
   const fetchUserDares = async (userId: string, tripId: string) => {
     try {
       setLoadingDares(true);
-      
+
       // Fetch user's dares for this trip
       const { data: userDareData, error } = await supabase
         .from('user_bucket_progress')
@@ -104,7 +107,7 @@ const TripDashboardPage: React.FC = () => {
 
   const toggleDare = async (userDare: UserDare) => {
     const isCompleting = !userDare.completed_at;
-    
+
     const { error } = await supabase
       .from('user_bucket_progress')
       .update({ 
@@ -130,7 +133,7 @@ const TripDashboardPage: React.FC = () => {
     // Get dares that user hasn't added yet
     const usedDareIds = userDares.map(ud => ud.bucket_item_id);
     const availableDares = daresData.filter(dare => !usedDareIds.includes(dare.id));
-    
+
     if (availableDares.length === 0) return;
 
     // Pick a random dare
@@ -153,83 +156,94 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchTripDetails = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate('/');
-          return;
-        }
+  const fetchTripDetails = async (userId: string) => {
+    try {
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
 
-        const { data: tripData, error: tripError } = await supabase
-          .from('trips')
-          .select('*')
-          .eq('id', tripId)
-          .single();
-
-        if (tripError || !tripData) {
-          console.error('Trip not found:', tripError);
-          navigate('/my-trips');
-          return;
-        }
-
-        setTrip(tripData);
-        const [city, country] = tripData.destination.split(', ');
-        
-        // Fetch tips and dares in parallel
-        fetchRedditTips(city, country);
-        fetchUserDares(user.id, tripId!);
-
-        // Fetch existing checklist items
-        const { data: existingItems } = await supabase
-          .from('checklist_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('trip_id', tripId);
-
-        if (existingItems && existingItems.length > 0) {
-          setChecklistItems(existingItems);
-        } else {
-          const totalDefaultItems = defaultChecklist.reduce((total, category) => {
-            return total + category.items.length;
-          }, 0);
-          
-          const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
-            id: `placeholder_${index}`,
-            category: 'Loading...',
-            description: 'Loading...',
-            is_completed: false,
-            is_default: true,
-            user_id: user.id,
-            trip_id: tripId
-          }));
-          
-          setChecklistItems(placeholderItems);
-        }
-
-        // Get all user trips ordered by creation date to determine this trip's number
-        const { data: allTrips } = await supabase
-          .from('trips')
-          .select('id, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
-
-        if (allTrips) {
-          // Find the index of current trip in the chronologically ordered list
-          const currentTripIndex = allTrips.findIndex(t => t.id === tripId);
-          setTripNumber(currentTripIndex + 1); // +1 because arrays are 0-indexed
-        }
-
-      } catch (error) {
-        console.error('Error fetching trip details:', error);
+      if (tripError || !tripData) {
+        console.error('Trip not found:', tripError);
         navigate('/my-trips');
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
-    fetchTripDetails();
+      setTrip(tripData);
+      const [city, country] = tripData.destination.split(', ');
+
+      // Fetch tips and dares in parallel
+      fetchRedditTips(city, country);
+      fetchUserDares(userId, tripId!);
+
+      // Fetch existing checklist items
+      const { data: existingItems } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('trip_id', tripId);
+
+      if (existingItems && existingItems.length > 0) {
+        setChecklistItems(existingItems);
+      } else {
+        const totalDefaultItems = defaultChecklist.reduce((total, category) => {
+          return total + category.items.length;
+        }, 0);
+
+        const placeholderItems = Array.from({ length: totalDefaultItems }, (_, index) => ({
+          id: `placeholder_${index}`,
+          category: 'Loading...',
+          description: 'Loading...',
+          is_completed: false,
+          is_default: true,
+          user_id: userId,
+          trip_id: tripId,
+        }));
+
+        setChecklistItems(placeholderItems);
+      }
+
+      // Get all user trips ordered by creation date to determine this trip's number
+      const { data: allTrips } = await supabase
+        .from('trips')
+        .select('id, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (allTrips) {
+        // Find the index of current trip in the chronologically ordered list
+        const currentTripIndex = allTrips.findIndex((t) => t.id === tripId);
+        setTripNumber(currentTripIndex + 1); // +1 because arrays are 0-indexed
+      }
+
+    } catch (error) {
+      console.error('Error fetching trip details:', error);
+      navigate('/my-trips');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTrip = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      setShowAuthModal(true);
+      return;
+    }
+
+    await fetchTripDetails(user.id);
+  };
+
+  const handleAuthSuccess = async () => {
+    setShowAuthModal(false);
+    setLoading(true);
+    await loadTrip();
+  };
+
+  useEffect(() => {
+    loadTrip();
   }, [tripId, navigate]);
 
   const formatDate = (dateString: string) => {
@@ -312,8 +326,11 @@ const TripDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center items-center">
-        <div className="pixel-text text-sm sm:text-base">LOADING...</div>
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="pixel-text text-blue-400">LOADING...</p>
+        </div>
       </div>
     );
   }
@@ -324,25 +341,28 @@ const TripDashboardPage: React.FC = () => {
   const completedDaresList = getCompletedDares();
 
   return (
-    <div className="min-h-screen w-full mobile-padding py-8 sm:py-12 bg-black text-white flex justify-center">
-      <div className="w-full max-w-6xl">
-        <div className="flex items-center justify-between gap-4 mb-6 sm:mb-8">
-          <div className="flex items-center gap-4 min-w-0 flex-1">
-            <BackButton to="/my-trips" />
-            <h2 className="pixel-text mobile-heading">TRIP DASHBOARD</h2>
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div className="flex items-center gap-4">
+            <BackButton />
+            <h1 className="pixel-text text-xl sm:text-2xl lg:text-3xl">TRIP DASHBOARD</h1>
           </div>
-          <AuthStatus className="flex-shrink-0" />
+          <AuthStatus />
         </div>
 
         <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-6">
             <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">
-                TRIP #{tripNumber}
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
+                  TRIP #{tripNumber}
+                </h3>
+                <CopyLinkButton tripId={tripId!} />
+              </div>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
-                {tripNumber === 1 ? "Congratulations on starting your first adventure!" : "Keep exploring, adventurer!"}
+                {tripNumber === 1 ? 'Congratulations on starting your first adventure!' : 'Keep exploring, adventurer!'}
               </p>
             </div>
           </div>
@@ -362,6 +382,10 @@ const TripDashboardPage: React.FC = () => {
               {getTripStatus()}
             </div>
           </div>
+        </div>
+
+        <div className="pixel-card bg-gray-900 border-2 border-purple-500/20 flex items-center justify-center mb-6 sm:mb-8">
+          <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
@@ -636,6 +660,11 @@ const TripDashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

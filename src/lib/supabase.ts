@@ -36,7 +36,13 @@ console.log('🔧 Supabase configuration:', {
   anonKeyLength: supabaseAnonKey?.length
 });
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  global: {
+    headers: {
+      Accept: 'application/json'
+    }
+  }
+});
 
 // Helper function to check if user is authenticated
 export const isAuthenticated = async () => {

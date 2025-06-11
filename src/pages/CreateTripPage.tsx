@@ -90,6 +90,14 @@ const CreateTripPage: React.FC = () => {
       // Ensure user profile exists before creating trip
       await ensureUserProfile();
 
+      console.log('Creating trip with data:', {
+        user_id: user.id,
+        destination: `${selectedLocation.city}, ${selectedLocation.country}`,
+        start_date: startDate,
+        end_date: endDate,
+        max_participants: maxParticipants,
+      });
+
       const { data: tripData, error } = await supabase.from('trips').insert({
         user_id: user.id,
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
@@ -103,12 +111,15 @@ const CreateTripPage: React.FC = () => {
         throw error;
       }
 
+      console.log('Trip created successfully:', tripData);
+
       // The trigger will automatically add the user as a participant with 'owner' role
-      // Navigate to the trip dashboard
-      navigate(`/trip/${tripData.id}`);
+      // Navigate to my trips page instead of directly to trip dashboard
+      navigate('/my-trips');
     } catch (error) {
       console.error('Error creating trip:', error);
-      // You might want to show an error message to the user here
+      // Show error message to user
+      alert('Failed to create trip. Please try again.');
     } finally {
       setLoading(false);
     }

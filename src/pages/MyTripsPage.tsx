@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown, Share2 } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
+import InvitationModal from '../components/InvitationModal';
+import ShareTripModal from '../components/ShareTripModal';
 
 interface Trip {
   id: string;
@@ -17,13 +19,37 @@ interface Trip {
   participant_count?: number;
 }
 
+interface TripInvitation {
+  id: string;
+  trip_id: string;
+  inviter_id: string;
+  invitee_email: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  trip: {
+    destination: string;
+    start_date: string;
+    end_date: string;
+    max_participants: number;
+  };
+  inviter: {
+    display_name: string;
+    email: string;
+  };
+}
+
 const MyTripsPage: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<TripInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedTripForShare, setSelectedTripForShare] = useState<Trip | null>(null);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
+  const [selectedInvitation, setSelectedInvitation] = useState<TripInvitation | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     setIsVisible(true);
@@ -104,27 +130,93 @@ const MyTripsPage: React.FC = () => {
       setTrips(tripsWithStatus);
     } catch (error) {
       console.error('Error fetching trips:', error);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchPendingInvitations = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { data: invitations, error } = await supabase
+        .from('trip_invitations')
+        .select(`
+          id,
+          trip_id,
+          inviter_id,
+          invitee_email,
+          status,
+          created_at,
+          trips!inner (
+            destination,
+            start_date,
+            end_date,
+            max_participants
+          ),
+          users!trip_invitations_inviter_id_fkey (
+            display_name,
+            email
+          )
+        `)
+        .eq('invitee_email', user.email)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching invitations:', error);
+        return;
+      }
+
+      const formattedInvitations = (invitations || []).map(inv => ({
+        id: inv.id,
+        trip_id: inv.trip_id,
+        inviter_id: inv.inviter_id,
+        invitee_email: inv.invitee_email,
+        status: inv.status as 'pending',
+        created_at: inv.created_at,
+        trip: (inv as any).trips,
+        inviter: (inv as any).users
+      }));
+
+      setPendingInvitations(formattedInvitations);
+
+      // Check if there's an invitation ID in the URL
+      const invitationParam = searchParams.get('invitation');
+      if (invitationParam && formattedInvitations.length > 0) {
+        // Find invitation for this trip
+        const invitation = formattedInvitations.find(inv => inv.trip_id === invitationParam);
+        if (invitation) {
+          setSelectedInvitation(invitation);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching invitations:', error);
     }
   };
 
   useEffect(() => {
-    const checkAuthAndFetchTrips = async () => {
+    const checkAuthAndFetchData = async () => {
       const authenticated = await isAuthenticated();
       if (!authenticated) {
         navigate('/');
         return;
       }
-      fetchTrips();
+      
+      await Promise.all([fetchTrips(), fetchPendingInvitations()]);
+      setLoading(false);
     };
 
-    checkAuthAndFetchTrips();
-  }, [navigate]);
+    checkAuthAndFetchData();
+  }, [navigate, searchParams]);
 
   const handleDeleteClick = (tripId: string) => {
     setTripToDelete(tripId);
     setDeleteModalOpen(true);
+  };
+
+  const handleShareClick = (trip: Trip) => {
+    setSelectedTripForShare(trip);
+    setShareModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
@@ -159,6 +251,15 @@ const MyTripsPage: React.FC = () => {
     }
 
     await fetchTrips();
+  };
+
+  const handleInvitationResponse = async (accepted: boolean) => {
+    if (accepted) {
+      // Refresh trips to show the newly joined trip
+      await fetchTrips();
+    }
+    // Refresh invitations to remove the responded invitation
+    await fetchPendingInvitations();
   };
 
   const handlePlayTrip = (tripId: string) => {
@@ -255,6 +356,55 @@ const MyTripsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Pending Invitations */}
+        {pendingInvitations.length > 0 && (
+          <div className={`animate-slide-in-up delay-100 mb-6 sm:mb-8`}>
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <div className="text-2xl sm:text-3xl animate-bounce">📬</div>
+              <h3 className="pixel-text text-purple-400 text-sm sm:text-base lg:text-lg">PENDING INVITATIONS</h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-purple-500/50 to-transparent"></div>
+              <span className="pixel-text text-xs text-purple-400">{pendingInvitations.length}</span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {pendingInvitations.map((invitation, index) => (
+                <div
+                  key={invitation.id}
+                  className={`pixel-card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 group animate-slide-in-up cursor-pointer`}
+                  style={{ animationDelay: `${index * 100 + 200}ms` }}
+                  onClick={() => setSelectedInvitation(invitation)}
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="pixel-text text-xs text-purple-400">INVITATION</span>
+                      <span className="text-lg">✉️</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin className="w-4 sm:w-5 h-4 sm:h-5 text-purple-400 flex-shrink-0" />
+                        <h4 className="pixel-text text-white text-sm sm:text-base break-words group-hover:text-purple-300 transition-colors">
+                          {invitation.trip.destination}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <p className="outfit-text text-gray-400 text-sm">
+                          {formatDate(invitation.trip.start_date)} — {formatDate(invitation.trip.end_date)}
+                        </p>
+                      </div>
+                      <p className="outfit-text text-gray-300 text-sm">
+                        From{' '}
+                        <span className="text-purple-400 font-semibold">
+                          {invitation.inviter.display_name || invitation.inviter.email.split('@')[0]}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center items-center h-[60vh]">
             <div className="animate-bounce-in">
@@ -314,6 +464,15 @@ const MyTripsPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3 justify-end sm:justify-start flex-shrink-0">
+                          {trip.user_role === 'owner' && (
+                            <button
+                              onClick={() => handleShareClick(trip)}
+                              className="text-purple-500 hover:text-purple-400 transition-all duration-300 p-2 hover:scale-110"
+                              title="Share trip"
+                            >
+                              <Share2 className="w-5 sm:w-6 h-5 sm:h-6" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handlePlayTrip(trip.id)}
                             className="text-green-500 hover:text-green-400 transition-all duration-300 p-2 hover:scale-110 hover-glow"
@@ -430,6 +589,7 @@ const MyTripsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Modals */}
         <DeleteModal
           isOpen={deleteModalOpen}
           onClose={() => setDeleteModalOpen(false)}
@@ -441,6 +601,29 @@ const MyTripsPage: React.FC = () => {
               : "Are you sure you want to leave this adventure? You can rejoin later if there's space available."
           }
         />
+
+        {selectedInvitation && (
+          <InvitationModal
+            invitation={selectedInvitation}
+            isOpen={!!selectedInvitation}
+            onClose={() => setSelectedInvitation(null)}
+            onResponse={handleInvitationResponse}
+          />
+        )}
+
+        {selectedTripForShare && (
+          <ShareTripModal
+            isOpen={shareModalOpen}
+            onClose={() => {
+              setShareModalOpen(false);
+              setSelectedTripForShare(null);
+            }}
+            tripId={selectedTripForShare.id}
+            tripDestination={selectedTripForShare.destination}
+            maxParticipants={selectedTripForShare.max_participants || 4}
+            currentParticipants={selectedTripForShare.participant_count || 0}
+          />
+        )}
       </div>
     </div>
   );

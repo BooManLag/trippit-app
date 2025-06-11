@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Users, MapPin, Calendar, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -40,42 +40,47 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [tripDetails, setTripDetails] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  React.useEffect(() => {
-    if (isOpen && tripId && !invitation) {
+  useEffect(() => {
+    if (isOpen && tripId && !invitation && !dataLoaded) {
       fetchTripDetails();
     }
-  }, [isOpen, tripId, invitation]);
+  }, [isOpen, tripId, invitation, dataLoaded]);
 
   const fetchTripDetails = async () => {
     if (!tripId) return;
 
     try {
-      // Fetch trip details
-      const { data: trip, error: tripError } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('id', tripId)
-        .single();
+      setLoading(true);
+      
+      // Fetch trip details and participants in parallel for better performance
+      const [tripResponse, participantResponse] = await Promise.all([
+        supabase
+          .from('trips')
+          .select('*')
+          .eq('id', tripId)
+          .single(),
+        supabase
+          .from('trip_participants')
+          .select(`
+            id, user_id, role, joined_at,
+            users!inner(id, display_name, email)
+          `)
+          .eq('trip_id', tripId)
+      ]);
 
-      if (tripError) throw tripError;
+      if (tripResponse.error) throw tripResponse.error;
+      if (participantResponse.error) throw participantResponse.error;
 
-      // Fetch participants
-      const { data: participantData, error: participantError } = await supabase
-        .from('trip_participants')
-        .select(`
-          id, user_id, role, joined_at,
-          users!inner(id, display_name, email)
-        `)
-        .eq('trip_id', tripId);
-
-      if (participantError) throw participantError;
-
-      setTripDetails(trip);
-      setParticipants(participantData || []);
+      setTripDetails(tripResponse.data);
+      setParticipants(participantResponse.data || []);
+      setDataLoaded(true);
     } catch (error) {
       console.error('Error fetching trip details:', error);
       setError('Failed to load trip details');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -168,13 +173,36 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
   const trip = invitation?.trip || tripDetails;
   const inviterName = invitation?.inviter?.display_name || invitation?.inviter?.email?.split('@')[0];
 
-  if (!trip) {
+  // Show loading state only when we're actually fetching data
+  if (!trip && loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="pixel-card max-w-md w-full relative">
           <div className="text-center py-8">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="pixel-text text-blue-400">LOADING TRIP DETAILS...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If we don't have trip data and we're not loading, show error
+  if (!trip && !loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="pixel-card max-w-md w-full relative">
+          <button
+            onClick={onClose}
+            className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-white"
+          >
+            <X className="w-4 sm:w-5 h-4 sm:h-5" />
+          </button>
+          <div className="text-center py-8">
+            <p className="pixel-text text-red-400 mb-4">TRIP NOT FOUND</p>
+            <button onClick={onClose} className="pixel-button-secondary">
+              CLOSE
+            </button>
           </div>
         </div>
       </div>

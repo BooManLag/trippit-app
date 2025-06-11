@@ -50,6 +50,7 @@ const MyTripsPage: React.FC = () => {
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [invitationTripId, setInvitationTripId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -186,6 +187,65 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
+  const handleInvitationFromUrl = async (invitationTripId: string, user: any) => {
+    try {
+      // First check if this is a formal invitation
+      const { data: invitation } = await supabase
+        .from('trip_invitations')
+        .select(`
+          id,
+          trip_id,
+          inviter_id,
+          invitee_email,
+          status,
+          created_at,
+          trips!inner (
+            destination,
+            start_date,
+            end_date,
+            max_participants
+          ),
+          users!trip_invitations_inviter_id_fkey (
+            display_name,
+            email
+          )
+        `)
+        .eq('trip_id', invitationTripId)
+        .eq('invitee_email', user.email)
+        .eq('status', 'pending')
+        .single();
+
+      if (invitation) {
+        // This is a formal invitation
+        const formattedInvitation = {
+          id: invitation.id,
+          trip_id: invitation.trip_id,
+          inviter_id: invitation.inviter_id,
+          invitee_email: invitation.invitee_email,
+          status: invitation.status as 'pending',
+          created_at: invitation.created_at,
+          trip: (invitation as any).trips,
+          inviter: (invitation as any).users
+        };
+        setSelectedInvitation(formattedInvitation);
+      } else {
+        // This is just a shared trip link - check if trip exists and user can join
+        const { data: tripData } = await supabase
+          .from('trips')
+          .select('*')
+          .eq('id', invitationTripId)
+          .single();
+
+        if (tripData) {
+          setInvitationTripId(invitationTripId);
+          setShowInvitationModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling invitation from URL:', error);
+    }
+  };
+
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
       const authenticated = await isAuthenticated();
@@ -194,43 +254,28 @@ const MyTripsPage: React.FC = () => {
         return;
       }
       
-      await Promise.all([fetchTrips(), fetchPendingInvitations()]);
-      
-      // Check if there's an invitation parameter in the URL
-      const invitationParam = searchParams.get('invitation');
-      if (invitationParam) {
-        // Check if this is a formal invitation or just a trip share
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: invitation } = await supabase
-            .from('trip_invitations')
-            .select('*')
-            .eq('trip_id', invitationParam)
-            .eq('invitee_email', user.email)
-            .eq('status', 'pending')
-            .single();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/');
+        return;
+      }
 
-          if (invitation) {
-            // This is a formal invitation
-            const formattedInvitation = {
-              ...invitation,
-              trip: pendingInvitations.find(inv => inv.trip_id === invitationParam)?.trip,
-              inviter: pendingInvitations.find(inv => inv.trip_id === invitationParam)?.inviter
-            };
-            setSelectedInvitation(formattedInvitation as TripInvitation);
-          } else {
-            // This is just a shared trip link
-            setInvitationTripId(invitationParam);
-            setShowInvitationModal(true);
-          }
-        }
+      // Check URL parameter first for faster response
+      const invitationParam = searchParams.get('invitation');
+      if (invitationParam && !initialLoadComplete) {
+        // Handle invitation immediately for better UX
+        handleInvitationFromUrl(invitationParam, user);
       }
       
+      // Fetch data in parallel for better performance
+      await Promise.all([fetchTrips(), fetchPendingInvitations()]);
+      
+      setInitialLoadComplete(true);
       setLoading(false);
     };
 
     checkAuthAndFetchData();
-  }, [navigate, searchParams]);
+  }, [navigate, searchParams, initialLoadComplete]);
 
   const handleDeleteClick = (tripId: string) => {
     setTripToDelete(tripId);

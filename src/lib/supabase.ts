@@ -36,13 +36,8 @@ console.log('🔧 Supabase configuration:', {
   anonKeyLength: supabaseAnonKey?.length
 });
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  global: {
-    headers: {
-      Accept: 'application/json'
-    }
-  }
-});
+// Create Supabase client without custom headers that might cause 406 errors
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // Helper function to check if user is authenticated
 export const isAuthenticated = async () => {

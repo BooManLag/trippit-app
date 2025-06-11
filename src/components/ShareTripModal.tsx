@@ -88,51 +88,26 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           </div>
         </div>
 
-        {/* Share Link Section */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <Link2 className="w-4 h-4 text-purple-400" />
-            <label className="pixel-text text-xs sm:text-sm text-purple-400 glow-text">
-              SHAREABLE LINK
-            </label>
-          </div>
-          
-          <div className="pixel-card bg-gray-800/50 border-gray-700 mb-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={shareUrl}
-                readOnly
-                className="flex-1 bg-transparent text-gray-300 text-xs outline-none"
-              />
-              <button
-                onClick={copyShareLink}
-                className="pixel-button-primary px-4 py-2 flex items-center gap-2 hover-glow"
-              >
-                <Copy className="w-4 h-4" />
-                {copied ? 'COPIED!' : 'COPY'}
-              </button>
+        {/* Copy Success Message */}
+        {copied && (
+          <div className="text-center mb-6 animate-bounce-in">
+            <div className="inline-flex items-center gap-2 text-green-400">
+              <CheckCircle2 className="w-4 h-4" />
+              <span className="pixel-text text-xs">Link copied to clipboard!</span>
             </div>
           </div>
+        )}
 
-          {copied && (
-            <div className="text-center mb-4 animate-bounce-in">
-              <div className="inline-flex items-center gap-2 text-green-400">
-                <CheckCircle2 className="w-4 h-4" />
-                <span className="pixel-text text-xs">Link copied to clipboard!</span>
-              </div>
-            </div>
-          )}
-
-          <div className="pixel-card bg-blue-900/20 border-blue-500/20">
-            <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
-            <ul className="outfit-text text-xs text-gray-400 space-y-1">
-              <li>• Share this link with friends</li>
-              <li>• They'll be redirected to "My Trips"</li>
-              <li>• An invitation modal will appear</li>
-              <li>• They can accept or decline to join</li>
-            </ul>
-          </div>
+        {/* Instructions */}
+        <div className="pixel-card bg-blue-900/20 border-blue-500/20 mb-6">
+          <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
+          <ul className="outfit-text text-xs text-gray-400 space-y-1">
+            <li>• Copy the invitation link below</li>
+            <li>• Share it with friends via WhatsApp, SMS, etc.</li>
+            <li>• They'll be redirected to "My Trips"</li>
+            <li>• An invitation modal will appear</li>
+            <li>• They can accept or decline to join</li>
+          </ul>
         </div>
 
         {/* Action Buttons */}

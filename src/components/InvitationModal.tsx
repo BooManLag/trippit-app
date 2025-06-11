@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Users, MapPin, Calendar, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Mail, Users, MapPin, Calendar, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface TripInvitation {
@@ -22,7 +22,8 @@ interface TripInvitation {
 }
 
 interface InvitationModalProps {
-  invitation: TripInvitation;
+  invitation?: TripInvitation;
+  tripId?: string;
   isOpen: boolean;
   onClose: () => void;
   onResponse: (accepted: boolean) => void;
@@ -30,16 +31,103 @@ interface InvitationModalProps {
 
 const InvitationModal: React.FC<InvitationModalProps> = ({
   invitation,
+  tripId,
   isOpen,
   onClose,
   onResponse
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tripDetails, setTripDetails] = useState<any>(null);
+  const [participants, setParticipants] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen && tripId && !invitation) {
+      fetchTripDetails();
+    }
+  }, [isOpen, tripId, invitation]);
+
+  const fetchTripDetails = async () => {
+    if (!tripId) return;
+
+    try {
+      // Fetch trip details
+      const { data: trip, error: tripError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+
+      if (tripError) throw tripError;
+
+      // Fetch participants
+      const { data: participantData, error: participantError } = await supabase
+        .from('trip_participants')
+        .select(`
+          id, user_id, role, joined_at,
+          users!inner(id, display_name, email)
+        `)
+        .eq('trip_id', tripId);
+
+      if (participantError) throw participantError;
+
+      setTripDetails(trip);
+      setParticipants(participantData || []);
+    } catch (error) {
+      console.error('Error fetching trip details:', error);
+      setError('Failed to load trip details');
+    }
+  };
 
   if (!isOpen) return null;
 
+  const handleJoinTrip = async () => {
+    if (!tripId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('You must be signed in to join a trip');
+      }
+
+      // Check if trip is full
+      if (tripDetails && participants.length >= tripDetails.max_participants) {
+        throw new Error('This trip is full');
+      }
+
+      // Check if user is already a participant
+      const isAlreadyParticipant = participants.some(p => p.user_id === user.id);
+      if (isAlreadyParticipant) {
+        throw new Error('You are already a participant in this trip');
+      }
+
+      // Add user as participant
+      const { error: joinError } = await supabase
+        .from('trip_participants')
+        .insert({
+          trip_id: tripId,
+          user_id: user.id,
+          role: 'participant'
+        });
+
+      if (joinError) throw joinError;
+
+      onResponse(true);
+      onClose();
+    } catch (error: any) {
+      console.error('Error joining trip:', error);
+      setError(error.message || 'Failed to join trip');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResponse = async (accept: boolean) => {
+    if (!invitation) return;
+
     setLoading(true);
     setError(null);
 
@@ -76,6 +164,25 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
     });
   };
 
+  // Use invitation data if available, otherwise use fetched trip details
+  const trip = invitation?.trip || tripDetails;
+  const inviterName = invitation?.inviter?.display_name || invitation?.inviter?.email?.split('@')[0];
+
+  if (!trip) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="pixel-card max-w-md w-full relative">
+          <div className="text-center py-8">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
+            <p className="pixel-text text-blue-400">LOADING TRIP DETAILS...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const availableSpots = trip.max_participants - participants.length;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="pixel-card max-w-md w-full relative animate-bounce-in">
@@ -88,49 +195,75 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
 
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center h-12 sm:h-16 w-12 sm:w-16 rounded-full bg-blue-500/20 mb-4">
-            <Mail className="h-6 sm:h-8 w-6 sm:w-8 text-blue-500" />
+            <Sparkles className="h-6 sm:h-8 w-6 sm:w-8 text-blue-500 animate-pulse" />
           </div>
-          <h2 className="pixel-text text-lg sm:text-2xl mb-2 text-blue-400">
-            TRIP INVITATION
+          <h2 className="pixel-text text-lg sm:text-2xl mb-2 text-blue-400 glow-text">
+            {invitation ? 'TRIP INVITATION' : 'JOIN ADVENTURE'}
           </h2>
           <p className="outfit-text text-gray-400 text-sm sm:text-base">
-            You've been invited to join an adventure!
+            {invitation 
+              ? "You've been invited to join an adventure!"
+              : "Ready to join this epic adventure?"
+            }
           </p>
         </div>
 
         {/* Trip Details */}
-        <div className="pixel-card bg-gray-800/50 border-gray-700 mb-6 sm:mb-8">
+        <div className="pixel-card bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-500/30 mb-6 sm:mb-8">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <MapPin className="w-4 sm:w-5 h-4 sm:h-5 text-blue-400 flex-shrink-0" />
-              <span className="outfit-text text-white text-sm sm:text-base break-words">
-                {invitation.trip.destination}
+              <span className="outfit-text text-white text-sm sm:text-base break-words font-semibold">
+                {trip.destination}
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Calendar className="w-4 sm:w-5 h-4 sm:h-5 text-green-400 flex-shrink-0" />
               <span className="outfit-text text-gray-300 text-sm sm:text-base">
-                {formatDate(invitation.trip.start_date)} - {formatDate(invitation.trip.end_date)}
+                {formatDate(trip.start_date)} - {formatDate(trip.end_date)}
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Users className="w-4 sm:w-5 h-4 sm:h-5 text-purple-400 flex-shrink-0" />
               <span className="outfit-text text-gray-300 text-sm sm:text-base">
-                Up to {invitation.trip.max_participants} adventurers
+                {participants.length} / {trip.max_participants} adventurers
               </span>
+            </div>
+          </div>
+
+          {/* Capacity Bar */}
+          <div className="mt-4">
+            <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-300"
+                style={{ width: `${(participants.length / trip.max_participants) * 100}%` }}
+              />
+            </div>
+            <div className="text-center mt-2">
+              {availableSpots > 0 ? (
+                <span className="pixel-text text-xs text-green-400">
+                  {availableSpots} spot{availableSpots !== 1 ? 's' : ''} available
+                </span>
+              ) : (
+                <span className="pixel-text text-xs text-red-400">
+                  Trip is full!
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Inviter Info */}
-        <div className="mb-6 sm:mb-8">
-          <p className="outfit-text text-gray-400 text-sm sm:text-base text-center">
-            Invited by{' '}
-            <span className="text-blue-400 font-semibold">
-              {invitation.inviter.display_name || invitation.inviter.email.split('@')[0]}
-            </span>
-          </p>
-        </div>
+        {/* Inviter Info (only for invitations) */}
+        {invitation && inviterName && (
+          <div className="mb-6 sm:mb-8">
+            <p className="outfit-text text-gray-400 text-sm sm:text-base text-center">
+              Invited by{' '}
+              <span className="text-blue-400 font-semibold">
+                {inviterName}
+              </span>
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="text-sm outfit-text text-red-500 mb-4 text-center break-words">
@@ -139,40 +272,46 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        {availableSpots > 0 ? (
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="pixel-button-secondary flex items-center justify-center gap-2 flex-1 disabled:opacity-50"
+            >
+              <XCircle className="w-4 sm:w-5 h-4 sm:h-5" />
+              {invitation ? 'DECLINE' : 'CANCEL'}
+            </button>
+            <button
+              onClick={invitation ? () => handleResponse(true) : handleJoinTrip}
+              disabled={loading}
+              className="pixel-button-primary flex items-center justify-center gap-2 flex-1 disabled:opacity-50 hover-glow"
+            >
+              {loading ? (
+                <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 sm:w-5 h-4 sm:h-5" />
+                  {invitation ? 'ACCEPT' : 'JOIN TRIP'}
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={() => handleResponse(false)}
-            disabled={loading}
-            className="pixel-button-secondary flex items-center justify-center gap-2 flex-1 disabled:opacity-50"
+            onClick={onClose}
+            className="pixel-button-secondary w-full"
           >
-            {loading ? (
-              <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
-            ) : (
-              <>
-                <XCircle className="w-4 sm:w-5 h-4 sm:h-5" />
-                DECLINE
-              </>
-            )}
+            CLOSE
           </button>
-          <button
-            onClick={() => handleResponse(true)}
-            disabled={loading}
-            className="pixel-button-primary flex items-center justify-center gap-2 flex-1 disabled:opacity-50"
-          >
-            {loading ? (
-              <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 sm:w-5 h-4 sm:h-5" />
-                ACCEPT
-              </>
-            )}
-          </button>
-        </div>
+        )}
 
         <div className="text-center mt-6">
           <p className="outfit-text text-gray-500 text-xs sm:text-sm">
-            This invitation will expire if the trip becomes full
+            {availableSpots > 0 
+              ? "Join this adventure and create amazing memories!"
+              : "This trip is at full capacity"
+            }
           </p>
         </div>
       </div>

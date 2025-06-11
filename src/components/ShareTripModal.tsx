@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Send, Loader2, CheckCircle2, Copy, Users } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { X, Copy, Users, Link2, CheckCircle2 } from 'lucide-react';
 
 interface ShareTripModalProps {
   isOpen: boolean;
@@ -19,48 +18,11 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
   maxParticipants,
   currentParticipants
 }) => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
   const shareUrl = `${window.location.origin}/my-trips?invitation=${tripId}`;
-
-  const handleSendInvitation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { data, error: inviteError } = await supabase.rpc('create_trip_invitation', {
-        p_trip_id: tripId,
-        p_invitee_email: email.trim()
-      });
-
-      if (inviteError) {
-        throw inviteError;
-      }
-
-      const result = data[0];
-      if (!result.success) {
-        throw new Error(result.message);
-      }
-
-      setSuccess('Invitation sent successfully!');
-      setEmail('');
-    } catch (error: any) {
-      console.error('Error sending invitation:', error);
-      setError(error.message || 'Failed to send invitation');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const copyShareLink = async () => {
     try {
@@ -86,114 +48,120 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center h-12 sm:h-16 w-12 sm:w-16 rounded-full bg-purple-500/20 mb-4">
-            <Users className="h-6 sm:h-8 w-6 sm:w-8 text-purple-500" />
+            <Link2 className="h-6 sm:h-8 w-6 sm:w-8 text-purple-500 animate-pulse" />
           </div>
-          <h2 className="pixel-text text-lg sm:text-2xl mb-2 text-purple-400">
-            INVITE ADVENTURERS
+          <h2 className="pixel-text text-lg sm:text-2xl mb-2 text-purple-400 glow-text">
+            SHARE YOUR ADVENTURE
           </h2>
           <p className="outfit-text text-gray-400 text-sm sm:text-base">
-            Share your trip to {tripDestination}
+            Invite friends to join your trip to {tripDestination}
           </p>
         </div>
 
         {/* Trip Capacity Info */}
-        <div className="pixel-card bg-gray-800/50 border-gray-700 mb-6">
-          <div className="flex items-center justify-between">
-            <span className="outfit-text text-gray-300 text-sm">Available spots:</span>
+        <div className="pixel-card bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-400" />
+              <span className="outfit-text text-gray-300 text-sm">Trip Capacity</span>
+            </div>
             <span className="pixel-text text-purple-400 text-sm">
-              {availableSpots} / {maxParticipants}
+              {currentParticipants} / {maxParticipants}
             </span>
           </div>
-          {availableSpots === 0 && (
-            <p className="outfit-text text-red-400 text-xs mt-2">
-              Trip is full! No more invitations can be sent.
-            </p>
-          )}
+          <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-purple-500 to-blue-500 h-full transition-all duration-300"
+              style={{ width: `${(currentParticipants / maxParticipants) * 100}%` }}
+            />
+          </div>
+          <div className="mt-2 text-center">
+            {availableSpots > 0 ? (
+              <span className="pixel-text text-xs text-green-400">
+                {availableSpots} spot{availableSpots !== 1 ? 's' : ''} available
+              </span>
+            ) : (
+              <span className="pixel-text text-xs text-red-400">
+                Trip is full!
+              </span>
+            )}
+          </div>
         </div>
 
-        {availableSpots > 0 && (
-          <>
-            {/* Send Invitation Form */}
-            <form onSubmit={handleSendInvitation} className="mb-6 sm:mb-8">
-              <label className="block pixel-text text-xs sm:text-sm mb-2 text-purple-400">
-                SEND INVITATION BY EMAIL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="friend@example.com"
-                  className="flex-1 input-pixel"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !email.trim()}
-                  className="pixel-button-primary px-4 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      SEND
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-
-            <div className="text-center mb-6">
-              <span className="pixel-text text-xs text-gray-500">OR</span>
-            </div>
-          </>
-        )}
-
-        {/* Share Link */}
+        {/* Share Link Section */}
         <div className="mb-6 sm:mb-8">
-          <label className="block pixel-text text-xs sm:text-sm mb-2 text-purple-400">
-            SHARE LINK
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={shareUrl}
-              readOnly
-              className="flex-1 input-pixel text-xs"
-            />
-            <button
-              onClick={copyShareLink}
-              className="pixel-button-secondary px-4 flex items-center gap-2"
-            >
-              <Copy className="w-4 h-4" />
-              {copied ? 'COPIED!' : 'COPY'}
-            </button>
+          <div className="flex items-center gap-2 mb-3">
+            <Link2 className="w-4 h-4 text-purple-400" />
+            <label className="pixel-text text-xs sm:text-sm text-purple-400 glow-text">
+              SHAREABLE LINK
+            </label>
           </div>
-          <p className="outfit-text text-gray-500 text-xs mt-2">
-            Anyone with this link can request to join your trip
+          
+          <div className="pixel-card bg-gray-800/50 border-gray-700 mb-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="flex-1 bg-transparent text-gray-300 text-xs outline-none"
+              />
+              <button
+                onClick={copyShareLink}
+                className="pixel-button-primary px-4 py-2 flex items-center gap-2 hover-glow"
+              >
+                <Copy className="w-4 h-4" />
+                {copied ? 'COPIED!' : 'COPY'}
+              </button>
+            </div>
+          </div>
+
+          {copied && (
+            <div className="text-center mb-4 animate-bounce-in">
+              <div className="inline-flex items-center gap-2 text-green-400">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="pixel-text text-xs">Link copied to clipboard!</span>
+              </div>
+            </div>
+          )}
+
+          <div className="pixel-card bg-blue-900/20 border-blue-500/20">
+            <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
+            <ul className="outfit-text text-xs text-gray-400 space-y-1">
+              <li>• Share this link with friends</li>
+              <li>• They'll be redirected to "My Trips"</li>
+              <li>• An invitation modal will appear</li>
+              <li>• They can accept or decline to join</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={copyShareLink}
+            className="pixel-button-primary w-full flex items-center justify-center gap-2 hover-float"
+          >
+            <Copy className="w-4 h-4" />
+            {copied ? 'LINK COPIED!' : 'COPY INVITATION LINK'}
+          </button>
+          
+          <button
+            onClick={onClose}
+            className="pixel-button-secondary w-full"
+          >
+            CLOSE
+          </button>
+        </div>
+
+        {/* Footer Note */}
+        <div className="text-center mt-4">
+          <p className="outfit-text text-gray-500 text-xs">
+            {availableSpots > 0 
+              ? `${availableSpots} more adventurer${availableSpots !== 1 ? 's' : ''} can join this trip`
+              : 'This trip is at full capacity'
+            }
           </p>
         </div>
-
-        {error && (
-          <div className="text-sm outfit-text text-red-500 mb-4 text-center break-words">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="text-sm outfit-text text-green-500 mb-4 text-center break-words flex items-center justify-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            {success}
-          </div>
-        )}
-
-        <button
-          onClick={onClose}
-          className="pixel-button-secondary w-full"
-        >
-          CLOSE
-        </button>
       </div>
     </div>
   );

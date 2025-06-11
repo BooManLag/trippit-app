@@ -47,6 +47,8 @@ const MyTripsPage: React.FC = () => {
   const [selectedTripForShare, setSelectedTripForShare] = useState<Trip | null>(null);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [selectedInvitation, setSelectedInvitation] = useState<TripInvitation | null>(null);
+  const [showInvitationModal, setShowInvitationModal] = useState(false);
+  const [invitationTripId, setInvitationTripId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -179,16 +181,6 @@ const MyTripsPage: React.FC = () => {
       }));
 
       setPendingInvitations(formattedInvitations);
-
-      // Check if there's an invitation ID in the URL
-      const invitationParam = searchParams.get('invitation');
-      if (invitationParam && formattedInvitations.length > 0) {
-        // Find invitation for this trip
-        const invitation = formattedInvitations.find(inv => inv.trip_id === invitationParam);
-        if (invitation) {
-          setSelectedInvitation(invitation);
-        }
-      }
     } catch (error) {
       console.error('Error fetching invitations:', error);
     }
@@ -203,6 +195,37 @@ const MyTripsPage: React.FC = () => {
       }
       
       await Promise.all([fetchTrips(), fetchPendingInvitations()]);
+      
+      // Check if there's an invitation parameter in the URL
+      const invitationParam = searchParams.get('invitation');
+      if (invitationParam) {
+        // Check if this is a formal invitation or just a trip share
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: invitation } = await supabase
+            .from('trip_invitations')
+            .select('*')
+            .eq('trip_id', invitationParam)
+            .eq('invitee_email', user.email)
+            .eq('status', 'pending')
+            .single();
+
+          if (invitation) {
+            // This is a formal invitation
+            const formattedInvitation = {
+              ...invitation,
+              trip: pendingInvitations.find(inv => inv.trip_id === invitationParam)?.trip,
+              inviter: pendingInvitations.find(inv => inv.trip_id === invitationParam)?.inviter
+            };
+            setSelectedInvitation(formattedInvitation as TripInvitation);
+          } else {
+            // This is just a shared trip link
+            setInvitationTripId(invitationParam);
+            setShowInvitationModal(true);
+          }
+        }
+      }
+      
       setLoading(false);
     };
 
@@ -260,6 +283,11 @@ const MyTripsPage: React.FC = () => {
     }
     // Refresh invitations to remove the responded invitation
     await fetchPendingInvitations();
+    
+    // Clear URL parameter
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('invitation');
+    navigate({ search: newSearchParams.toString() }, { replace: true });
   };
 
   const handlePlayTrip = (tripId: string) => {
@@ -607,6 +635,22 @@ const MyTripsPage: React.FC = () => {
             invitation={selectedInvitation}
             isOpen={!!selectedInvitation}
             onClose={() => setSelectedInvitation(null)}
+            onResponse={handleInvitationResponse}
+          />
+        )}
+
+        {showInvitationModal && invitationTripId && (
+          <InvitationModal
+            tripId={invitationTripId}
+            isOpen={showInvitationModal}
+            onClose={() => {
+              setShowInvitationModal(false);
+              setInvitationTripId(null);
+              // Clear URL parameter
+              const newSearchParams = new URLSearchParams(searchParams);
+              newSearchParams.delete('invitation');
+              navigate({ search: newSearchParams.toString() }, { replace: true });
+            }}
             onResponse={handleInvitationResponse}
           />
         )}

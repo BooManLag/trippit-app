@@ -7,6 +7,7 @@ import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 import InvitationModal from '../components/InvitationModal';
 import ShareTripModal from '../components/ShareTripModal';
+import AuthModal from '../components/AuthModal';
 
 interface Trip {
   id: string;
@@ -51,6 +52,8 @@ const MyTripsPage: React.FC = () => {
   const [invitationTripId, setInvitationTripId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingInvitationTripId, setPendingInvitationTripId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -248,9 +251,19 @@ const MyTripsPage: React.FC = () => {
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
+      // Check URL parameter first
+      const invitationParam = searchParams.get('invitation');
+      
       const authenticated = await isAuthenticated();
       if (!authenticated) {
-        navigate('/');
+        // If there's an invitation parameter and user is not authenticated, show auth modal
+        if (invitationParam) {
+          setPendingInvitationTripId(invitationParam);
+          setShowAuthModal(true);
+        } else {
+          navigate('/');
+        }
+        setLoading(false);
         return;
       }
       
@@ -260,11 +273,9 @@ const MyTripsPage: React.FC = () => {
         return;
       }
 
-      // Check URL parameter first for faster response
-      const invitationParam = searchParams.get('invitation');
+      // Handle invitation from URL if present
       if (invitationParam && !initialLoadComplete) {
-        // Handle invitation immediately for better UX
-        handleInvitationFromUrl(invitationParam, user);
+        await handleInvitationFromUrl(invitationParam, user);
       }
       
       // Fetch data in parallel for better performance
@@ -333,6 +344,23 @@ const MyTripsPage: React.FC = () => {
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.delete('invitation');
     navigate({ search: newSearchParams.toString() }, { replace: true });
+  };
+
+  const handleAuthSuccess = async () => {
+    setShowAuthModal(false);
+    
+    // If there was a pending invitation, handle it now
+    if (pendingInvitationTripId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await handleInvitationFromUrl(pendingInvitationTripId, user);
+      }
+      setPendingInvitationTripId(null);
+    }
+    
+    // Refresh the page data
+    setInitialLoadComplete(false);
+    setLoading(true);
   };
 
   const handlePlayTrip = (tripId: string) => {
@@ -713,6 +741,19 @@ const MyTripsPage: React.FC = () => {
             currentParticipants={selectedTripForShare.participant_count || 0}
           />
         )}
+
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            setPendingInvitationTripId(null);
+            // Clear URL parameter if user cancels auth
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('invitation');
+            navigate({ search: newSearchParams.toString() }, { replace: true });
+          }}
+          onSuccess={handleAuthSuccess}
+        />
       </div>
     </div>
   );

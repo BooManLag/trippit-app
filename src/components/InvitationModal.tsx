@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Users, MapPin, Calendar, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { X, Mail, Users, MapPin, Calendar, Loader2, CheckCircle2, XCircle, Sparkles, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface TripInvitation {
@@ -41,19 +41,48 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
   const [tripDetails, setTripDetails] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   useEffect(() => {
-    if (isOpen && tripId && !invitation && !dataLoaded) {
-      fetchTripDetails();
+    if (isOpen) {
+      checkAuthAndLoadData();
     }
-  }, [isOpen, tripId, invitation, dataLoaded]);
+  }, [isOpen, tripId, invitation]);
+
+  const checkAuthAndLoadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+
+      if (!user) {
+        setNeedsAuth(true);
+        setLoading(false);
+        return;
+      }
+
+      // If we have tripId but no invitation, fetch trip details
+      if (tripId && !invitation && !dataLoaded) {
+        await fetchTripDetails();
+      }
+
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('Error checking auth and loading data:', error);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTripDetails = async () => {
     if (!tripId) return;
 
     try {
-      setLoading(true);
-      
       // Fetch trip details and participants in parallel for better performance
       const [tripResponse, participantResponse] = await Promise.all([
         supabase
@@ -75,36 +104,34 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
 
       setTripDetails(tripResponse.data);
       setParticipants(participantResponse.data || []);
-      setDataLoaded(true);
     } catch (error) {
       console.error('Error fetching trip details:', error);
       setError('Failed to load trip details');
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const handleSignInRequired = () => {
+    // Close this modal and let the parent handle auth
+    onClose();
+    // The parent component should show auth modal
   };
 
   if (!isOpen) return null;
 
   const handleJoinTrip = async () => {
-    if (!tripId) return;
+    if (!tripId || !currentUser) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('You must be signed in to join a trip');
-      }
-
       // Check if trip is full
       if (tripDetails && participants.length >= tripDetails.max_participants) {
         throw new Error('This trip is full');
       }
 
       // Check if user is already a participant
-      const isAlreadyParticipant = participants.some(p => p.user_id === user.id);
+      const isAlreadyParticipant = participants.some(p => p.user_id === currentUser.id);
       if (isAlreadyParticipant) {
         throw new Error('You are already a participant in this trip');
       }
@@ -114,11 +141,16 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
         .from('trip_participants')
         .insert({
           trip_id: tripId,
-          user_id: user.id,
+          user_id: currentUser.id,
           role: 'participant'
         });
 
-      if (joinError) throw joinError;
+      if (joinError) {
+        if (joinError.code === '23505') {
+          throw new Error('You are already a participant in this trip');
+        }
+        throw joinError;
+      }
 
       onResponse(true);
       onClose();
@@ -131,7 +163,7 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
   };
 
   const handleResponse = async (accept: boolean) => {
-    if (!invitation) return;
+    if (!invitation || !currentUser) return;
 
     setLoading(true);
     setError(null);
@@ -168,6 +200,50 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
       year: 'numeric'
     });
   };
+
+  // Show auth required state
+  if (needsAuth) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="pixel-card max-w-md w-full relative animate-bounce-in">
+          <button
+            onClick={onClose}
+            className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-white"
+          >
+            <X className="w-4 sm:w-5 h-4 sm:h-5" />
+          </button>
+
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="inline-flex items-center justify-center h-12 sm:h-16 w-12 sm:w-16 rounded-full bg-blue-500/20 mb-4">
+              <UserPlus className="h-6 sm:h-8 w-6 sm:w-8 text-blue-500 animate-pulse" />
+            </div>
+            <h2 className="pixel-text text-lg sm:text-2xl mb-2 text-blue-400 glow-text">
+              SIGN IN REQUIRED
+            </h2>
+            <p className="outfit-text text-gray-400 text-sm sm:text-base">
+              You need to sign in to join this adventure
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <button
+              onClick={handleSignInRequired}
+              className="pixel-button-primary w-full flex items-center justify-center gap-2 hover-glow"
+            >
+              <UserPlus className="w-4 sm:w-5 h-4 sm:h-5" />
+              SIGN IN TO JOIN
+            </button>
+            <button
+              onClick={onClose}
+              className="pixel-button-secondary w-full"
+            >
+              CANCEL
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Use invitation data if available, otherwise use fetched trip details
   const trip = invitation?.trip || tripDetails;

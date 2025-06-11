@@ -7,7 +7,7 @@ interface ShareTripLinkProps {
 
 const ShareTripLink: React.FC<ShareTripLinkProps> = ({ tripId }) => {
   const [copied, setCopied] = useState(false);
-  const shareUrl = `${window.location.origin}/trip/${tripId}`;
+  const shareUrl = `${window.location.origin}/my-trips?invitation=${tripId}`;
 
   const copyToClipboard = async () => {
     try {

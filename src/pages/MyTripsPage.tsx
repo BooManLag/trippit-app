@@ -144,6 +144,7 @@ const MyTripsPage: React.FC = () => {
     if (!user) return;
 
     try {
+      // Simplified query to avoid RLS issues
       const { data: invitations, error } = await supabase
         .from('trip_invitations')
         .select(`
@@ -152,17 +153,7 @@ const MyTripsPage: React.FC = () => {
           inviter_id,
           invitee_email,
           status,
-          created_at,
-          trips!inner (
-            destination,
-            start_date,
-            end_date,
-            max_participants
-          ),
-          users!trip_invitations_inviter_id_fkey (
-            display_name,
-            email
-          )
+          created_at
         `)
         .eq('invitee_email', user.email)
         .eq('status', 'pending')
@@ -173,18 +164,37 @@ const MyTripsPage: React.FC = () => {
         return;
       }
 
-      const formattedInvitations = (invitations || []).map(inv => ({
-        id: inv.id,
-        trip_id: inv.trip_id,
-        inviter_id: inv.inviter_id,
-        invitee_email: inv.invitee_email,
-        status: inv.status as 'pending',
-        created_at: inv.created_at,
-        trip: (inv as any).trips,
-        inviter: (inv as any).users
-      }));
+      // Fetch trip and inviter details separately
+      const enrichedInvitations = [];
+      for (const invitation of invitations || []) {
+        try {
+          // Fetch trip details
+          const { data: tripData } = await supabase
+            .from('trips')
+            .select('destination, start_date, end_date, max_participants')
+            .eq('id', invitation.trip_id)
+            .single();
 
-      setPendingInvitations(formattedInvitations);
+          // Fetch inviter details
+          const { data: inviterData } = await supabase
+            .from('users')
+            .select('display_name, email')
+            .eq('id', invitation.inviter_id)
+            .single();
+
+          if (tripData && inviterData) {
+            enrichedInvitations.push({
+              ...invitation,
+              trip: tripData,
+              inviter: inviterData
+            });
+          }
+        } catch (err) {
+          console.error('Error enriching invitation:', err);
+        }
+      }
+
+      setPendingInvitations(enrichedInvitations);
     } catch (error) {
       console.error('Error fetching invitations:', error);
     }
@@ -201,17 +211,7 @@ const MyTripsPage: React.FC = () => {
           inviter_id,
           invitee_email,
           status,
-          created_at,
-          trips!inner (
-            destination,
-            start_date,
-            end_date,
-            max_participants
-          ),
-          users!trip_invitations_inviter_id_fkey (
-            display_name,
-            email
-          )
+          created_at
         `)
         .eq('trip_id', invitationTripId)
         .eq('invitee_email', user.email)
@@ -219,18 +219,27 @@ const MyTripsPage: React.FC = () => {
         .single();
 
       if (invitation) {
-        // This is a formal invitation
-        const formattedInvitation = {
-          id: invitation.id,
-          trip_id: invitation.trip_id,
-          inviter_id: invitation.inviter_id,
-          invitee_email: invitation.invitee_email,
-          status: invitation.status as 'pending',
-          created_at: invitation.created_at,
-          trip: (invitation as any).trips,
-          inviter: (invitation as any).users
-        };
-        setSelectedInvitation(formattedInvitation);
+        // Fetch additional details
+        const { data: tripData } = await supabase
+          .from('trips')
+          .select('destination, start_date, end_date, max_participants')
+          .eq('id', invitation.trip_id)
+          .single();
+
+        const { data: inviterData } = await supabase
+          .from('users')
+          .select('display_name, email')
+          .eq('id', invitation.inviter_id)
+          .single();
+
+        if (tripData && inviterData) {
+          const formattedInvitation = {
+            ...invitation,
+            trip: tripData,
+            inviter: inviterData
+          };
+          setSelectedInvitation(formattedInvitation);
+        }
       } else {
         // This is just a shared trip link - check if trip exists and user can join
         const { data: tripData } = await supabase

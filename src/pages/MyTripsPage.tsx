@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown, AlertCircle, RefreshCw } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
@@ -42,15 +42,17 @@ const MyTripsPage: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<TripInvitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invitationsError, setInvitationsError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [selectedInvitation, setSelectedInvitation] = useState<TripInvitation | null>(null);
   const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [invitationTripId, setInvitationTripId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingInvitationTripId, setPendingInvitationTripId] = useState<string | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -60,9 +62,14 @@ const MyTripsPage: React.FC = () => {
 
   const fetchTrips = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setError('You must be signed in to view your trips');
+      return;
+    }
 
     try {
+      setError(null); // Clear any previous errors
+      
       // Fetch trips where user is either owner or participant
       const { data: tripParticipants, error } = await supabase
         .from('trip_participants')
@@ -83,7 +90,7 @@ const MyTripsPage: React.FC = () => {
 
       if (error) {
         console.error('Error fetching user trips:', error);
-        return;
+        throw new Error(`Failed to load trips: ${error.message}`);
       }
 
       // Get participant counts for each trip
@@ -91,12 +98,15 @@ const MyTripsPage: React.FC = () => {
       
       let participantCounts: { [key: string]: number } = {};
       if (tripIds.length > 0) {
-        const { data: counts } = await supabase
+        const { data: counts, error: countsError } = await supabase
           .from('trip_participants')
           .select('trip_id')
           .in('trip_id', tripIds);
         
-        if (counts) {
+        if (countsError) {
+          console.warn('Error fetching participant counts:', countsError);
+          // Don't throw here, just log the warning and continue without counts
+        } else if (counts) {
           participantCounts = counts.reduce((acc, item) => {
             acc[item.trip_id] = (acc[item.trip_id] || 0) + 1;
             return acc;
@@ -131,16 +141,22 @@ const MyTripsPage: React.FC = () => {
       });
 
       setTrips(tripsWithStatus);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching trips:', error);
+      setError(error.message || 'Failed to load your trips. Please try again.');
     }
   };
 
   const fetchPendingInvitations = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setInvitationsError('You must be signed in to view invitations');
+      return;
+    }
 
     try {
+      setInvitationsError(null); // Clear any previous errors
+      
       // Simplified query to avoid RLS issues
       const { data: invitations, error } = await supabase
         .from('trip_invitations')
@@ -158,7 +174,7 @@ const MyTripsPage: React.FC = () => {
 
       if (error) {
         console.error('Error fetching invitations:', error);
-        return;
+        throw new Error(`Failed to load invitations: ${error.message}`);
       }
 
       // Fetch trip and inviter details separately
@@ -166,18 +182,28 @@ const MyTripsPage: React.FC = () => {
       for (const invitation of invitations || []) {
         try {
           // Fetch trip details
-          const { data: tripData } = await supabase
+          const { data: tripData, error: tripError } = await supabase
             .from('trips')
             .select('destination, start_date, end_date, max_participants')
             .eq('id', invitation.trip_id)
             .single();
 
           // Fetch inviter details
-          const { data: inviterData } = await supabase
+          const { data: inviterData, error: inviterError } = await supabase
             .from('users')
             .select('display_name, email')
             .eq('id', invitation.inviter_id)
             .single();
+
+          if (tripError) {
+            console.warn(`Error fetching trip details for invitation ${invitation.id}:`, tripError);
+            continue; // Skip this invitation if we can't get trip details
+          }
+
+          if (inviterError) {
+            console.warn(`Error fetching inviter details for invitation ${invitation.id}:`, inviterError);
+            continue; // Skip this invitation if we can't get inviter details
+          }
 
           if (tripData && inviterData) {
             enrichedInvitations.push({
@@ -187,13 +213,15 @@ const MyTripsPage: React.FC = () => {
             });
           }
         } catch (err) {
-          console.error('Error enriching invitation:', err);
+          console.warn('Error enriching invitation:', err);
+          // Continue with other invitations even if one fails
         }
       }
 
       setPendingInvitations(enrichedInvitations);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching invitations:', error);
+      setInvitationsError(error.message || 'Failed to load invitations. Please try again.');
     }
   };
 
@@ -255,8 +283,25 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
+  const retryFetchTrips = async () => {
+    setLoading(true);
+    setError(null);
+    await fetchTrips();
+    setLoading(false);
+  };
+
+  const retryFetchInvitations = async () => {
+    setInvitationsError(null);
+    await fetchPendingInvitations();
+  };
+
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
+      // Prevent multiple initializations
+      if (hasInitialized) {
+        return;
+      }
+
       // Check URL parameter first
       const invitationParam = searchParams.get('invitation');
       
@@ -270,6 +315,7 @@ const MyTripsPage: React.FC = () => {
           navigate('/');
         }
         setLoading(false);
+        setHasInitialized(true);
         return;
       }
       
@@ -280,19 +326,19 @@ const MyTripsPage: React.FC = () => {
       }
 
       // Handle invitation from URL if present
-      if (invitationParam && !initialLoadComplete) {
+      if (invitationParam) {
         await handleInvitationFromUrl(invitationParam, user);
       }
       
       // Fetch data in parallel for better performance
       await Promise.all([fetchTrips(), fetchPendingInvitations()]);
       
-      setInitialLoadComplete(true);
+      setHasInitialized(true);
       setLoading(false);
     };
 
     checkAuthAndFetchData();
-  }, [navigate, searchParams, initialLoadComplete]);
+  }, [navigate, searchParams]); // Removed hasInitialized from dependencies to prevent re-runs
 
   const handleDeleteClick = (tripId: string) => {
     setTripToDelete(tripId);
@@ -307,30 +353,39 @@ const MyTripsPage: React.FC = () => {
 
     const tripToDeleteData = trips.find(t => t.id === tripToDelete);
     
-    if (tripToDeleteData?.user_role === 'owner') {
-      // If user is owner, delete the entire trip
-      const { error } = await supabase
-        .from('trips')
-        .delete()
-        .eq('id', tripToDelete);
+    try {
+      if (tripToDeleteData?.user_role === 'owner') {
+        // If user is owner, delete the entire trip
+        const { error } = await supabase
+          .from('trips')
+          .delete()
+          .eq('id', tripToDelete);
 
-      if (error) {
-        console.error('Error deleting trip:', error);
-      }
-    } else {
-      // If user is participant, just remove them from the trip
-      const { error } = await supabase
-        .from('trip_participants')
-        .delete()
-        .eq('trip_id', tripToDelete)
-        .eq('user_id', user.id);
+        if (error) {
+          console.error('Error deleting trip:', error);
+          setError(`Failed to delete trip: ${error.message}`);
+          return;
+        }
+      } else {
+        // If user is participant, just remove them from the trip
+        const { error } = await supabase
+          .from('trip_participants')
+          .delete()
+          .eq('trip_id', tripToDelete)
+          .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Error leaving trip:', error);
+        if (error) {
+          console.error('Error leaving trip:', error);
+          setError(`Failed to leave trip: ${error.message}`);
+          return;
+        }
       }
+
+      await fetchTrips();
+    } catch (error: any) {
+      console.error('Error in delete operation:', error);
+      setError(error.message || 'Failed to delete/leave trip. Please try again.');
     }
-
-    await fetchTrips();
   };
 
   const handleInvitationResponse = async (accepted: boolean) => {
@@ -360,7 +415,7 @@ const MyTripsPage: React.FC = () => {
     }
     
     // Refresh the page data
-    setInitialLoadComplete(false);
+    setHasInitialized(false);
     setLoading(true);
   };
 
@@ -457,6 +512,49 @@ const MyTripsPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Error Messages */}
+        {error && (
+          <div className="pixel-card bg-red-500/10 border-2 border-red-500/30 mb-6 animate-bounce-in">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="pixel-text text-red-400 text-sm mb-2">TRIPS LOADING ERROR</h4>
+                  <p className="outfit-text text-red-300 text-sm break-words">{error}</p>
+                </div>
+              </div>
+              <button
+                onClick={retryFetchTrips}
+                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 flex-shrink-0"
+              >
+                <RefreshCw className="w-3 h-3" />
+                RETRY
+              </button>
+            </div>
+          </div>
+        )}
+
+        {invitationsError && (
+          <div className="pixel-card bg-orange-500/10 border-2 border-orange-500/30 mb-6 animate-bounce-in">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1">
+                <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="pixel-text text-orange-400 text-sm mb-2">INVITATIONS LOADING ERROR</h4>
+                  <p className="outfit-text text-orange-300 text-sm break-words">{invitationsError}</p>
+                </div>
+              </div>
+              <button
+                onClick={retryFetchInvitations}
+                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 flex-shrink-0"
+              >
+                <RefreshCw className="w-3 h-3" />
+                RETRY
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Pending Invitations */}
         {pendingInvitations.length > 0 && (
@@ -666,7 +764,7 @@ const MyTripsPage: React.FC = () => {
               </section>
             )}
           </div>
-        ) : (
+        ) : !error ? (
           <div className={`flex flex-col items-center justify-center h-[60vh] pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 text-center p-6 sm:p-8 lg:p-12 animate-bounce-in delay-300`}>
             <div className="text-6xl sm:text-8xl mb-6 animate-float">🗺️</div>
             <h3 className="pixel-text mobile-heading text-gray-300 mb-4 glow-text">START YOUR FIRST ADVENTURE</h3>
@@ -680,7 +778,7 @@ const MyTripsPage: React.FC = () => {
               CREATE FIRST ADVENTURE
             </button>
           </div>
-        )}
+        ) : null}
 
         {/* Modals */}
         <DeleteModal

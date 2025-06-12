@@ -36,9 +36,6 @@ const CreateTripPage: React.FC = () => {
         navigate('/');
         return;
       }
-
-      // Ensure user profile exists
-      await ensureUserProfile();
     };
 
     checkAuth();
@@ -104,29 +101,37 @@ const CreateTripPage: React.FC = () => {
         return;
       }
 
+      console.log('Current user:', user.id);
+
       // Ensure user profile exists before creating trip
-      const userProfile = await ensureUserProfile();
-      if (!userProfile) {
-        setError('Failed to create user profile. Please try again.');
-        setLoading(false);
+      try {
+        const userProfile = await ensureUserProfile();
+        if (!userProfile) {
+          setError('Failed to create user profile. Please try again.');
+          return;
+        }
+        console.log('User profile ensured:', userProfile);
+      } catch (profileError: any) {
+        console.error('Profile creation error:', profileError);
+        setError(`Profile error: ${profileError.message}`);
         return;
       }
 
-      console.log('Creating trip with data:', {
+      const tripData = {
         user_id: user.id,
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
         end_date: endDate,
         max_participants: maxParticipants,
-      });
+      };
 
-      const { data: tripData, error: tripError } = await supabase.from('trips').insert({
-        user_id: user.id,
-        destination: `${selectedLocation.city}, ${selectedLocation.country}`,
-        start_date: startDate,
-        end_date: endDate,
-        max_participants: maxParticipants,
-      }).select().single();
+      console.log('Creating trip with data:', tripData);
+
+      const { data: createdTrip, error: tripError } = await supabase
+        .from('trips')
+        .insert(tripData)
+        .select()
+        .single();
 
       if (tripError) {
         console.error('Error creating trip:', tripError);
@@ -134,10 +139,13 @@ const CreateTripPage: React.FC = () => {
         return;
       }
 
-      console.log('Trip created successfully:', tripData);
+      console.log('Trip created successfully:', createdTrip);
 
       // The trigger will automatically add the user as a participant with 'owner' role
-      // Navigate to my trips page instead of directly to trip dashboard
+      // Wait a moment for the trigger to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Navigate to my trips page
       navigate('/my-trips');
     } catch (error: any) {
       console.error('Error creating trip:', error);

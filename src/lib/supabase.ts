@@ -53,36 +53,58 @@ export const getCurrentUser = async () => {
 
 // Helper function to ensure user profile exists
 export const ensureUserProfile = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return null;
-
-  // Check if user profile exists
-  const { data: profile, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (error && error.code === 'PGRST116') {
-    // Profile doesn't exist, create it
-    const { data: newProfile, error: insertError } = await supabase
-      .from('users')
-      .insert({
-        id: user.id,
-        email: user.email!,
-        display_name: user.user_metadata?.display_name || user.email!.split('@')[0]
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error creating user profile:', insertError);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('No authenticated user found');
       return null;
     }
 
-    return newProfile;
-  }
+    console.log('Checking user profile for:', user.id);
 
-  return profile;
+    // Check if user profile exists
+    const { data: profile, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (fetchError && fetchError.code === 'PGRST116') {
+      // Profile doesn't exist, create it
+      console.log('User profile not found, creating new profile...');
+      
+      const displayName = user.user_metadata?.display_name || 
+                          user.user_metadata?.full_name || 
+                          user.email?.split('@')[0] || 
+                          'User';
+
+      const { data: newProfile, error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email!,
+          display_name: displayName
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        throw new Error(`Failed to create user profile: ${insertError.message}`);
+      }
+
+      console.log('User profile created successfully:', newProfile);
+      return newProfile;
+    } else if (fetchError) {
+      console.error('Error fetching user profile:', fetchError);
+      throw new Error(`Failed to fetch user profile: ${fetchError.message}`);
+    }
+
+    console.log('User profile found:', profile);
+    return profile;
+  } catch (error) {
+    console.error('Error in ensureUserProfile:', error);
+    throw error;
+  }
 };

@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 import AuthModal from '../components/AuthModal';
+import InvitationModal from '../components/InvitationModal';
 import { useAuth } from '../hooks/useAuth';
+import { invitationService } from '../services/invitationService';
 
 interface Trip {
   id: string;
@@ -25,12 +27,15 @@ const MyTripsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showInvitationModal, setShowInvitationModal] = useState(false);
+  const [selectedInvitation, setSelectedInvitation] = useState<any>(null);
   const [pendingInvitationTripId, setPendingInvitationTripId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -81,6 +86,17 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
+  const fetchPendingInvitations = async () => {
+    if (!user) return;
+
+    try {
+      const invitations = await invitationService.getPendingInvitations();
+      setPendingInvitations(invitations);
+    } catch (error: any) {
+      console.error('Error fetching invitations:', error);
+    }
+  };
+
   useEffect(() => {
     const initializeData = async () => {
       if (authLoading) return;
@@ -99,7 +115,7 @@ const MyTripsPage: React.FC = () => {
       }
 
       // Fetch data
-      await fetchTrips();
+      await Promise.all([fetchTrips(), fetchPendingInvitations()]);
       setLoading(false);
     };
 
@@ -132,6 +148,20 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
+  const handleInvitationResponse = async (accepted: boolean) => {
+    if (accepted) {
+      // Refresh trips to show the newly joined trip
+      await fetchTrips();
+    }
+    // Refresh invitations to remove the responded invitation
+    await fetchPendingInvitations();
+    
+    // Clear URL parameter
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('invitation');
+    navigate({ search: newSearchParams.toString() }, { replace: true });
+  };
+
   const handleAuthSuccess = async () => {
     setShowAuthModal(false);
     setPendingInvitationTripId(null);
@@ -145,7 +175,7 @@ const MyTripsPage: React.FC = () => {
   const retryFetchTrips = async () => {
     setLoading(true);
     setError(null);
-    await fetchTrips();
+    await Promise.all([fetchTrips(), fetchPendingInvitations()]);
     setLoading(false);
   };
 
@@ -238,6 +268,55 @@ const MyTripsPage: React.FC = () => {
                 <RefreshCw className="w-3 h-3" />
                 RETRY
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Invitations */}
+        {pendingInvitations.length > 0 && (
+          <div className="animate-slide-in-up delay-100 mb-6 sm:mb-8">
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <div className="text-2xl sm:text-3xl animate-bounce">📬</div>
+              <h3 className="pixel-text text-purple-400 text-sm sm:text-base lg:text-lg">PENDING INVITATIONS</h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-purple-500/50 to-transparent"></div>
+              <span className="pixel-text text-xs text-purple-400">{pendingInvitations.length}</span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {pendingInvitations.map((invitation, index) => (
+                <div
+                  key={invitation.id}
+                  className={`pixel-card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 group animate-slide-in-up cursor-pointer`}
+                  style={{ animationDelay: `${index * 100 + 200}ms` }}
+                  onClick={() => setSelectedInvitation(invitation)}
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="pixel-text text-xs text-purple-400">INVITATION</span>
+                      <Mail className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin className="w-4 sm:w-5 h-4 sm:h-5 text-purple-400 flex-shrink-0" />
+                        <h4 className="pixel-text text-white text-sm sm:text-base break-words group-hover:text-purple-300 transition-colors">
+                          {invitation.trip.destination}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <p className="outfit-text text-gray-400 text-sm">
+                          {formatDate(invitation.trip.start_date)} — {formatDate(invitation.trip.end_date)}
+                        </p>
+                      </div>
+                      <p className="outfit-text text-gray-300 text-sm">
+                        From{' '}
+                        <span className="text-purple-400 font-semibold">
+                          {invitation.inviter.display_name || invitation.inviter.email.split('@')[0]}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -384,6 +463,13 @@ const MyTripsPage: React.FC = () => {
           onConfirm={handleConfirmDelete}
           title="DELETE ADVENTURE"
           message="Are you sure you want to delete this adventure? This action cannot be undone and all associated data will be lost."
+        />
+
+        <InvitationModal
+          invitation={selectedInvitation}
+          isOpen={!!selectedInvitation}
+          onClose={() => setSelectedInvitation(null)}
+          onResponse={handleInvitationResponse}
         />
 
         <AuthModal

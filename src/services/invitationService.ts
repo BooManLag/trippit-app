@@ -34,17 +34,42 @@ export interface TripParticipant {
 }
 
 export const invitationService = {
-  // Send invitation to email
+  // Check if user exists in our system
+  async checkUserExists(email: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // No rows returned - user doesn't exist
+        return false;
+      }
+
+      if (error) {
+        console.error('Error checking user existence:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error in checkUserExists:', error);
+      return false;
+    }
+  },
+
+  // Send invitation to email (only if user exists)
   async sendInvitation(tripId: string, inviteeEmail: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Check if user exists in our system
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('email', inviteeEmail.toLowerCase().trim())
-      .single();
+    // First check if user exists in our system
+    const userExists = await this.checkUserExists(inviteeEmail);
+    if (!userExists) {
+      throw new Error('This email is not registered in our system. They need to sign up first!');
+    }
 
     // Create invitation
     const { error } = await supabase

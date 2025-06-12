@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
+import ShareTripModal from '../components/ShareTripModal';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -44,6 +45,7 @@ const TripDashboardPage: React.FC = () => {
   const { tripId } = useParams();
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [tripNumber, setTripNumber] = useState(1);
+  const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
@@ -51,6 +53,7 @@ const TripDashboardPage: React.FC = () => {
   const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [isUserOwner, setIsUserOwner] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -104,6 +107,42 @@ const TripDashboardPage: React.FC = () => {
       setUserDares([]);
     } finally {
       setLoadingDares(false);
+    }
+  };
+
+  const fetchTripParticipants = async (tripId: string) => {
+    try {
+      const { data: participantData, error } = await supabase
+        .from('trip_participants')
+        .select(`
+          id, user_id, role, joined_at,
+          users!inner(id, display_name, email)
+        `)
+        .eq('trip_id', tripId)
+        .order('joined_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching trip participants:', error);
+        setParticipants([]);
+        return;
+      }
+
+      const participants = (participantData || []).map(item => {
+        const user = (item as any).users;
+        return {
+          id: item.id,
+          user_id: item.user_id,
+          display_name: user.display_name || user.email.split('@')[0],
+          email: user.email,
+          role: item.role,
+          joined_at: item.joined_at
+        };
+      });
+
+      setParticipants(participants);
+    } catch (error) {
+      console.error('Error fetching trip participants:', error);
+      setParticipants([]);
     }
   };
 
@@ -217,8 +256,9 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Always fetch tips
+      // Always fetch tips and participants
       fetchRedditTips(city, country);
+      await fetchTripParticipants(tripId!);
 
       if (user) {
         // Check if user owns the trip
@@ -229,9 +269,23 @@ const TripDashboardPage: React.FC = () => {
           await fetchUserDares(user.id, tripId!);
           await fetchChecklistItems(user.id, tripId!);
         } else {
-          // User doesn't own this trip, redirect
-          navigate('/my-trips');
-          return;
+          // Check if user is participant
+          const { data: participantCheck, error: participantError } = await supabase
+            .from('trip_participants')
+            .select('id, role')
+            .eq('trip_id', tripId)
+            .eq('user_id', user.id)
+            .limit(1);
+
+          if (!participantError && participantCheck && participantCheck.length > 0) {
+            // User is a participant, fetch their data
+            await fetchUserDares(user.id, tripId!);
+            await fetchChecklistItems(user.id, tripId!);
+          } else {
+            // User is not owner or participant, redirect
+            navigate('/my-trips');
+            return;
+          }
         }
 
         // Get trip number for this user
@@ -390,12 +444,45 @@ const TripDashboardPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-6">
             <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
-                TRIP #{tripNumber}
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
+                  TRIP #{tripNumber}
+                </h3>
+                {isUserOwner && (
+                  <button
+                    onClick={() => setShowShareModal(true)}
+                    className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1"
+                  >
+                    <Share2 className="w-3 h-3" />
+                    INVITE FRIENDS
+                  </button>
+                )}
+              </div>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
                 {tripNumber === 1 ? 'Congratulations on starting your first adventure!' : 'Keep exploring, adventurer!'}
               </p>
+              
+              {/* Participants List */}
+              {participants.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="pixel-text text-xs text-blue-400">ADVENTURERS ({participants.length})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {participants.map((participant) => (
+                      <div
+                        key={participant.id}
+                        className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700"
+                      >
+                        {participant.display_name}
+                        {participant.role === 'owner' && (
+                          <span className="ml-1 text-yellow-400">👑</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -693,12 +780,23 @@ const TripDashboardPage: React.FC = () => {
         </div>
       </div>
       
-      {/* Auth Modal */}
+      {/* Modals */}
       <AuthModal
         isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
+        onClose={() => navigate('/my-trips')}
         onSuccess={handleAuthSuccess}
       />
+
+      {trip && (
+        <ShareTripModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          tripId={trip.id}
+          tripDestination={trip.destination}
+          maxParticipants={trip.max_participants || 4}
+          currentParticipants={participants.length}
+        />
+      )}
     </div>
   );
 };

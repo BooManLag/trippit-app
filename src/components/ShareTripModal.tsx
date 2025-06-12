@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Users, Link2, CheckCircle2, Mail, Send, Loader2, Trash2 } from 'lucide-react';
+import { X, Users, Mail, Send, Loader2, CheckCircle2, UserCheck, UserX, Clock } from 'lucide-react';
 import { invitationService } from '../services/invitationService';
 
 interface ShareTripModalProps {
@@ -21,11 +21,12 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchingUser, setSearchingUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [userFound, setUserFound] = useState<boolean | null>(null);
   const [sentInvitations, setSentInvitations] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -52,6 +53,39 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
     return emailRegex.test(email);
   };
 
+  const checkUserExists = async (email: string) => {
+    if (!email.trim() || !validateEmail(email.trim())) {
+      setUserFound(null);
+      return;
+    }
+
+    try {
+      setSearchingUser(true);
+      const exists = await invitationService.checkUserExists(email.trim());
+      setUserFound(exists);
+    } catch (error) {
+      console.error('Error checking user:', error);
+      setUserFound(null);
+    } finally {
+      setSearchingUser(false);
+    }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    setError(null);
+    setSuccess(null);
+    
+    // Debounce user check
+    if (newEmail.trim()) {
+      const timeoutId = setTimeout(() => checkUserExists(newEmail), 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setUserFound(null);
+    }
+  };
+
   const handleSendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -62,6 +96,16 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
     if (!validateEmail(email.trim())) {
       setError('Please enter a valid email address');
+      return;
+    }
+
+    if (userFound === false) {
+      setError('This email is not registered in our system. They need to sign up first!');
+      return;
+    }
+
+    if (userFound === null) {
+      setError('Please wait while we check if this user exists');
       return;
     }
 
@@ -94,13 +138,14 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
       await invitationService.sendInvitation(tripId, emailLower);
       
-      setSuccess(`Invitation sent to ${email}!`);
+      setSuccess(`Invitation sent to ${email}! They'll see it when they open the app.`);
       setEmail('');
+      setUserFound(null);
       
       // Refresh invitations list
       await fetchInvitationsAndParticipants();
       
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => setSuccess(null), 4000);
     } catch (error: any) {
       console.error('Error sending invitation:', error);
       setError(error.message || 'Failed to send invitation');
@@ -109,22 +154,24 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
     }
   };
 
-  const copyShareLink = async () => {
-    const shareUrl = `${window.location.origin}/my-trips?invitation=${tripId}`;
-    
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link', err);
-    }
-  };
-
   if (!isOpen) return null;
 
   const availableSpots = maxParticipants - currentParticipants;
   const pendingInvitations = sentInvitations.filter(inv => inv.status === 'pending');
+
+  const getUserStatusIcon = () => {
+    if (searchingUser) return <Loader2 className="w-4 h-4 animate-spin text-blue-400" />;
+    if (userFound === true) return <UserCheck className="w-4 h-4 text-green-400" />;
+    if (userFound === false) return <UserX className="w-4 h-4 text-red-400" />;
+    return null;
+  };
+
+  const getUserStatusText = () => {
+    if (searchingUser) return 'Checking...';
+    if (userFound === true) return 'User found! ✓';
+    if (userFound === false) return 'User not registered ✗';
+    return '';
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -144,7 +191,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
             INVITE FRIENDS
           </h2>
           <p className="outfit-text text-gray-400 text-sm sm:text-base">
-            Invite friends to join your trip to {tripDestination}
+            Invite registered users to join your trip to {tripDestination}
           </p>
         </div>
 
@@ -182,29 +229,50 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         {availableSpots > 0 && (
           <form onSubmit={handleSendInvitation} className="mb-6">
             <label className="block pixel-text text-xs text-purple-400 mb-2">
-              📧 INVITE BY EMAIL
+              📧 INVITE BY EMAIL (REGISTERED USERS ONLY)
             </label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError(null);
-                }}
-                placeholder="friend@example.com"
-                className="flex-1 input-pixel text-sm"
-                disabled={loading}
-              />
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={handleEmailChange}
+                  placeholder="friend@example.com"
+                  className="w-full input-pixel text-sm pr-10"
+                  disabled={loading}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {getUserStatusIcon()}
+                </div>
+              </div>
+              
+              {/* User Status Indicator */}
+              {email.trim() && (
+                <div className="text-center">
+                  <span className={`pixel-text text-xs ${
+                    userFound === true ? 'text-green-400' : 
+                    userFound === false ? 'text-red-400' : 'text-blue-400'
+                  }`}>
+                    {getUserStatusText()}
+                  </span>
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={loading || !email.trim()}
-                className="pixel-button-primary px-4 py-2 flex items-center gap-1 disabled:opacity-50"
+                disabled={loading || !email.trim() || userFound !== true}
+                className="pixel-button-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    SENDING...
+                  </>
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <>
+                    <Send className="w-4 h-4" />
+                    SEND INVITATION
+                  </>
                 )}
               </button>
             </div>
@@ -214,39 +282,32 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         {/* Success/Error Messages */}
         {success && (
           <div className="text-center mb-4 animate-bounce-in">
-            <div className="inline-flex items-center gap-2 text-green-400">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="pixel-text text-xs">{success}</span>
+            <div className="pixel-card bg-green-500/10 border-green-500/30">
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="pixel-text text-xs">{success}</span>
+              </div>
             </div>
           </div>
         )}
 
         {error && (
           <div className="text-center mb-4 animate-bounce-in">
-            <div className="text-red-400">
-              <span className="pixel-text text-xs">{error}</span>
+            <div className="pixel-card bg-red-500/10 border-red-500/30">
+              <span className="pixel-text text-xs text-red-400">{error}</span>
             </div>
           </div>
         )}
 
-        {/* Share Link */}
+        {/* How it works */}
         <div className="pixel-card bg-blue-900/20 border-blue-500/20 mb-6">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-blue-400" />
-              <span className="pixel-text text-blue-400 text-xs">SHARE LINK</span>
-            </div>
-            <button
-              onClick={copyShareLink}
-              className="pixel-button-secondary text-xs px-2 py-1 flex items-center gap-1"
-            >
-              <Copy className="w-3 h-3" />
-              {copied ? 'COPIED!' : 'COPY'}
-            </button>
-          </div>
-          <p className="outfit-text text-gray-400 text-xs break-all">
-            {`${window.location.origin}/my-trips?invitation=${tripId}`}
-          </p>
+          <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
+          <ul className="outfit-text text-xs text-gray-400 space-y-1">
+            <li>• Enter the email of a registered user</li>
+            <li>• We'll check if they're in our system</li>
+            <li>• They'll see the invitation in their "My Trips" page</li>
+            <li>• They can accept or decline to join</li>
+          </ul>
         </div>
 
         {/* Pending Invitations */}
@@ -264,7 +325,10 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
                   <span className="outfit-text text-sm text-gray-300 break-words flex-1 mr-2">
                     {invitation.invitee_email}
                   </span>
-                  <span className="pixel-text text-xs text-yellow-400">PENDING</span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-yellow-400" />
+                    <span className="pixel-text text-xs text-yellow-400">PENDING</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -312,7 +376,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         <div className="text-center mt-4">
           <p className="outfit-text text-gray-500 text-xs">
             {availableSpots > 0 
-              ? `${availableSpots} more adventurer${availableSpots !== 1 ? 's' : ''} can join this trip`
+              ? `${availableSpots} more registered user${availableSpots !== 1 ? 's' : ''} can join this trip`
               : 'This trip is at full capacity'
             }
           </p>

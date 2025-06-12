@@ -10,12 +10,6 @@ export interface Trip {
   created_at: string;
 }
 
-export interface TripWithParticipants extends Trip {
-  participant_count: number;
-  user_role: 'owner' | 'participant';
-  status: 'not_started' | 'in_progress' | 'completed';
-}
-
 export const tripService = {
   async createTrip(tripData: {
     destination: string;
@@ -67,103 +61,37 @@ export const tripService = {
     return trip;
   },
 
-  async getUserTrips(): Promise<TripWithParticipants[]> {
+  async getUserTrips(): Promise<Trip[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Get trips where user is participant
-    const { data: participantData, error } = await supabase
-      .from('trip_participants')
-      .select(`
-        role,
-        trips!inner (
-          id,
-          destination,
-          start_date,
-          end_date,
-          max_participants,
-          user_id,
-          created_at
-        )
-      `)
+    // Simple query - just get user's own trips
+    const { data: trips, error } = await supabase
+      .from('trips')
+      .select('*')
       .eq('user_id', user.id)
-      .order('joined_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to fetch trips: ${error.message}`);
     }
 
-    if (!participantData || participantData.length === 0) {
-      return [];
-    }
-
-    // Get participant counts for each trip
-    const tripIds = participantData.map(p => (p as any).trips.id);
-    const { data: participantCounts } = await supabase
-      .from('trip_participants')
-      .select('trip_id')
-      .in('trip_id', tripIds);
-
-    const countMap = (participantCounts || []).reduce((acc, item) => {
-      acc[item.trip_id] = (acc[item.trip_id] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Transform data
-    return participantData.map(p => {
-      const trip = (p as any).trips;
-      const today = new Date();
-      const startDate = new Date(trip.start_date);
-      const endDate = new Date(trip.end_date);
-
-      let status: 'not_started' | 'in_progress' | 'completed' = 'not_started';
-      if (today > endDate) {
-        status = 'completed';
-      } else if (today >= startDate && today <= endDate) {
-        status = 'in_progress';
-      }
-
-      return {
-        ...trip,
-        participant_count: countMap[trip.id] || 0,
-        user_role: p.role as 'owner' | 'participant',
-        status
-      };
-    });
+    return trips || [];
   },
 
   async deleteTrip(tripId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Check if user owns the trip
-    const { data: trip } = await supabase
+    // Delete trip (only if user owns it)
+    const { error } = await supabase
       .from('trips')
-      .select('user_id')
+      .delete()
       .eq('id', tripId)
-      .single();
+      .eq('user_id', user.id);
 
-    if (trip?.user_id === user.id) {
-      // Delete entire trip
-      const { error } = await supabase
-        .from('trips')
-        .delete()
-        .eq('id', tripId);
-
-      if (error) {
-        throw new Error(`Failed to delete trip: ${error.message}`);
-      }
-    } else {
-      // Remove user from trip
-      const { error } = await supabase
-        .from('trip_participants')
-        .delete()
-        .eq('trip_id', tripId)
-        .eq('user_id', user.id);
-
-      if (error) {
-        throw new Error(`Failed to leave trip: ${error.message}`);
-      }
+    if (error) {
+      throw new Error(`Failed to delete trip: ${error.message}`);
     }
   }
 };

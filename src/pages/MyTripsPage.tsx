@@ -1,32 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown, AlertCircle, RefreshCw } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
-import InvitationModal from '../components/InvitationModal';
 import AuthModal from '../components/AuthModal';
 import { useAuth } from '../hooks/useAuth';
-import { tripService, type TripWithParticipants } from '../services/tripService';
-import { invitationService, type TripInvitation } from '../services/invitationService';
+
+interface Trip {
+  id: string;
+  destination: string;
+  start_date: string;
+  end_date: string;
+  max_participants: number;
+  user_id: string;
+  created_at: string;
+  status: 'not_started' | 'in_progress' | 'completed';
+}
 
 const MyTripsPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [trips, setTrips] = useState<TripWithParticipants[]>([]);
-  const [pendingInvitations, setPendingInvitations] = useState<TripInvitation[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [invitationsError, setInvitationsError] = useState<string | null>(null);
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
-  const [selectedInvitation, setSelectedInvitation] = useState<TripInvitation | null>(null);
-  const [showInvitationModal, setShowInvitationModal] = useState(false);
-  const [invitationTripId, setInvitationTripId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingInvitationTripId, setPendingInvitationTripId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -40,53 +43,41 @@ const MyTripsPage: React.FC = () => {
     
     try {
       setError(null);
-      const userTrips = await tripService.getUserTrips();
-      setTrips(userTrips);
+      
+      // Simple query - just get user's own trips
+      const { data: userTrips, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(`Failed to fetch trips: ${error.message}`);
+      }
+
+      // Add status to each trip
+      const tripsWithStatus = (userTrips || []).map(trip => {
+        const today = new Date();
+        const startDate = new Date(trip.start_date);
+        const endDate = new Date(trip.end_date);
+
+        let status: Trip['status'] = 'not_started';
+        if (today > endDate) {
+          status = 'completed';
+        } else if (today >= startDate && today <= endDate) {
+          status = 'in_progress';
+        }
+
+        return {
+          ...trip,
+          status
+        };
+      });
+
+      setTrips(tripsWithStatus);
     } catch (error: any) {
       console.error('Error fetching trips:', error);
       setError(error.message || 'Failed to load your trips. Please try again.');
-    }
-  };
-
-  const fetchPendingInvitations = async () => {
-    if (!user) return;
-    
-    try {
-      setInvitationsError(null);
-      const invitations = await invitationService.getPendingInvitations();
-      setPendingInvitations(invitations);
-    } catch (error: any) {
-      console.error('Error fetching invitations:', error);
-      setInvitationsError(error.message || 'Failed to load invitations. Please try again.');
-    }
-  };
-
-  const handleInvitationFromUrl = async (invitationTripId: string, user: any) => {
-    try {
-      // Check if this is a formal invitation
-      const { data: invitation } = await supabase
-        .from('trip_invitations')
-        .select('id, trip_id, inviter_id, invitee_email, status, created_at')
-        .eq('trip_id', invitationTripId)
-        .eq('invitee_email', user.email)
-        .eq('status', 'pending')
-        .single();
-
-      if (invitation) {
-        // Get additional details for the invitation
-        const invitations = await invitationService.getPendingInvitations();
-        const formattedInvitation = invitations.find(inv => inv.id === invitation.id);
-        
-        if (formattedInvitation) {
-          setSelectedInvitation(formattedInvitation);
-        }
-      } else {
-        // This is just a shared trip link
-        setInvitationTripId(invitationTripId);
-        setShowInvitationModal(true);
-      }
-    } catch (error) {
-      console.error('Error handling invitation from URL:', error);
     }
   };
 
@@ -107,13 +98,8 @@ const MyTripsPage: React.FC = () => {
         return;
       }
 
-      // Handle invitation from URL if present
-      if (invitationParam) {
-        await handleInvitationFromUrl(invitationParam, user);
-      }
-      
       // Fetch data
-      await Promise.all([fetchTrips(), fetchPendingInvitations()]);
+      await fetchTrips();
       setLoading(false);
     };
 
@@ -129,19 +115,26 @@ const MyTripsPage: React.FC = () => {
     if (!tripToDelete) return;
 
     try {
-      await tripService.deleteTrip(tripToDelete);
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripToDelete)
+        .eq('user_id', user?.id); // Extra safety check
+
+      if (error) {
+        throw new Error(`Failed to delete trip: ${error.message}`);
+      }
+
       await fetchTrips();
     } catch (error: any) {
       console.error('Error deleting trip:', error);
-      setError(error.message || 'Failed to delete/leave trip. Please try again.');
+      setError(error.message || 'Failed to delete trip. Please try again.');
     }
   };
 
-  const handleInvitationResponse = async (accepted: boolean) => {
-    if (accepted) {
-      await fetchTrips();
-    }
-    await fetchPendingInvitations();
+  const handleAuthSuccess = async () => {
+    setShowAuthModal(false);
+    setPendingInvitationTripId(null);
     
     // Clear URL parameter
     const newSearchParams = new URLSearchParams(searchParams);
@@ -149,28 +142,11 @@ const MyTripsPage: React.FC = () => {
     navigate({ search: newSearchParams.toString() }, { replace: true });
   };
 
-  const handleAuthSuccess = async () => {
-    setShowAuthModal(false);
-    
-    if (pendingInvitationTripId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await handleInvitationFromUrl(pendingInvitationTripId, user);
-      }
-      setPendingInvitationTripId(null);
-    }
-  };
-
   const retryFetchTrips = async () => {
     setLoading(true);
     setError(null);
     await fetchTrips();
     setLoading(false);
-  };
-
-  const retryFetchInvitations = async () => {
-    setInvitationsError(null);
-    await fetchPendingInvitations();
   };
 
   const formatDate = (dateString: string) => {
@@ -181,7 +157,7 @@ const MyTripsPage: React.FC = () => {
     });
   };
 
-  const getStatusColor = (status: TripWithParticipants['status']) => {
+  const getStatusColor = (status: Trip['status']) => {
     switch (status) {
       case 'in_progress': return 'text-green-400';
       case 'completed': return 'text-blue-400';
@@ -189,7 +165,7 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
-  const getStatusText = (status: TripWithParticipants['status']) => {
+  const getStatusText = (status: Trip['status']) => {
     switch (status) {
       case 'in_progress': return 'IN PROGRESS';
       case 'completed': return 'COMPLETED';
@@ -197,24 +173,12 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: TripWithParticipants['status']) => {
+  const getStatusIcon = (status: Trip['status']) => {
     switch (status) {
       case 'in_progress': return '🔥';
       case 'completed': return '🏆';
       default: return '⏳';
     }
-  };
-
-  const getRoleIcon = (role: 'owner' | 'participant') => {
-    return role === 'owner' ? <Crown className="w-4 h-4 text-yellow-400" /> : <Users className="w-4 h-4 text-blue-400" />;
-  };
-
-  const getRoleText = (role: 'owner' | 'participant') => {
-    return role === 'owner' ? 'OWNER' : 'PARTICIPANT';
-  };
-
-  const getDeleteButtonText = (role: 'owner' | 'participant') => {
-    return role === 'owner' ? 'Delete Trip' : 'Leave Trip';
   };
 
   if (authLoading || loading) {
@@ -241,7 +205,7 @@ const MyTripsPage: React.FC = () => {
             <BackButton to="/" />
             <div>
               <h2 className="pixel-text mobile-heading text-blue-400 glow-text">MY ADVENTURES</h2>
-              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">Your travel journey awaits</p>
+              <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">Your personal travel journey</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -263,7 +227,7 @@ const MyTripsPage: React.FC = () => {
               <div className="flex items-start gap-3 flex-1">
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="pixel-text text-red-400 text-sm mb-2">TRIPS LOADING ERROR</h4>
+                  <h4 className="pixel-text text-red-400 text-sm mb-2">LOADING ERROR</h4>
                   <p className="outfit-text text-red-300 text-sm break-words">{error}</p>
                 </div>
               </div>
@@ -274,76 +238,6 @@ const MyTripsPage: React.FC = () => {
                 <RefreshCw className="w-3 h-3" />
                 RETRY
               </button>
-            </div>
-          </div>
-        )}
-
-        {invitationsError && (
-          <div className="pixel-card bg-orange-500/10 border-2 border-orange-500/30 mb-6 animate-bounce-in">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1">
-                <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <h4 className="pixel-text text-orange-400 text-sm mb-2">INVITATIONS LOADING ERROR</h4>
-                  <p className="outfit-text text-orange-300 text-sm break-words">{invitationsError}</p>
-                </div>
-              </div>
-              <button
-                onClick={retryFetchInvitations}
-                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 flex-shrink-0"
-              >
-                <RefreshCw className="w-3 h-3" />
-                RETRY
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Pending Invitations */}
-        {pendingInvitations.length > 0 && (
-          <div className="animate-slide-in-up delay-100 mb-6 sm:mb-8">
-            <div className="flex items-center gap-3 mb-4 sm:mb-6">
-              <div className="text-2xl sm:text-3xl animate-bounce">📬</div>
-              <h3 className="pixel-text text-purple-400 text-sm sm:text-base lg:text-lg">PENDING INVITATIONS</h3>
-              <div className="flex-1 h-px bg-gradient-to-r from-purple-500/50 to-transparent"></div>
-              <span className="pixel-text text-xs text-purple-400">{pendingInvitations.length}</span>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {pendingInvitations.map((invitation, index) => (
-                <div
-                  key={invitation.id}
-                  className={`pixel-card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 group animate-slide-in-up cursor-pointer`}
-                  style={{ animationDelay: `${index * 100 + 200}ms` }}
-                  onClick={() => setSelectedInvitation(invitation)}
-                >
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                      <span className="pixel-text text-xs text-purple-400">INVITATION</span>
-                      <span className="text-lg">✉️</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="w-4 sm:w-5 h-4 sm:h-5 text-purple-400 flex-shrink-0" />
-                        <h4 className="pixel-text text-white text-sm sm:text-base break-words group-hover:text-purple-300 transition-colors">
-                          {invitation.trip.destination}
-                        </h4>
-                      </div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <p className="outfit-text text-gray-400 text-sm">
-                          {formatDate(invitation.trip.start_date)} — {formatDate(invitation.trip.end_date)}
-                        </p>
-                      </div>
-                      <p className="outfit-text text-gray-300 text-sm">
-                        From{' '}
-                        <span className="text-purple-400 font-semibold">
-                          {invitation.inviter.display_name || invitation.inviter.email.split('@')[0]}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -379,24 +273,10 @@ const MyTripsPage: React.FC = () => {
                               {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                             </p>
                           </div>
-                          <div className="flex items-center gap-4 mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{getStatusIcon(trip.status)}</span>
-                              <p className={`pixel-text text-xs sm:text-sm ${getStatusColor(trip.status)}`}>
-                                {getStatusText(trip.status)}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(trip.user_role)}
-                              <p className="pixel-text text-xs text-gray-400">
-                                {getRoleText(trip.user_role)}
-                              </p>
-                            </div>
-                          </div>
                           <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-purple-400" />
-                            <p className="pixel-text text-xs text-purple-400">
-                              {trip.participant_count}/{trip.max_participants} ADVENTURERS
+                            <span className="text-lg">{getStatusIcon(trip.status)}</span>
+                            <p className={`pixel-text text-xs sm:text-sm ${getStatusColor(trip.status)}`}>
+                              {getStatusText(trip.status)}
                             </p>
                           </div>
                         </div>
@@ -411,7 +291,7 @@ const MyTripsPage: React.FC = () => {
                           <button
                             onClick={() => handleDeleteClick(trip.id)}
                             className="text-red-500 hover:text-red-400 transition-all duration-300 p-2 hover:scale-110 hover-wiggle"
-                            title={getDeleteButtonText(trip.user_role)}
+                            title="Delete trip"
                           >
                             <Trash2 className="w-5 sm:w-6 h-5 sm:h-6" />
                           </button>
@@ -451,24 +331,10 @@ const MyTripsPage: React.FC = () => {
                               {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
                             </p>
                           </div>
-                          <div className="flex items-center gap-4 mb-2">
-                            <div className="flex items-center gap-2">
-                              <Star className="w-4 h-4 text-yellow-400" />
-                              <p className="pixel-text text-xs sm:text-sm text-blue-400">
-                                ADVENTURE COMPLETED
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(trip.user_role)}
-                              <p className="pixel-text text-xs text-gray-500">
-                                {getRoleText(trip.user_role)}
-                              </p>
-                            </div>
-                          </div>
                           <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-gray-500" />
-                            <p className="pixel-text text-xs text-gray-500">
-                              {trip.participant_count}/{trip.max_participants} ADVENTURERS
+                            <Star className="w-4 h-4 text-yellow-400" />
+                            <p className="pixel-text text-xs sm:text-sm text-blue-400">
+                              ADVENTURE COMPLETED
                             </p>
                           </div>
                         </div>
@@ -480,15 +346,13 @@ const MyTripsPage: React.FC = () => {
                           >
                             <Play className="w-5 sm:w-6 h-5 sm:h-6" />
                           </button>
-                          {trip.user_role === 'owner' && (
-                            <button
-                              onClick={() => handleDeleteClick(trip.id)}
-                              className="text-red-500/50 hover:text-red-400 transition-all duration-300 p-2 hover:scale-110 hover-wiggle flex-shrink-0"
-                              title={getDeleteButtonText(trip.user_role)}
-                            >
-                              <Trash2 className="w-5 sm:w-6 h-5 sm:h-6" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleDeleteClick(trip.id)}
+                            className="text-red-500/50 hover:text-red-400 transition-all duration-300 p-2 hover:scale-110 hover-wiggle flex-shrink-0"
+                            title="Delete trip"
+                          >
+                            <Trash2 className="w-5 sm:w-6 h-5 sm:h-6" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -518,37 +382,9 @@ const MyTripsPage: React.FC = () => {
           isOpen={deleteModalOpen}
           onClose={() => setDeleteModalOpen(false)}
           onConfirm={handleConfirmDelete}
-          title={trips.find(t => t.id === tripToDelete)?.user_role === 'owner' ? "DELETE ADVENTURE" : "LEAVE ADVENTURE"}
-          message={
-            trips.find(t => t.id === tripToDelete)?.user_role === 'owner' 
-              ? "Are you sure you want to delete this adventure? This action cannot be undone and all associated data will be lost."
-              : "Are you sure you want to leave this adventure? You can rejoin later if there's space available."
-          }
+          title="DELETE ADVENTURE"
+          message="Are you sure you want to delete this adventure? This action cannot be undone and all associated data will be lost."
         />
-
-        {selectedInvitation && (
-          <InvitationModal
-            invitation={selectedInvitation}
-            isOpen={!!selectedInvitation}
-            onClose={() => setSelectedInvitation(null)}
-            onResponse={handleInvitationResponse}
-          />
-        )}
-
-        {showInvitationModal && invitationTripId && (
-          <InvitationModal
-            tripId={invitationTripId}
-            isOpen={showInvitationModal}
-            onClose={() => {
-              setShowInvitationModal(false);
-              setInvitationTripId(null);
-              const newSearchParams = new URLSearchParams(searchParams);
-              newSearchParams.delete('invitation');
-              navigate({ search: newSearchParams.toString() }, { replace: true });
-            }}
-            onResponse={handleInvitationResponse}
-          />
-        )}
 
         <AuthModal
           isOpen={showAuthModal}

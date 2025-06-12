@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { MapPin, Calendar, Search, Loader2, Sparkles, Globe } from 'lucide-react';
-import { supabase, isAuthenticated, ensureUserProfile } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { tripService } from '../services/tripService';
 import countries from '../data/countries.min.json';
 
 interface Location {
@@ -12,7 +13,9 @@ interface Location {
 }
 
 const CreateTripPage: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch] = useDebounce(searchTerm, 300);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -30,16 +33,10 @@ const CreateTripPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const authenticated = await isAuthenticated();
-      if (!authenticated) {
-        navigate('/');
-        return;
-      }
-    };
-
-    checkAuth();
-  }, [navigate]);
+    if (!authLoading && !user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (debouncedSearch.length < 2) {
@@ -70,14 +67,13 @@ const CreateTripPage: React.FC = () => {
     setSelectedLocation(location);
     setSearchTerm(`${location.city}, ${location.country}`);
     setShowDropdown(false);
-    setError(null); // Clear any previous errors
+    setError(null);
   };
 
   const validateManualLocation = (input: string): Location | null => {
     const trimmed = input.trim();
     if (!trimmed) return null;
 
-    // Check if it matches the format "City, Country"
     const parts = trimmed.split(',').map(part => part.trim());
     if (parts.length === 2 && parts[0] && parts[1]) {
       return {
@@ -86,11 +82,9 @@ const CreateTripPage: React.FC = () => {
       };
     }
 
-    // If it's just one part, assume it's a city and try to find a matching country
     if (parts.length === 1 && parts[0]) {
       const cityName = parts[0].toLowerCase();
       
-      // Search through our countries data to find a match
       for (const country in countries) {
         const cities = countries[country];
         const matchingCity = cities.find(city => 
@@ -104,7 +98,6 @@ const CreateTripPage: React.FC = () => {
         }
       }
       
-      // If no exact match found, allow manual entry but warn user
       return {
         city: parts[0],
         country: 'Unknown'
@@ -118,18 +111,20 @@ const CreateTripPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     
-    // Validate location - either selected from dropdown or manually entered
+    if (!user) {
+      setError('You must be signed in to create a trip');
+      return;
+    }
+    
     let locationToUse = selectedLocation;
     
     if (!locationToUse && searchTerm.trim()) {
-      // Try to validate manual entry
       locationToUse = validateManualLocation(searchTerm);
       if (!locationToUse) {
         setError('Please enter a valid destination in the format "City, Country" or select from the dropdown');
         return;
       }
       
-      // Warn if country is unknown
       if (locationToUse.country === 'Unknown') {
         setError('Could not find this city in our database. Please select from the dropdown for better results, or enter in format "City, Country"');
         return;
@@ -151,7 +146,6 @@ const CreateTripPage: React.FC = () => {
       return;
     }
 
-    // Check if start date is in the past
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tripStart = new Date(startDate);
@@ -164,32 +158,8 @@ const CreateTripPage: React.FC = () => {
 
     try {
       setLoading(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('You must be signed in to create a trip');
-        navigate('/');
-        return;
-      }
-
-      console.log('Current user:', user.id);
-
-      // Ensure user profile exists before creating trip
-      try {
-        const userProfile = await ensureUserProfile();
-        if (!userProfile) {
-          setError('Failed to create user profile. Please try again.');
-          return;
-        }
-        console.log('User profile ensured:', userProfile);
-      } catch (profileError: any) {
-        console.error('Profile creation error:', profileError);
-        setError(`Profile error: ${profileError.message}`);
-        return;
-      }
 
       const tripData = {
-        user_id: user.id,
         destination: `${locationToUse.city}, ${locationToUse.country}`,
         start_date: startDate,
         end_date: endDate,
@@ -197,34 +167,9 @@ const CreateTripPage: React.FC = () => {
       };
 
       console.log('Creating trip with data:', tripData);
+      await tripService.createTrip(tripData);
+      console.log('Trip created successfully');
 
-      const { data: createdTrip, error: tripError } = await supabase
-        .from('trips')
-        .insert(tripData)
-        .select()
-        .single();
-
-      if (tripError) {
-        console.error('Error creating trip:', tripError);
-        
-        // Provide more user-friendly error messages
-        if (tripError.message.includes('infinite recursion')) {
-          setError('Database configuration issue. Please try again in a moment.');
-        } else if (tripError.message.includes('permission')) {
-          setError('Permission denied. Please make sure you are signed in.');
-        } else {
-          setError(`Failed to create trip: ${tripError.message}`);
-        }
-        return;
-      }
-
-      console.log('Trip created successfully:', createdTrip);
-
-      // The trigger will automatically add the user as a participant with 'owner' role
-      // Wait a moment for the trigger to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Navigate to my trips page
       navigate('/my-trips');
     } catch (error: any) {
       console.error('Error creating trip:', error);
@@ -233,6 +178,17 @@ const CreateTripPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="animate-bounce-in">
+          <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-blue-500 animate-spin" />
+          <p className="pixel-text text-blue-400 mt-4 text-sm sm:text-base">LOADING...</p>
+        </div>
+      </div>
+    );
+  }
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -247,15 +203,6 @@ const CreateTripPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-10 left-10 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-60"></div>
-        <div className="absolute top-32 right-20 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-40"></div>
-        <div className="absolute bottom-40 left-1/4 w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce opacity-50"></div>
-        <div className="absolute top-1/2 right-10 w-1 h-1 bg-green-400 rounded-full animate-pulse opacity-30"></div>
-        <div className="absolute bottom-20 right-1/3 w-2 h-2 bg-pink-500 rounded-full animate-ping opacity-40"></div>
-      </div>
-
       <div className="container mx-auto mobile-padding py-8 sm:py-12 lg:py-16 max-w-4xl relative z-10">
         <div className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           {/* Header */}
@@ -286,7 +233,7 @@ const CreateTripPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Location Search */}
-            <div className={`relative animate-slide-in-left delay-400`}>
+            <div className="relative animate-slide-in-left delay-400">
               <label className="block pixel-text text-xs sm:text-sm mb-3 text-blue-400 glow-text">
                 🌍 WHERE ARE YOU GOING?
               </label>
@@ -296,12 +243,11 @@ const CreateTripPage: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
-                    setSelectedLocation(null); // Clear selection when typing
-                    setError(null); // Clear errors when typing
+                    setSelectedLocation(null);
+                    setError(null);
                   }}
                   onFocus={() => setShowDropdown(true)}
                   onBlur={() => {
-                    // Delay hiding dropdown to allow for clicks
                     setTimeout(() => setShowDropdown(false), 200);
                   }}
                   className="w-full input-pixel pr-12"
@@ -347,7 +293,7 @@ const CreateTripPage: React.FC = () => {
 
             {/* Date Selection */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <div className={`animate-slide-in-left delay-500`}>
+              <div className="animate-slide-in-left delay-500">
                 <label className="block pixel-text text-xs sm:text-sm mb-3 text-blue-400 glow-text">
                   📅 START DATE
                 </label>
@@ -367,7 +313,7 @@ const CreateTripPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className={`animate-slide-in-right delay-600`}>
+              <div className="animate-slide-in-right delay-600">
                 <label className="block pixel-text text-xs sm:text-sm mb-3 text-blue-400 glow-text">
                   📅 END DATE
                 </label>
@@ -389,7 +335,7 @@ const CreateTripPage: React.FC = () => {
             </div>
 
             {/* Participant Limit Selection */}
-            <div className={`animate-slide-in-up delay-700`}>
+            <div className="animate-slide-in-up delay-700">
               <label className="block pixel-text text-xs sm:text-sm mb-3 text-purple-400 glow-text">
                 👥 HOW MANY ADVENTURERS?
               </label>
@@ -427,7 +373,7 @@ const CreateTripPage: React.FC = () => {
             </div>
 
             {/* Submit Button */}
-            <div className={`animate-slide-in-up delay-800`}>
+            <div className="animate-slide-in-up delay-800">
               <button
                 type="submit"
                 disabled={loading}
@@ -450,7 +396,7 @@ const CreateTripPage: React.FC = () => {
           </form>
 
           {/* Motivational Footer */}
-          <div className={`text-center mt-8 sm:mt-12 animate-slide-in-up delay-900`}>
+          <div className="text-center mt-8 sm:mt-12 animate-slide-in-up delay-900">
             <p className="outfit-text text-gray-500 text-sm sm:text-base">
               ✨ Ready to create memories that will last a lifetime? ✨
             </p>

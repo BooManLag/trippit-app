@@ -26,9 +26,11 @@ Behind the scenes Trippit is built with React, TypeScript, Tailwind CSS and Supa
    ```
    These values come from your Supabase dashboard.
 3. **Initialize the database**
-   Apply the baseline migration using your preferred Postgres client or the
-   Supabase CLI:
+   Apply the baseline migration using a Postgres client or the Supabase CLI:
    ```bash
+   # Using Supabase CLI
+   supabase db reset --file supabase/migrations/20250612_initial.sql
+   # Or using psql
    psql < supabase/migrations/20250612_initial.sql
    ```
    Ensure this file contains the full schema exported from a working instance.

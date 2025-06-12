@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
-import { MapPin, Calendar, Search, Loader2, Sparkles, Globe, Users } from 'lucide-react';
+import { MapPin, Calendar, Search, Loader2, Sparkles, Globe } from 'lucide-react';
 import { supabase, isAuthenticated, ensureUserProfile } from '../lib/supabase';
 import countries from '../data/countries.min.json';
 
@@ -20,7 +20,7 @@ const CreateTripPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [maxParticipants, setMaxParticipants] = useState(2); // Default to 2 (solo + 1 friend)
+  const [maxParticipants, setMaxParticipants] = useState(2);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,14 +70,74 @@ const CreateTripPage: React.FC = () => {
     setSelectedLocation(location);
     setSearchTerm(`${location.city}, ${location.country}`);
     setShowDropdown(false);
+    setError(null); // Clear any previous errors
+  };
+
+  const validateManualLocation = (input: string): Location | null => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // Check if it matches the format "City, Country"
+    const parts = trimmed.split(',').map(part => part.trim());
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      return {
+        city: parts[0],
+        country: parts[1]
+      };
+    }
+
+    // If it's just one part, assume it's a city and try to find a matching country
+    if (parts.length === 1 && parts[0]) {
+      const cityName = parts[0].toLowerCase();
+      
+      // Search through our countries data to find a match
+      for (const country in countries) {
+        const cities = countries[country];
+        const matchingCity = cities.find(city => 
+          city.toLowerCase() === cityName
+        );
+        if (matchingCity) {
+          return {
+            city: matchingCity,
+            country: country
+          };
+        }
+      }
+      
+      // If no exact match found, allow manual entry but warn user
+      return {
+        city: parts[0],
+        country: 'Unknown'
+      };
+    }
+
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     
-    if (!selectedLocation) {
-      setError('Please select a destination');
+    // Validate location - either selected from dropdown or manually entered
+    let locationToUse = selectedLocation;
+    
+    if (!locationToUse && searchTerm.trim()) {
+      // Try to validate manual entry
+      locationToUse = validateManualLocation(searchTerm);
+      if (!locationToUse) {
+        setError('Please enter a valid destination in the format "City, Country" or select from the dropdown');
+        return;
+      }
+      
+      // Warn if country is unknown
+      if (locationToUse.country === 'Unknown') {
+        setError('Could not find this city in our database. Please select from the dropdown for better results, or enter in format "City, Country"');
+        return;
+      }
+    }
+    
+    if (!locationToUse) {
+      setError('Please enter or select a destination');
       return;
     }
 
@@ -88,6 +148,17 @@ const CreateTripPage: React.FC = () => {
 
     if (new Date(startDate) >= new Date(endDate)) {
       setError('End date must be after start date');
+      return;
+    }
+
+    // Check if start date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tripStart = new Date(startDate);
+    tripStart.setHours(0, 0, 0, 0);
+    
+    if (tripStart < today) {
+      setError('Start date cannot be in the past');
       return;
     }
 
@@ -119,7 +190,7 @@ const CreateTripPage: React.FC = () => {
 
       const tripData = {
         user_id: user.id,
-        destination: `${selectedLocation.city}, ${selectedLocation.country}`,
+        destination: `${locationToUse.city}, ${locationToUse.country}`,
         start_date: startDate,
         end_date: endDate,
         max_participants: maxParticipants,
@@ -135,7 +206,15 @@ const CreateTripPage: React.FC = () => {
 
       if (tripError) {
         console.error('Error creating trip:', tripError);
-        setError(`Failed to create trip: ${tripError.message}`);
+        
+        // Provide more user-friendly error messages
+        if (tripError.message.includes('infinite recursion')) {
+          setError('Database configuration issue. Please try again in a moment.');
+        } else if (tripError.message.includes('permission')) {
+          setError('Permission denied. Please make sure you are signed in.');
+        } else {
+          setError(`Failed to create trip: ${tripError.message}`);
+        }
         return;
       }
 
@@ -215,10 +294,18 @@ const CreateTripPage: React.FC = () => {
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setSelectedLocation(null); // Clear selection when typing
+                    setError(null); // Clear errors when typing
+                  }}
                   onFocus={() => setShowDropdown(true)}
+                  onBlur={() => {
+                    // Delay hiding dropdown to allow for clicks
+                    setTimeout(() => setShowDropdown(false), 200);
+                  }}
                   className="w-full input-pixel pr-12"
-                  placeholder="Search for your dream destination..."
+                  placeholder="Enter destination (e.g., Paris, France) or search..."
                   required
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -226,6 +313,7 @@ const CreateTripPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Dropdown with search results */}
               {showDropdown && locations.length > 0 && (
                 <div className="absolute z-10 w-full mt-2 bg-gray-800 border-2 border-blue-500/30 max-h-60 overflow-auto animate-slide-in-up">
                   {locations.map((location, index) => (
@@ -250,6 +338,11 @@ const CreateTripPage: React.FC = () => {
                   ))}
                 </div>
               )}
+
+              {/* Helper text */}
+              <div className="mt-2 text-xs text-gray-500">
+                💡 Type to search our database or enter manually in format "City, Country"
+              </div>
             </div>
 
             {/* Date Selection */}
@@ -262,7 +355,10 @@ const CreateTripPage: React.FC = () => {
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setError(null);
+                    }}
                     min={today}
                     className="w-full input-pixel pr-12"
                     required
@@ -279,7 +375,10 @@ const CreateTripPage: React.FC = () => {
                   <input
                     type="date"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setError(null);
+                    }}
                     min={startDate || today}
                     className="w-full input-pixel pr-12"
                     required
@@ -331,7 +430,7 @@ const CreateTripPage: React.FC = () => {
             <div className={`animate-slide-in-up delay-800`}>
               <button
                 type="submit"
-                disabled={!selectedLocation || !startDate || !endDate || loading}
+                disabled={loading}
                 className="pixel-button-primary w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 py-4 sm:py-6 animate-pulse-glow"
               >
                 {loading ? (

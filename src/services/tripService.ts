@@ -87,7 +87,7 @@ export const tripService = {
         )
       `)
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('joined_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to fetch trips: ${error.message}`);

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users, UserPlus, Mail } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
-import ShareTripModal from '../components/ShareTripModal';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -62,7 +61,6 @@ const TripDashboardPage: React.FC = () => {
   const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [isUserParticipant, setIsUserParticipant] = useState(false);
   const [isUserOwner, setIsUserOwner] = useState(false);
@@ -536,14 +534,6 @@ const TripDashboardPage: React.FC = () => {
                       <UserPlus className="w-3 h-3" />
                       SIGN IN TO JOIN
                     </button>
-                  ) : isUserOwner ? (
-                    <button
-                      onClick={() => setShowShareModal(true)}
-                      className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1"
-                    >
-                      <Mail className="w-3 h-3" />
-                      INVITE BY EMAIL
-                    </button>
                   ) : null}
                 </div>
               </div>
@@ -885,17 +875,6 @@ const TripDashboardPage: React.FC = () => {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
-
-      {trip && (
-        <ShareTripModal
-          isOpen={showShareModal}
-          onClose={() => setShowShareModal(false)}
-          tripId={trip.id}
-          tripDestination={trip.destination}
-          maxParticipants={trip.max_participants || 4}
-          currentParticipants={participants.length}
-        />
-      )}
     </div>
   );
 };

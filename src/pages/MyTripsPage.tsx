@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown, Mail } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 import InvitationModal from '../components/InvitationModal';
-import ShareTripModal from '../components/ShareTripModal';
 import AuthModal from '../components/AuthModal';
 
 interface Trip {
@@ -44,8 +43,6 @@ const MyTripsPage: React.FC = () => {
   const [pendingInvitations, setPendingInvitations] = useState<TripInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [selectedTripForShare, setSelectedTripForShare] = useState<Trip | null>(null);
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
   const [selectedInvitation, setSelectedInvitation] = useState<TripInvitation | null>(null);
   const [showInvitationModal, setShowInvitationModal] = useState(false);
@@ -300,11 +297,6 @@ const MyTripsPage: React.FC = () => {
   const handleDeleteClick = (tripId: string) => {
     setTripToDelete(tripId);
     setDeleteModalOpen(true);
-  };
-
-  const handleShareClick = (trip: Trip) => {
-    setSelectedTripForShare(trip);
-    setShareModalOpen(true);
   };
 
   const handleConfirmDelete = async () => {
@@ -574,15 +566,6 @@ const MyTripsPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3 justify-end sm:justify-start flex-shrink-0">
-                          {trip.user_role === 'owner' && (
-                            <button
-                              onClick={() => handleShareClick(trip)}
-                              className="text-purple-500 hover:text-purple-400 transition-all duration-300 p-2 hover:scale-110"
-                              title="Invite by email"
-                            >
-                              <Mail className="w-5 sm:w-6 h-5 sm:h-6" />
-                            </button>
-                          )}
                           <button
                             onClick={() => handlePlayTrip(trip.id)}
                             className="text-green-500 hover:text-green-400 transition-all duration-300 p-2 hover:scale-110 hover-glow"
@@ -734,20 +717,6 @@ const MyTripsPage: React.FC = () => {
               navigate({ search: newSearchParams.toString() }, { replace: true });
             }}
             onResponse={handleInvitationResponse}
-          />
-        )}
-
-        {selectedTripForShare && (
-          <ShareTripModal
-            isOpen={shareModalOpen}
-            onClose={() => {
-              setShareModalOpen(false);
-              setSelectedTripForShare(null);
-            }}
-            tripId={selectedTripForShare.id}
-            tripDestination={selectedTripForShare.destination}
-            maxParticipants={selectedTripForShare.max_participants || 4}
-            currentParticipants={selectedTripForShare.participant_count || 0}
           />
         )}
 

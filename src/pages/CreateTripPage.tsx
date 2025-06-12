@@ -23,6 +23,7 @@ const CreateTripPage: React.FC = () => {
   const [maxParticipants, setMaxParticipants] = useState(2); // Default to 2 (solo + 1 friend)
   const [showDropdown, setShowDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsVisible(true);
@@ -76,19 +77,40 @@ const CreateTripPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLocation) return;
+    setError(null);
+    
+    if (!selectedLocation) {
+      setError('Please select a destination');
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      setError('Please select both start and end dates');
+      return;
+    }
+
+    if (new Date(startDate) >= new Date(endDate)) {
+      setError('End date must be after start date');
+      return;
+    }
 
     try {
       setLoading(true);
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        setError('You must be signed in to create a trip');
         navigate('/');
         return;
       }
 
       // Ensure user profile exists before creating trip
-      await ensureUserProfile();
+      const userProfile = await ensureUserProfile();
+      if (!userProfile) {
+        setError('Failed to create user profile. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       console.log('Creating trip with data:', {
         user_id: user.id,
@@ -98,7 +120,7 @@ const CreateTripPage: React.FC = () => {
         max_participants: maxParticipants,
       });
 
-      const { data: tripData, error } = await supabase.from('trips').insert({
+      const { data: tripData, error: tripError } = await supabase.from('trips').insert({
         user_id: user.id,
         destination: `${selectedLocation.city}, ${selectedLocation.country}`,
         start_date: startDate,
@@ -106,9 +128,10 @@ const CreateTripPage: React.FC = () => {
         max_participants: maxParticipants,
       }).select().single();
 
-      if (error) {
-        console.error('Error creating trip:', error);
-        throw error;
+      if (tripError) {
+        console.error('Error creating trip:', tripError);
+        setError(`Failed to create trip: ${tripError.message}`);
+        return;
       }
 
       console.log('Trip created successfully:', tripData);
@@ -116,10 +139,9 @@ const CreateTripPage: React.FC = () => {
       // The trigger will automatically add the user as a participant with 'owner' role
       // Navigate to my trips page instead of directly to trip dashboard
       navigate('/my-trips');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating trip:', error);
-      // Show error message to user
-      alert('Failed to create trip. Please try again.');
+      setError(error.message || 'Failed to create trip. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -164,6 +186,16 @@ const CreateTripPage: React.FC = () => {
               Where will your next adventure take you? Let's create something amazing together!
             </p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="pixel-card bg-red-500/10 border-2 border-red-500/30 mb-6 animate-bounce-in">
+              <div className="flex items-center gap-3">
+                <div className="text-red-400 text-xl">⚠️</div>
+                <p className="outfit-text text-red-300 text-sm sm:text-base">{error}</p>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Location Search */}

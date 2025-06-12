@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Copy, Users, Link2, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Users, Send, CheckCircle2, AlertCircle, Loader2, UserPlus } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ShareTripModalProps {
   isOpen: boolean;
@@ -18,19 +19,141 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
   maxParticipants,
   currentParticipants
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   if (!isOpen) return null;
 
-  const shareUrl = `${window.location.origin}/my-trips?invitation=${tripId}`;
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const copyShareLink = async () => {
+  const sendInvitation = async () => {
+    if (!email.trim()) {
+      setMessage({ type: 'error', text: 'Please enter an email address' });
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setMessage({ type: 'error', text: 'Please enter a valid email address' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link', err);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMessage({ type: 'error', text: 'You must be signed in to send invitations' });
+        setLoading(false);
+        return;
+      }
+
+      // Check if trip is full
+      if (currentParticipants >= maxParticipants) {
+        setMessage({ type: 'error', text: 'This trip is full. Cannot send more invitations.' });
+        setLoading(false);
+        return;
+      }
+
+      // Check if user is already a participant
+      const { data: existingParticipant } = await supabase
+        .from('trip_participants')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!existingParticipant) {
+        setMessage({ type: 'error', text: 'You must be a participant to send invitations' });
+        setLoading(false);
+        return;
+      }
+
+      // Check if email is already invited
+      const { data: existingInvitation } = await supabase
+        .from('trip_invitations')
+        .select('id, status')
+        .eq('trip_id', tripId)
+        .eq('invitee_email', email.toLowerCase())
+        .single();
+
+      if (existingInvitation) {
+        if (existingInvitation.status === 'pending') {
+          setMessage({ type: 'info', text: 'This email already has a pending invitation for this trip' });
+        } else if (existingInvitation.status === 'accepted') {
+          setMessage({ type: 'info', text: 'This person is already part of this trip' });
+        } else {
+          setMessage({ type: 'info', text: 'This email was previously invited but declined' });
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Check if the email belongs to an existing user
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', email.toLowerCase())
+        .single();
+
+      if (existingUser) {
+        // Check if user is already a participant
+        const { data: userParticipant } = await supabase
+          .from('trip_participants')
+          .select('id')
+          .eq('trip_id', tripId)
+          .eq('user_id', existingUser.id)
+          .single();
+
+        if (userParticipant) {
+          setMessage({ type: 'info', text: 'This person is already part of this trip' });
+          setLoading(false);
+          return;
+        }
+
+        // User exists, send invitation
+        const { error: inviteError } = await supabase
+          .from('trip_invitations')
+          .insert({
+            trip_id: tripId,
+            inviter_id: user.id,
+            invitee_email: email.toLowerCase(),
+            status: 'pending'
+          });
+
+        if (inviteError) {
+          console.error('Error sending invitation:', inviteError);
+          setMessage({ type: 'error', text: 'Failed to send invitation. Please try again.' });
+        } else {
+          setMessage({ 
+            type: 'success', 
+            text: `Invitation sent successfully! ${email} will receive a notification to join your trip.` 
+          });
+          setEmail('');
+        }
+      } else {
+        // User doesn't exist, show message about account creation
+        setMessage({ 
+          type: 'info', 
+          text: `${email} doesn't have an account yet. They'll need to create an account first, then you can invite them to join your trip.` 
+        });
+      }
+
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      setMessage({ type: 'error', text: 'Failed to send invitation. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      sendInvitation();
     }
   };
 
@@ -48,10 +171,10 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center h-12 sm:h-16 w-12 sm:w-16 rounded-full bg-purple-500/20 mb-4">
-            <Link2 className="h-6 sm:h-8 w-6 sm:w-8 text-purple-500 animate-pulse" />
+            <Mail className="h-6 sm:h-8 w-6 sm:w-8 text-purple-500 animate-pulse" />
           </div>
           <h2 className="pixel-text text-lg sm:text-2xl mb-2 text-purple-400 glow-text">
-            SHARE YOUR ADVENTURE
+            INVITE BY EMAIL
           </h2>
           <p className="outfit-text text-gray-400 text-sm sm:text-base">
             Invite friends to join your trip to {tripDestination}
@@ -88,12 +211,56 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           </div>
         </div>
 
-        {/* Copy Success Message */}
-        {copied && (
-          <div className="text-center mb-6 animate-bounce-in">
-            <div className="inline-flex items-center gap-2 text-green-400">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="pixel-text text-xs">Link copied to clipboard!</span>
+        {/* Email Input */}
+        <div className="mb-6">
+          <label className="block pixel-text text-xs text-purple-400 mb-2 glow-text">
+            📧 FRIEND'S EMAIL
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="friend@example.com"
+              className="flex-1 input-pixel"
+              disabled={loading || availableSpots === 0}
+            />
+            <button
+              onClick={sendInvitation}
+              disabled={loading || !email.trim() || availableSpots === 0}
+              className="pixel-button-primary flex items-center justify-center gap-2 disabled:opacity-50 hover-float"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  INVITE
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Message Display */}
+        {message && (
+          <div className={`pixel-card mb-6 border-2 ${
+            message.type === 'success' ? 'bg-green-500/10 border-green-500/30' :
+            message.type === 'error' ? 'bg-red-500/10 border-red-500/30' :
+            'bg-blue-500/10 border-blue-500/30'
+          }`}>
+            <div className="flex items-start gap-3">
+              {message.type === 'success' && <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />}
+              {message.type === 'error' && <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />}
+              {message.type === 'info' && <UserPlus className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />}
+              <p className={`outfit-text text-sm ${
+                message.type === 'success' ? 'text-green-300' :
+                message.type === 'error' ? 'text-red-300' :
+                'text-blue-300'
+              }`}>
+                {message.text}
+              </p>
             </div>
           </div>
         )}
@@ -102,24 +269,15 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         <div className="pixel-card bg-blue-900/20 border-blue-500/20 mb-6">
           <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
           <ul className="outfit-text text-xs text-gray-400 space-y-1">
-            <li>• Copy the invitation link below</li>
-            <li>• Share it with friends via WhatsApp, SMS, etc.</li>
-            <li>• They'll be redirected to "My Trips"</li>
-            <li>• An invitation modal will appear</li>
-            <li>• They can accept or decline to join</li>
+            <li>• Enter your friend's email address</li>
+            <li>• If they have an account, they'll get an invitation</li>
+            <li>• If they don't have an account, they'll need to sign up first</li>
+            <li>• Once invited, they can accept or decline to join</li>
           </ul>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-4">
-          <button
-            onClick={copyShareLink}
-            className="pixel-button-primary w-full flex items-center justify-center gap-2 hover-float"
-          >
-            <Copy className="w-4 h-4" />
-            {copied ? 'LINK COPIED!' : 'COPY INVITATION LINK'}
-          </button>
-          
           <button
             onClick={onClose}
             className="pixel-button-secondary w-full"

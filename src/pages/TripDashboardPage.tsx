@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users, UserPlus, Share2 } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Users, UserPlus, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
@@ -541,8 +541,8 @@ const TripDashboardPage: React.FC = () => {
                       onClick={() => setShowShareModal(true)}
                       className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1"
                     >
-                      <Share2 className="w-3 h-3" />
-                      SHARE TRIP
+                      <Mail className="w-3 h-3" />
+                      INVITE BY EMAIL
                     </button>
                   ) : null}
                 </div>

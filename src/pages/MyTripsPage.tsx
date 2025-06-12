@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isAuthenticated } from '../lib/supabase';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown, Share2 } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, Users, Crown, Mail } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
@@ -578,9 +578,9 @@ const MyTripsPage: React.FC = () => {
                             <button
                               onClick={() => handleShareClick(trip)}
                               className="text-purple-500 hover:text-purple-400 transition-all duration-300 p-2 hover:scale-110"
-                              title="Share trip"
+                              title="Invite by email"
                             >
-                              <Share2 className="w-5 sm:w-6 h-5 sm:h-6" />
+                              <Mail className="w-5 sm:w-6 h-5 sm:h-6" />
                             </button>
                           )}
                           <button

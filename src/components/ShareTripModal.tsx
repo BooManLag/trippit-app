@@ -26,23 +26,23 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const [success, setSuccess] = useState<string | null>(null);
   const [userFound, setUserFound] = useState<boolean | null>(null);
   const [sentInvitations, setSentInvitations] = useState<any[]>([]);
-  const [participants, setParticipants] = useState<any[]>([]);
+  const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchInvitationsAndParticipants();
+      fetchInvitationsAndUsers();
     }
   }, [isOpen, tripId]);
 
-  const fetchInvitationsAndParticipants = async () => {
+  const fetchInvitationsAndUsers = async () => {
     try {
-      const [invitations, participantList] = await Promise.all([
+      const [invitations, accepted] = await Promise.all([
         invitationService.getTripInvitations(tripId),
-        invitationService.getTripParticipants(tripId)
+        invitationService.getTripAcceptedUsers(tripId)
       ]);
       
       setSentInvitations(invitations);
-      setParticipants(participantList);
+      setAcceptedUsers(accepted);
     } catch (error: any) {
       console.error('Error fetching data:', error);
     }
@@ -109,15 +109,15 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       return;
     }
 
-    // Check if email is already invited or participating
+    // Check if email is already accepted or invited
     const emailLower = email.toLowerCase().trim();
-    const isAlreadyParticipant = participants.some(p => p.email.toLowerCase() === emailLower);
+    const isAlreadyAccepted = acceptedUsers.some(u => u.email.toLowerCase() === emailLower);
     const isAlreadyInvited = sentInvitations.some(inv => 
       inv.invitee_email.toLowerCase() === emailLower && inv.status === 'pending'
     );
 
-    if (isAlreadyParticipant) {
-      setError('This person is already a participant in the trip');
+    if (isAlreadyAccepted) {
+      setError('This person already has access to the trip');
       return;
     }
 
@@ -143,7 +143,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       setUserFound(null);
       
       // Refresh invitations list
-      await fetchInvitationsAndParticipants();
+      await fetchInvitationsAndUsers();
       
       setTimeout(() => setSuccess(null), 4000);
     } catch (error: any) {
@@ -335,28 +335,24 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           </div>
         )}
 
-        {/* Current Participants */}
-        {participants.length > 0 && (
+        {/* Accepted Users */}
+        {acceptedUsers.length > 0 && (
           <div className="mb-6">
             <h4 className="pixel-text text-xs text-green-400 mb-3">
-              👥 CURRENT PARTICIPANTS ({participants.length})
+              ✅ ACCEPTED INVITATIONS ({acceptedUsers.length})
             </h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
-              {participants.map((participant) => (
+              {acceptedUsers.map((acceptedUser) => (
                 <div
-                  key={participant.id}
+                  key={acceptedUser.email}
                   className="flex items-center justify-between p-2 bg-gray-800 border border-green-500/20 rounded"
                 >
                   <span className="outfit-text text-sm text-gray-300 break-words flex-1 mr-2">
-                    {participant.user.display_name || participant.email}
+                    {acceptedUser.user.display_name || acceptedUser.email.split('@')[0]}
                   </span>
                   <div className="flex items-center gap-1">
-                    {participant.role === 'owner' && (
-                      <span className="text-yellow-400">👑</span>
-                    )}
-                    <span className="pixel-text text-xs text-green-400">
-                      {participant.role.toUpperCase()}
-                    </span>
+                    <CheckCircle2 className="w-3 h-3 text-green-400" />
+                    <span className="pixel-text text-xs text-green-400">JOINED</span>
                   </div>
                 </div>
               ))}

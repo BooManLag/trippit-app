@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2 } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import AuthStatus from '../components/AuthStatus';
@@ -9,6 +9,7 @@ import ShareTripModal from '../components/ShareTripModal';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
+import { invitationService } from '../services/invitationService';
 
 interface TripDetails {
   id: string;
@@ -45,7 +46,7 @@ const TripDashboardPage: React.FC = () => {
   const { tripId } = useParams();
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [tripNumber, setTripNumber] = useState(1);
-  const [participants, setParticipants] = useState<any[]>([]);
+  const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
@@ -55,6 +56,7 @@ const TripDashboardPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isUserOwner, setIsUserOwner] = useState(false);
+  const [canAccessTrip, setCanAccessTrip] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const fetchRedditTips = async (city: string, country: string) => {
@@ -110,39 +112,13 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  const fetchTripParticipants = async (tripId: string) => {
+  const fetchAcceptedUsers = async (tripId: string) => {
     try {
-      const { data: participantData, error } = await supabase
-        .from('trip_participants')
-        .select(`
-          id, user_id, role, joined_at,
-          users!inner(id, display_name, email)
-        `)
-        .eq('trip_id', tripId)
-        .order('joined_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching trip participants:', error);
-        setParticipants([]);
-        return;
-      }
-
-      const participants = (participantData || []).map(item => {
-        const user = (item as any).users;
-        return {
-          id: item.id,
-          user_id: item.user_id,
-          display_name: user.display_name || user.email.split('@')[0],
-          email: user.email,
-          role: item.role,
-          joined_at: item.joined_at
-        };
-      });
-
-      setParticipants(participants);
+      const acceptedUsers = await invitationService.getTripAcceptedUsers(tripId);
+      setAcceptedUsers(acceptedUsers);
     } catch (error) {
-      console.error('Error fetching trip participants:', error);
-      setParticipants([]);
+      console.error('Error fetching accepted users:', error);
+      setAcceptedUsers([]);
     }
   };
 
@@ -236,6 +212,48 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
+  const checkTripAccess = async (user: any, tripData: any) => {
+    // Check if user owns the trip
+    if (tripData.user_id === user.id) {
+      setIsUserOwner(true);
+      setCanAccessTrip(true);
+      return true;
+    }
+
+    // Check if user has accepted invitation to this trip
+    const { data: acceptedInvitation } = await supabase
+      .from('trip_invitations')
+      .select('id')
+      .eq('trip_id', tripId)
+      .eq('invitee_email', user.email)
+      .eq('status', 'accepted')
+      .single();
+
+    if (acceptedInvitation) {
+      setCanAccessTrip(true);
+      return true;
+    }
+
+    // Check if user has pending invitation
+    const { data: pendingInvitation } = await supabase
+      .from('trip_invitations')
+      .select('id')
+      .eq('trip_id', tripId)
+      .eq('invitee_email', user.email)
+      .eq('status', 'pending')
+      .single();
+
+    if (pendingInvitation) {
+      // User has pending invitation, redirect to My Trips to handle it
+      navigate('/my-trips');
+      return false;
+    }
+
+    // User has no access to this trip
+    navigate('/my-trips');
+    return false;
+  };
+
   const fetchTripDetails = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -256,36 +274,18 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Always fetch tips and participants
+      // Always fetch tips
       fetchRedditTips(city, country);
-      await fetchTripParticipants(tripId!);
+      await fetchAcceptedUsers(tripId!);
 
       if (user) {
-        // Check if user owns the trip
-        if (tripData.user_id === user.id) {
-          setIsUserOwner(true);
-          
+        // Check if user can access this trip
+        const hasAccess = await checkTripAccess(user, tripData);
+        
+        if (hasAccess) {
           // Fetch user-specific data
           await fetchUserDares(user.id, tripId!);
           await fetchChecklistItems(user.id, tripId!);
-        } else {
-          // Check if user is participant
-          const { data: participantCheck, error: participantError } = await supabase
-            .from('trip_participants')
-            .select('id, role')
-            .eq('trip_id', tripId)
-            .eq('user_id', user.id)
-            .limit(1);
-
-          if (!participantError && participantCheck && participantCheck.length > 0) {
-            // User is a participant, fetch their data
-            await fetchUserDares(user.id, tripId!);
-            await fetchChecklistItems(user.id, tripId!);
-          } else {
-            // User is not owner or participant, redirect
-            navigate('/my-trips');
-            return;
-          }
         }
 
         // Get trip number for this user
@@ -423,10 +423,30 @@ const TripDashboardPage: React.FC = () => {
     );
   }
 
+  if (!canAccessTrip) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="pixel-text text-red-400 mb-4">ACCESS DENIED</p>
+          <p className="outfit-text text-gray-400 mb-6">You don't have access to this trip.</p>
+          <button
+            onClick={() => navigate('/my-trips')}
+            className="pixel-button-secondary"
+          >
+            BACK TO MY TRIPS
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const { totalTasks, completedTasks, remainingTasks } = getChecklistSummary();
   const { totalDares, completedDares, remainingDares } = getDaresSummary();
   const incompleteDares = getIncompleteDares();
   const completedDaresList = getCompletedDares();
+
+  // Calculate total people who can access the trip (owner + accepted invitations)
+  const totalAccessibleUsers = 1 + acceptedUsers.length; // 1 for owner + accepted users
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -462,22 +482,27 @@ const TripDashboardPage: React.FC = () => {
                 {tripNumber === 1 ? 'Congratulations on starting your first adventure!' : 'Keep exploring, adventurer!'}
               </p>
               
-              {/* Participants List */}
-              {participants.length > 0 && (
+              {/* Show trip members */}
+              {(isUserOwner || acceptedUsers.length > 0) && (
                 <div className="mt-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="pixel-text text-xs text-blue-400">ADVENTURERS ({participants.length})</span>
+                    <Users className="w-4 h-4 text-blue-400" />
+                    <span className="pixel-text text-xs text-blue-400">ADVENTURERS ({totalAccessibleUsers})</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {participants.map((participant) => (
+                    {/* Show trip owner */}
+                    <div className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700">
+                      {currentUser.display_name || currentUser.email.split('@')[0]}
+                      <span className="ml-1 text-yellow-400">👑</span>
+                    </div>
+                    
+                    {/* Show accepted users */}
+                    {acceptedUsers.map((acceptedUser) => (
                       <div
-                        key={participant.id}
+                        key={acceptedUser.email}
                         className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700"
                       >
-                        {participant.display_name}
-                        {participant.role === 'owner' && (
-                          <span className="ml-1 text-yellow-400">👑</span>
-                        )}
+                        {acceptedUser.user.display_name || acceptedUser.email.split('@')[0]}
                       </div>
                     ))}
                   </div>
@@ -794,7 +819,7 @@ const TripDashboardPage: React.FC = () => {
           tripId={trip.id}
           tripDestination={trip.destination}
           maxParticipants={trip.max_participants || 4}
-          currentParticipants={participants.length}
+          currentParticipants={totalAccessibleUsers}
         />
       )}
     </div>

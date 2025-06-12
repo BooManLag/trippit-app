@@ -20,19 +20,6 @@ export interface TripInvitation {
   };
 }
 
-export interface TripParticipant {
-  id: string;
-  trip_id: string;
-  user_id: string;
-  email: string;
-  role: 'owner' | 'participant';
-  joined_at: string;
-  user: {
-    display_name: string;
-    email: string;
-  };
-}
-
 export const invitationService = {
   // Check if user exists in our system
   async checkUserExists(email: string): Promise<boolean> {
@@ -44,8 +31,7 @@ export const invitationService = {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // No rows returned - user doesn't exist
-        return false;
+        return false; // No rows returned - user doesn't exist
       }
 
       if (error) {
@@ -161,29 +147,8 @@ export const invitationService = {
     }
   },
 
-  // Get trip participants
-  async getTripParticipants(tripId: string): Promise<TripParticipant[]> {
-    const { data: participants, error } = await supabase
-      .from('trip_participants')
-      .select(`
-        id, trip_id, user_id, email, role, joined_at,
-        users!inner(display_name, email)
-      `)
-      .eq('trip_id', tripId)
-      .order('joined_at', { ascending: true });
-
-    if (error) {
-      throw new Error(`Failed to fetch participants: ${error.message}`);
-    }
-
-    return (participants || []).map(p => ({
-      ...p,
-      user: (p as any).users
-    }));
-  },
-
   // Get sent invitations for a trip
-  async getTripInvitations(tripId: string): Promise<TripInvitation[]> {
+  async getTripInvitations(tripId: string): Promise<any[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
@@ -201,76 +166,29 @@ export const invitationService = {
     return invitations || [];
   },
 
-  // Check if user can join trip (for direct links)
-  async canJoinTrip(tripId: string): Promise<{ canJoin: boolean; reason?: string }> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { canJoin: false, reason: 'Not authenticated' };
-
-    // Check if trip exists
-    const { data: trip, error: tripError } = await supabase
-      .from('trips')
-      .select('max_participants')
-      .eq('id', tripId)
-      .single();
-
-    if (tripError || !trip) {
-      return { canJoin: false, reason: 'Trip not found' };
-    }
-
-    // Check if already a participant
-    const { data: existingParticipant } = await supabase
-      .from('trip_participants')
-      .select('id')
+  // Get accepted invitations (users who can access the trip)
+  async getTripAcceptedUsers(tripId: string): Promise<any[]> {
+    const { data: acceptedInvitations, error } = await supabase
+      .from('trip_invitations')
+      .select(`
+        invitee_email,
+        status,
+        responded_at,
+        users!inner(id, display_name, email)
+      `)
       .eq('trip_id', tripId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (existingParticipant) {
-      return { canJoin: false, reason: 'Already a participant' };
-    }
-
-    // Check if trip is full
-    const { data: participants, error: participantError } = await supabase
-      .from('trip_participants')
-      .select('id')
-      .eq('trip_id', tripId);
-
-    if (participantError) {
-      return { canJoin: false, reason: 'Error checking capacity' };
-    }
-
-    if ((participants?.length || 0) >= trip.max_participants) {
-      return { canJoin: false, reason: 'Trip is full' };
-    }
-
-    return { canJoin: true };
-  },
-
-  // Join trip directly (for public links)
-  async joinTrip(tripId: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { canJoin, reason } = await this.canJoinTrip(tripId);
-    if (!canJoin) {
-      throw new Error(reason || 'Cannot join trip');
-    }
-
-    // Add user as participant
-    const { error } = await supabase
-      .from('trip_participants')
-      .insert({
-        trip_id: tripId,
-        user_id: user.id,
-        email: user.email!,
-        role: 'participant'
-      });
+      .eq('status', 'accepted');
 
     if (error) {
-      if (error.code === '23505') {
-        throw new Error('You are already a participant in this trip');
-      }
-      throw new Error(`Failed to join trip: ${error.message}`);
+      console.error('Error fetching accepted users:', error);
+      return [];
     }
+
+    return (acceptedInvitations || []).map(inv => ({
+      email: inv.invitee_email,
+      status: inv.status,
+      joined_at: inv.responded_at,
+      user: (inv as any).users
+    }));
   }
 };

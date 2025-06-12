@@ -60,6 +60,15 @@ CREATE POLICY "users_insert_own"
   TO authenticated
   WITH CHECK (id = auth.uid());
 
+-- Users can read basic info for others that share a trip or invitation
+CREATE POLICY "users_shared_trip_read"
+  ON users
+  FOR SELECT
+  TO authenticated
+  USING (
+    shares_trip_or_invitation(id, email)
+  );
+
 -- =====================================================
 -- TRIPS TABLE POLICIES (Simple, no complex joins)
 -- =====================================================
@@ -174,6 +183,51 @@ CREATE POLICY "invitations_owner_manage"
 -- =====================================================
 -- SAFE FUNCTIONS
 -- =====================================================
+
+-- Helper to determine if the current user shares a trip or invitation
+-- with another user. This avoids RLS recursion by accepting the user's
+-- id and email as parameters instead of querying the users table.
+CREATE OR REPLACE FUNCTION shares_trip_or_invitation(
+  p_user_id UUID,
+  p_user_email TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Shared trip check
+  IF EXISTS (
+    SELECT 1
+    FROM trip_participants tp1
+    JOIN trip_participants tp2 ON tp1.trip_id = tp2.trip_id
+    WHERE tp1.user_id = p_user_id
+      AND tp2.user_id = auth.uid()
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Invitation from the target user to the current user
+  IF EXISTS (
+    SELECT 1 FROM trip_invitations
+    WHERE inviter_id = p_user_id
+      AND invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Invitation from the current user to the target user
+  IF p_user_email IS NOT NULL AND EXISTS (
+    SELECT 1 FROM trip_invitations
+    WHERE inviter_id = auth.uid()
+      AND invitee_email = p_user_email
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
+  RETURN FALSE;
+END;
+$$;
 
 -- Create a safe function to respond to invitations
 CREATE OR REPLACE FUNCTION respond_to_invitation(

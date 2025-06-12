@@ -73,3 +73,11 @@ Alternatively, add a `_redirects` file under `public` containing the same rule:
 ```
 
 Vite automatically copies the `public` directory during `npm run build` so the `_redirects` file is included in the final `dist` output.
+
+## Security Policies
+
+The database uses row level security to keep data private. Alongside standard
+ownership rules, authenticated users may view basic profile details for other
+users if they share a trip or have exchanged a trip invitation. Only the
+`id`, `display_name` and `email` fields are intended to be accessed under this
+policy.

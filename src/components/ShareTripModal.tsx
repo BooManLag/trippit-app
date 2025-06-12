@@ -59,21 +59,21 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         return;
       }
 
-      // Check if user is already a participant
-      const { data: existingParticipant } = await supabase
+      // Check if user is the trip owner or participant
+      const { data: userParticipant } = await supabase
         .from('trip_participants')
-        .select('id')
+        .select('role')
         .eq('trip_id', tripId)
         .eq('user_id', user.id)
         .single();
 
-      if (!existingParticipant) {
+      if (!userParticipant) {
         setMessage({ type: 'error', text: 'You must be a participant to send invitations' });
         setLoading(false);
         return;
       }
 
-      // Check if email is already invited
+      // Check if email is already invited or participating
       const { data: existingInvitation } = await supabase
         .from('trip_invitations')
         .select('id, status')
@@ -85,7 +85,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         if (existingInvitation.status === 'pending') {
           setMessage({ type: 'info', text: 'This email already has a pending invitation for this trip' });
         } else if (existingInvitation.status === 'accepted') {
-          setMessage({ type: 'info', text: 'This person is already part of this trip' });
+          setMessage({ type: 'info', text: 'This person already accepted the invitation' });
         } else {
           setMessage({ type: 'info', text: 'This email was previously invited but declined' });
         }
@@ -96,26 +96,26 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       // Check if the email belongs to an existing user
       const { data: existingUser } = await supabase
         .from('users')
-        .select('id, email')
+        .select('id, email, display_name')
         .eq('email', email.toLowerCase())
         .single();
 
       if (existingUser) {
-        // Check if user is already a participant
-        const { data: userParticipant } = await supabase
+        // User exists - check if they're already a participant
+        const { data: userAlreadyParticipant } = await supabase
           .from('trip_participants')
           .select('id')
           .eq('trip_id', tripId)
           .eq('user_id', existingUser.id)
           .single();
 
-        if (userParticipant) {
+        if (userAlreadyParticipant) {
           setMessage({ type: 'info', text: 'This person is already part of this trip' });
           setLoading(false);
           return;
         }
 
-        // User exists, send invitation
+        // User exists and is not a participant - send invitation
         const { error: inviteError } = await supabase
           .from('trip_invitations')
           .insert({
@@ -129,17 +129,18 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           console.error('Error sending invitation:', inviteError);
           setMessage({ type: 'error', text: 'Failed to send invitation. Please try again.' });
         } else {
+          const userName = existingUser.display_name || existingUser.email.split('@')[0];
           setMessage({ 
             type: 'success', 
-            text: `Invitation sent successfully! ${email} will receive a notification to join your trip.` 
+            text: `Invitation sent to ${userName}! They will see the invitation when they visit their trips page.` 
           });
           setEmail('');
         }
       } else {
-        // User doesn't exist, show message about account creation
+        // User doesn't exist - they need to create an account first
         setMessage({ 
           type: 'info', 
-          text: `${email} doesn't have an account yet. They'll need to create an account first, then you can invite them to join your trip.` 
+          text: `${email} doesn't have a Trippit account yet. Ask them to sign up at trippit.com first, then you can invite them to join your trip!` 
         });
       }
 
@@ -245,7 +246,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
 
         {/* Message Display */}
         {message && (
-          <div className={`pixel-card mb-6 border-2 ${
+          <div className={`pixel-card mb-6 border-2 animate-bounce-in ${
             message.type === 'success' ? 'bg-green-500/10 border-green-500/30' :
             message.type === 'error' ? 'bg-red-500/10 border-red-500/30' :
             'bg-blue-500/10 border-blue-500/30'
@@ -270,9 +271,10 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
           <ul className="outfit-text text-xs text-gray-400 space-y-1">
             <li>• Enter your friend's email address</li>
-            <li>• If they have an account, they'll get an invitation</li>
-            <li>• If they don't have an account, they'll need to sign up first</li>
-            <li>• Once invited, they can accept or decline to join</li>
+            <li>• If they have a Trippit account, they'll get an invitation</li>
+            <li>• If they don't have an account, ask them to sign up first</li>
+            <li>• Invited friends will see the invitation in "My Trips"</li>
+            <li>• They can accept or decline to join your adventure</li>
           </ul>
         </div>
 

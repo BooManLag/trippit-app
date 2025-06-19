@@ -8,7 +8,6 @@ import DeleteModal from '../components/DeleteModal';
 import AuthModal from '../components/AuthModal';
 import InvitationModal from '../components/InvitationModal';
 import { useAuth } from '../hooks/useAuth';
-import { invitationService } from '../services/invitationService';
 
 interface Trip {
   id: string;
@@ -49,19 +48,67 @@ const MyTripsPage: React.FC = () => {
     try {
       setError(null);
       
-      // Simple query - just get user's own trips
-      const { data: userTrips, error } = await supabase
+      // Two-query approach to avoid RLS recursion
+      // 1. Fetch trips I own
+      const { data: myTrips, error: myTripsError } = await supabase
         .from('trips')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new Error(`Failed to fetch trips: ${error.message}`);
+      if (myTripsError) {
+        throw new Error(`Failed to fetch owned trips: ${myTripsError.message}`);
       }
 
+      // 2. Fetch trips I joined as participant
+      const { data: participantData, error: participantError } = await supabase
+        .from('trip_participants')
+        .select('trip_id')
+        .eq('user_id', user.id);
+
+      if (participantError) {
+        throw new Error(`Failed to fetch participant data: ${participantError.message}`);
+      }
+
+      let joinedTrips: any[] = [];
+      if (participantData && participantData.length > 0) {
+        const joinedTripIds = participantData.map(p => p.trip_id);
+        
+        const { data: joinedTripsData, error: joinedTripsError } = await supabase
+          .from('trips')
+          .select('*')
+          .in('id', joinedTripIds)
+          .order('created_at', { ascending: false });
+
+        if (joinedTripsError) {
+          throw new Error(`Failed to fetch joined trips: ${joinedTripsError.message}`);
+        }
+
+        joinedTrips = joinedTripsData || [];
+      }
+
+      // Merge and deduplicate trips
+      const allTripsMap = new Map();
+      
+      // Add owned trips
+      (myTrips || []).forEach(trip => {
+        allTripsMap.set(trip.id, trip);
+      });
+      
+      // Add joined trips (won't overwrite owned trips due to Map)
+      joinedTrips.forEach(trip => {
+        if (!allTripsMap.has(trip.id)) {
+          allTripsMap.set(trip.id, trip);
+        }
+      });
+
+      const allTrips = Array.from(allTripsMap.values());
+
+      // Sort by created_at descending
+      allTrips.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
       // Add status to each trip
-      const tripsWithStatus = (userTrips || []).map(trip => {
+      const tripsWithStatus = allTrips.map(trip => {
         const today = new Date();
         const startDate = new Date(trip.start_date);
         const endDate = new Date(trip.end_date);
@@ -90,10 +137,71 @@ const MyTripsPage: React.FC = () => {
     if (!user) return;
 
     try {
-      const invitations = await invitationService.getPendingInvitations();
-      setPendingInvitations(invitations);
+      // Direct query to avoid RLS recursion - just get invitations for this user's email
+      const { data: invitations, error } = await supabase
+        .from('trip_invitations')
+        .select(`
+          id,
+          trip_id,
+          inviter_id,
+          invitee_email,
+          token,
+          status,
+          created_at,
+          responded_at
+        `)
+        .eq('invitee_email', user.email)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(`Failed to fetch invitations: ${error.message}`);
+      }
+
+      if (!invitations || invitations.length === 0) {
+        setPendingInvitations([]);
+        return;
+      }
+
+      // Fetch trip details and inviter details separately
+      const tripIds = invitations.map(inv => inv.trip_id);
+      const inviterIds = invitations.map(inv => inv.inviter_id);
+
+      const [tripsResponse, invitersResponse] = await Promise.all([
+        supabase
+          .from('trips')
+          .select('id, destination, start_date, end_date')
+          .in('id', tripIds),
+        supabase
+          .from('users')
+          .select('id, email, display_name')
+          .in('id', inviterIds)
+      ]);
+
+      if (tripsResponse.error) {
+        throw new Error(`Failed to fetch trip details: ${tripsResponse.error.message}`);
+      }
+
+      if (invitersResponse.error) {
+        throw new Error(`Failed to fetch inviter details: ${invitersResponse.error.message}`);
+      }
+
+      // Create lookup maps
+      const tripsMap = new Map(tripsResponse.data?.map(trip => [trip.id, trip]) || []);
+      const invitersMap = new Map(invitersResponse.data?.map(user => [user.id, user]) || []);
+
+      // Combine the data
+      const enrichedInvitations = invitations.map(invitation => ({
+        ...invitation,
+        trip: tripsMap.get(invitation.trip_id),
+        inviter: invitersMap.get(invitation.inviter_id)
+      })).filter(inv => inv.trip && inv.inviter); // Only include invitations with valid trip and inviter data
+
+      setPendingInvitations(enrichedInvitations);
     } catch (error: any) {
       console.error('Error fetching invitations:', error);
+      // Don't set error state for invitations - just log it
+      setPendingInvitations([]);
     }
   };
 

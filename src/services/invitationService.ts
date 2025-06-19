@@ -38,7 +38,7 @@ function generateToken(): string {
 }
 
 export const invitationService = {
-  // Check if user exists using auth.users (bypassing RLS on public.users)
+  // Check if user exists using direct query to users table
   async checkUserExists(email: string): Promise<boolean> {
     try {
       // Clean and validate the email first
@@ -56,22 +56,29 @@ export const invitationService = {
         return false;
       }
       
-      console.log('🔍 Checking if user exists via RPC:', cleanEmail);
+      console.log('🔍 Checking if user exists:', cleanEmail);
       
-      // Use RPC function to check user existence (bypasses RLS)
-      const { data, error } = await supabase.rpc('check_user_exists', {
-        email_to_check: cleanEmail
-      });
+      // Direct query to users table (RLS policy allows authenticated users to read)
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', cleanEmail)
+        .single();
 
       if (error) {
-        console.error('❌ RPC error checking user existence:', error);
-        // Fallback: assume user exists to avoid blocking invitations
+        if (error.code === 'PGRST116') {
+          // No rows returned - user doesn't exist
+          console.log('❌ User not found');
+          return false;
+        }
+        console.error('❌ Error checking user existence:', error);
+        // On other errors, assume user exists to avoid blocking invitations
         console.log('⚠️ Falling back to assuming user exists');
         return true;
       }
 
       const exists = !!data;
-      console.log(exists ? '✅ User found via RPC' : '❌ User not found via RPC');
+      console.log(exists ? '✅ User found' : '❌ User not found');
       
       return exists;
     } catch (error) {
@@ -199,21 +206,22 @@ export const invitationService = {
       throw new Error(`Failed to fetch trip details: ${tripsError.message}`);
     }
 
-    // Step 3: Fetch inviter details using RPC to avoid RLS issues
+    // Step 3: Fetch inviter details separately
     const inviterIds = [...new Set(invitations.map(inv => inv.inviter_id))];
-    const { data: inviters, error: invitersError } = await supabase.rpc('get_users_by_ids', {
-      user_ids: inviterIds
-    });
+    const { data: inviters, error: invitersError } = await supabase
+      .from('users')
+      .select('id, display_name, email')
+      .in('id', inviterIds);
 
     if (invitersError) {
-      console.error('❌ Error fetching inviters via RPC:', invitersError);
+      console.error('❌ Error fetching inviters:', invitersError);
       // Continue without inviter details rather than failing completely
     }
 
     // Step 4: Merge the data in application code
     const enrichedInvitations: TripInvitation[] = invitations.map((invitation) => {
       const trip = trips?.find(t => t.id === invitation.trip_id);
-      const inviter = inviters?.find((u: any) => u.id === invitation.inviter_id);
+      const inviter = inviters?.find(u => u.id === invitation.inviter_id);
 
       return {
         id: invitation.id,
@@ -332,14 +340,15 @@ export const invitationService = {
         return [];
       }
 
-      // Step 2: Fetch user details using RPC to avoid RLS issues
+      // Step 2: Fetch user details by email
       const inviteeEmails = acceptedInvitations.map(inv => inv.invitee_email);
-      const { data: users, error: usersError } = await supabase.rpc('get_users_by_emails', {
-        email_list: inviteeEmails
-      });
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, display_name, email')
+        .in('email', inviteeEmails);
 
       if (usersError) {
-        console.error('❌ Error fetching users via RPC:', usersError);
+        console.error('❌ Error fetching users:', usersError);
         return [];
       }
 
@@ -364,43 +373,49 @@ export const invitationService = {
     }
   },
 
-  // Get trip participants (accepted invitations + owner)
+  // Get trip participants (from trip_participants table)
   async getTripParticipants(tripId: string): Promise<any[]> {
-    // Step 1: Fetch participants without joins
-    const { data: participants, error: participantsError } = await supabase
-      .from('trip_participants')
-      .select('user_id, role, joined_at')
-      .eq('trip_id', tripId);
+    try {
+      // Step 1: Fetch participants without joins
+      const { data: participants, error: participantsError } = await supabase
+        .from('trip_participants')
+        .select('user_id, role, joined_at')
+        .eq('trip_id', tripId);
 
-    if (participantsError) {
-      console.error('Error fetching participants:', participantsError);
+      if (participantsError) {
+        console.error('Error fetching participants:', participantsError);
+        return [];
+      }
+
+      if (!participants || participants.length === 0) {
+        return [];
+      }
+
+      // Step 2: Fetch user details separately
+      const userIds = [...new Set(participants.map(p => p.user_id))];
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, display_name, email')
+        .in('id', userIds);
+
+      if (usersError) {
+        console.error('Error fetching user details:', usersError);
+        // Continue with unknown users rather than failing completely
+      }
+
+      // Step 3: Merge the data in application code
+      return participants.map(p => {
+        const user = users?.find(u => u.id === p.user_id);
+        return {
+          user_id: p.user_id,
+          role: p.role,
+          joined_at: p.joined_at,
+          user: user || { id: p.user_id, display_name: 'Unknown', email: 'Unknown' }
+        };
+      });
+    } catch (error: any) {
+      console.error('Error fetching trip participants:', error);
       return [];
     }
-
-    if (!participants || participants.length === 0) {
-      return [];
-    }
-
-    // Step 2: Fetch user details using RPC to avoid RLS issues
-    const userIds = [...new Set(participants.map(p => p.user_id))];
-    const { data: users, error: usersError } = await supabase.rpc('get_users_by_ids', {
-      user_ids: userIds
-    });
-
-    if (usersError) {
-      console.error('Error fetching user details via RPC:', usersError);
-      // Continue with unknown users rather than failing completely
-    }
-
-    // Step 3: Merge the data in application code
-    return participants.map(p => {
-      const user = users?.find((u: any) => u.id === p.user_id);
-      return {
-        user_id: p.user_id,
-        role: p.role,
-        joined_at: p.joined_at,
-        user: user || { id: p.user_id, display_name: 'Unknown', email: 'Unknown' }
-      };
-    });
   }
 };

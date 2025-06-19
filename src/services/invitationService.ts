@@ -44,7 +44,7 @@ export const invitationService = {
       const cleanEmail = email.toLowerCase().trim();
       console.log('🔍 Checking if user exists:', cleanEmail);
       
-      // Simple query to check if user exists
+      // Use maybeSingle() to avoid 406 errors when no match is found
       const { data: userRecord, error } = await supabase
         .from('users')
         .select('id, email')

@@ -68,14 +68,14 @@ const TripDashboardPage: React.FC = () => {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Missing Supabase environment variables');
+        console.warn('Missing Supabase environment variables - tips feature disabled');
         setTips([]);
         return;
       }
 
       // Check if the URL is a placeholder
       if (supabaseUrl.includes('your-project') || supabaseUrl === 'https://your-project-id.supabase.co') {
-        console.error('Supabase URL appears to be a placeholder value');
+        console.warn('Supabase URL appears to be a placeholder value - tips feature disabled');
         setTips([]);
         return;
       }
@@ -84,49 +84,59 @@ const TripDashboardPage: React.FC = () => {
       
       console.log('Attempting to fetch Reddit tips from:', functionUrl);
 
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ city, country }),
-      });
+      // Add timeout and better error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Edge function response error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
+      try {
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ city, country }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn('Edge function response error:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          });
+          
+          // If it's a 404, the function doesn't exist
+          if (response.status === 404) {
+            console.warn('get-reddit-tips Edge Function not found. Tips feature disabled.');
+            setTips([]);
+            return;
+          }
+          
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const redditTips = await response.json();
+        console.log('Successfully fetched Reddit tips:', redditTips);
+        setTips(Array.isArray(redditTips) ? redditTips : []);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
         
-        // If it's a 404, the function doesn't exist
-        if (response.status === 404) {
-          console.warn('get-reddit-tips Edge Function not found. Using fallback empty tips.');
-          setTips([]);
-          return;
+        if (fetchError.name === 'AbortError') {
+          console.warn('Reddit tips request timed out - tips feature disabled for this session');
+        } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+          console.warn('Network error connecting to Edge Function - tips feature disabled for this session');
+        } else {
+          console.warn('Error fetching Reddit tips:', fetchError);
         }
         
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        setTips([]);
       }
-
-      const redditTips = await response.json();
-      console.log('Successfully fetched Reddit tips:', redditTips);
-      setTips(Array.isArray(redditTips) ? redditTips : []);
     } catch (error) {
-      console.error('Error fetching Reddit tips:', error);
-      
-      // Provide more specific error information
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        console.error('Network error: Unable to connect to Supabase Edge Function. This could be due to:');
-        console.error('1. Invalid Supabase URL in environment variables');
-        console.error('2. Edge Function not deployed');
-        console.error('3. Network connectivity issues');
-        console.error('4. CORS issues');
-      }
-      
-      // Set empty tips array as fallback
+      console.warn('Error in fetchRedditTips:', error);
       setTips([]);
     } finally {
       setLoadingTips(false);
@@ -844,9 +854,9 @@ const TripDashboardPage: React.FC = () => {
           ) : (
             <div className="text-center py-8 sm:py-12">
               <div className="text-3xl sm:text-4xl mb-4">💡</div>
-              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">NO TIPS AVAILABLE</h3>
+              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">TIPS UNAVAILABLE</h3>
               <p className="outfit-text text-gray-500 text-sm">
-                Unable to fetch tips for {trip?.destination}. The tips service may be temporarily unavailable.
+                The tips service is currently unavailable for {trip?.destination}. Please check back later!
               </p>
             </div>
           )}

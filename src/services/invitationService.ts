@@ -5,6 +5,7 @@ export interface TripInvitation {
   trip_id: string;
   inviter_id: string;
   invitee_email: string;
+  token: string;
   status: 'pending' | 'accepted' | 'declined';
   created_at: string;
   responded_at?: string;
@@ -18,6 +19,11 @@ export interface TripInvitation {
     display_name: string;
     email: string;
   };
+}
+
+// Generate a secure token
+function generateToken(): string {
+  return crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
 }
 
 export const invitationService = {
@@ -46,7 +52,7 @@ export const invitationService = {
     }
   },
 
-  // Send invitation to email (only if user exists)
+  // Send invitation with token
   async sendInvitation(tripId: string, inviteeEmail: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -57,6 +63,9 @@ export const invitationService = {
       throw new Error('This email is not registered in our system. They need to sign up first!');
     }
 
+    // Generate secure token
+    const token = generateToken();
+
     // Create invitation
     const { error } = await supabase
       .from('trip_invitations')
@@ -64,7 +73,7 @@ export const invitationService = {
         trip_id: tripId,
         inviter_id: user.id,
         invitee_email: inviteeEmail.toLowerCase().trim(),
-        status: 'pending'
+        token
       });
 
     if (error) {
@@ -73,6 +82,11 @@ export const invitationService = {
       }
       throw new Error(`Failed to send invitation: ${error.message}`);
     }
+
+    // TODO: Send email with invitation link
+    // For now, we'll handle invitations in-app only
+    console.log(`Invitation created with token: ${token}`);
+    console.log(`Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
   },
 
   // Get pending invitations for current user
@@ -83,7 +97,7 @@ export const invitationService = {
     // Get basic invitation data
     const { data: invitations, error } = await supabase
       .from('trip_invitations')
-      .select('id, trip_id, inviter_id, invitee_email, status, created_at, responded_at')
+      .select('id, trip_id, inviter_id, invitee_email, token, status, created_at, responded_at')
       .eq('invitee_email', user.email)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -130,20 +144,48 @@ export const invitationService = {
     return enrichedInvitations;
   },
 
-  // Respond to invitation
-  async respondToInvitation(invitationId: string, response: 'accepted' | 'declined'): Promise<void> {
-    const { data, error } = await supabase.rpc('respond_to_invitation', {
-      p_invitation_id: invitationId,
-      p_response: response
-    });
+  // Accept invitation by token
+  async acceptInvitation(token: string): Promise<{ success: boolean; message: string; tripId?: string }> {
+    try {
+      const { data, error } = await supabase.rpc('accept_invitation', {
+        p_token: token
+      });
+
+      if (error) {
+        throw new Error(`Failed to accept invitation: ${error.message}`);
+      }
+
+      const result = data?.[0];
+      if (!result) {
+        throw new Error('No response from server');
+      }
+
+      return {
+        success: result.success,
+        message: result.message,
+        tripId: result.trip_id
+      };
+    } catch (error: any) {
+      console.error('Error accepting invitation:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to accept invitation'
+      };
+    }
+  },
+
+  // Decline invitation by token
+  async declineInvitation(token: string): Promise<void> {
+    const { error } = await supabase
+      .from('trip_invitations')
+      .update({ 
+        status: 'declined', 
+        responded_at: new Date().toISOString() 
+      })
+      .eq('token', token);
 
     if (error) {
-      throw new Error(`Failed to respond to invitation: ${error.message}`);
-    }
-
-    const result = data?.[0];
-    if (!result?.success) {
-      throw new Error(result?.message || 'Failed to respond to invitation');
+      throw new Error(`Failed to decline invitation: ${error.message}`);
     }
   },
 
@@ -156,7 +198,6 @@ export const invitationService = {
       .from('trip_invitations')
       .select('id, trip_id, inviter_id, invitee_email, status, created_at, responded_at')
       .eq('trip_id', tripId)
-      .eq('inviter_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -166,29 +207,28 @@ export const invitationService = {
     return invitations || [];
   },
 
-  // Get accepted invitations (users who can access the trip)
-  async getTripAcceptedUsers(tripId: string): Promise<any[]> {
-    const { data: acceptedInvitations, error } = await supabase
-      .from('trip_invitations')
+  // Get trip participants (accepted invitations + owner)
+  async getTripParticipants(tripId: string): Promise<any[]> {
+    const { data: participants, error } = await supabase
+      .from('trip_participants')
       .select(`
-        invitee_email,
-        status,
-        responded_at,
+        user_id,
+        role,
+        joined_at,
         users!inner(id, display_name, email)
       `)
-      .eq('trip_id', tripId)
-      .eq('status', 'accepted');
+      .eq('trip_id', tripId);
 
     if (error) {
-      console.error('Error fetching accepted users:', error);
+      console.error('Error fetching participants:', error);
       return [];
     }
 
-    return (acceptedInvitations || []).map(inv => ({
-      email: inv.invitee_email,
-      status: inv.status,
-      joined_at: inv.responded_at,
-      user: (inv as any).users
+    return (participants || []).map(p => ({
+      user_id: p.user_id,
+      role: p.role,
+      joined_at: p.joined_at,
+      user: (p as any).users
     }));
   }
 };

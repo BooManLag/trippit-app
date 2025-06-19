@@ -23,10 +23,15 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
     setError(null);
 
     try {
-      await invitationService.respondToInvitation(
-        invitation.id,
-        accept ? 'accepted' : 'declined'
-      );
+      if (accept) {
+        const result = await invitationService.acceptInvitation(invitation.token);
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+      } else {
+        await invitationService.declineInvitation(invitation.token);
+      }
+      
       onResponse(accept);
       onClose();
     } catch (error: any) {

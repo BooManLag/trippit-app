@@ -26,23 +26,23 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const [success, setSuccess] = useState<string | null>(null);
   const [userFound, setUserFound] = useState<boolean | null>(null);
   const [sentInvitations, setSentInvitations] = useState<any[]>([]);
-  const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
+  const [participants, setParticipants] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchInvitationsAndUsers();
+      fetchInvitationsAndParticipants();
     }
   }, [isOpen, tripId]);
 
-  const fetchInvitationsAndUsers = async () => {
+  const fetchInvitationsAndParticipants = async () => {
     try {
-      const [invitations, accepted] = await Promise.all([
+      const [invitations, participantData] = await Promise.all([
         invitationService.getTripInvitations(tripId),
-        invitationService.getTripAcceptedUsers(tripId)
+        invitationService.getTripParticipants(tripId)
       ]);
       
       setSentInvitations(invitations);
-      setAcceptedUsers(accepted);
+      setParticipants(participantData);
     } catch (error: any) {
       console.error('Error fetching data:', error);
     }
@@ -109,15 +109,15 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       return;
     }
 
-    // Check if email is already accepted or invited
+    // Check if email is already a participant or invited
     const emailLower = email.toLowerCase().trim();
-    const isAlreadyAccepted = acceptedUsers.some(u => u.email.toLowerCase() === emailLower);
+    const isAlreadyParticipant = participants.some(p => p.user.email.toLowerCase() === emailLower);
     const isAlreadyInvited = sentInvitations.some(inv => 
       inv.invitee_email.toLowerCase() === emailLower && inv.status === 'pending'
     );
 
-    if (isAlreadyAccepted) {
-      setError('This person already has access to the trip');
+    if (isAlreadyParticipant) {
+      setError('This person is already a participant in the trip');
       return;
     }
 
@@ -143,7 +143,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       setUserFound(null);
       
       // Refresh invitations list
-      await fetchInvitationsAndUsers();
+      await fetchInvitationsAndParticipants();
       
       setTimeout(() => setSuccess(null), 4000);
     } catch (error: any) {
@@ -299,16 +299,33 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           </div>
         )}
 
-        {/* How it works */}
-        <div className="pixel-card bg-blue-900/20 border-blue-500/20 mb-6">
-          <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
-          <ul className="outfit-text text-xs text-gray-400 space-y-1">
-            <li>• Enter the email of a registered user</li>
-            <li>• We'll check if they're in our system</li>
-            <li>• They'll see the invitation in their "My Trips" page</li>
-            <li>• They can accept or decline to join</li>
-          </ul>
-        </div>
+        {/* Current Participants */}
+        {participants.length > 0 && (
+          <div className="mb-6">
+            <h4 className="pixel-text text-xs text-green-400 mb-3">
+              👥 CURRENT PARTICIPANTS ({participants.length})
+            </h4>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {participants.map((participant) => (
+                <div
+                  key={participant.user_id}
+                  className="flex items-center justify-between p-2 bg-gray-800 border border-green-500/20 rounded"
+                >
+                  <span className="outfit-text text-sm text-gray-300 break-words flex-1 mr-2">
+                    {participant.user.display_name || participant.user.email.split('@')[0]}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {participant.role === 'owner' ? (
+                      <span className="pixel-text text-xs text-yellow-400">👑 OWNER</span>
+                    ) : (
+                      <span className="pixel-text text-xs text-green-400">✅ JOINED</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Pending Invitations */}
         {pendingInvitations.length > 0 && (
@@ -335,30 +352,16 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
           </div>
         )}
 
-        {/* Accepted Users */}
-        {acceptedUsers.length > 0 && (
-          <div className="mb-6">
-            <h4 className="pixel-text text-xs text-green-400 mb-3">
-              ✅ ACCEPTED INVITATIONS ({acceptedUsers.length})
-            </h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
-              {acceptedUsers.map((acceptedUser) => (
-                <div
-                  key={acceptedUser.email}
-                  className="flex items-center justify-between p-2 bg-gray-800 border border-green-500/20 rounded"
-                >
-                  <span className="outfit-text text-sm text-gray-300 break-words flex-1 mr-2">
-                    {acceptedUser.user.display_name || acceptedUser.email.split('@')[0]}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-green-400" />
-                    <span className="pixel-text text-xs text-green-400">JOINED</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* How it works */}
+        <div className="pixel-card bg-blue-900/20 border-blue-500/20 mb-6">
+          <h4 className="pixel-text text-xs text-blue-400 mb-2">HOW IT WORKS:</h4>
+          <ul className="outfit-text text-xs text-gray-400 space-y-1">
+            <li>• Enter the email of a registered user</li>
+            <li>• We'll check if they're in our system</li>
+            <li>• They'll see the invitation in their "My Trips" page</li>
+            <li>• They can accept or decline to join</li>
+          </ul>
+        </div>
 
         {/* Close Button */}
         <button

@@ -63,14 +63,19 @@ export const ensureUserProfile = async () => {
 
     console.log('Checking user profile for:', user.id);
 
-    // Check if user profile exists
+    // Check if user profile exists using maybeSingle()
     const { data: profile, error: fetchError } = await supabase
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (fetchError && fetchError.code === 'PGRST116') {
+    if (fetchError) {
+      console.error('Error fetching user profile:', fetchError);
+      throw new Error(`Failed to fetch user profile: ${fetchError.message}`);
+    }
+
+    if (!profile) {
       // Profile doesn't exist, create it
       console.log('User profile not found, creating new profile...');
       
@@ -96,9 +101,6 @@ export const ensureUserProfile = async () => {
 
       console.log('User profile created successfully:', newProfile);
       return newProfile;
-    } else if (fetchError) {
-      console.error('Error fetching user profile:', fetchError);
-      throw new Error(`Failed to fetch user profile: ${fetchError.message}`);
     }
 
     console.log('User profile found:', profile);

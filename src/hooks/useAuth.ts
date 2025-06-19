@@ -20,12 +20,12 @@ export function useAuth() {
         if (error) throw error;
         
         if (session?.user) {
-          // Get user profile
+          // Get user profile using maybeSingle()
           const { data: profile } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
           
           setUser(profile || {
             id: session.user.id,
@@ -47,12 +47,12 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          // Get user profile
+          // Get user profile using maybeSingle()
           const { data: profile } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
           
           setUser(profile || {
             id: session.user.id,

@@ -20,14 +20,18 @@ export const tripService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Ensure user profile exists
+    // Ensure user profile exists using maybeSingle()
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError && profileError.code === 'PGRST116') {
+    if (profileError) {
+      throw new Error(`Profile error: ${profileError.message}`);
+    }
+
+    if (!profile) {
       // Create user profile
       const { error: insertError } = await supabase
         .from('users')
@@ -40,8 +44,6 @@ export const tripService = {
       if (insertError) {
         throw new Error(`Failed to create user profile: ${insertError.message}`);
       }
-    } else if (profileError) {
-      throw new Error(`Profile error: ${profileError.message}`);
     }
 
     // Create trip

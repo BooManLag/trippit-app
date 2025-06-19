@@ -38,7 +38,7 @@ function generateToken(): string {
 }
 
 export const invitationService = {
-  // Check if user exists in our system
+  // Check if user exists in our system using the profiles table
   async checkUserExists(email: string): Promise<boolean> {
     try {
       // Clean and validate the email first
@@ -56,28 +56,28 @@ export const invitationService = {
         return false;
       }
       
-      console.log('🔍 Checking if user exists:', cleanEmail);
+      console.log('🔍 Checking if user exists in profiles table:', cleanEmail);
       
-      // Use a more explicit query approach
-      const { data: users, error, count } = await supabase
+      // Query the public.users table (which serves as our profiles table)
+      // This should work now with the public read policy
+      const { data: userRecord, error } = await supabase
         .from('users')
-        .select('id, email', { count: 'exact' })
+        .select('id, email')
         .eq('email', cleanEmail)
-        .limit(1);
+        .maybeSingle();
 
       if (error) {
-        console.error('❌ Database error querying users:', error);
+        console.error('❌ Database error querying users table:', error);
         throw error;
       }
 
-      console.log('📊 Query results:', { 
-        count, 
-        usersLength: users?.length, 
-        foundUser: users?.[0]?.email 
+      const exists = !!userRecord;
+      console.log(exists ? '✅ User found in profiles table' : '❌ User not found in profiles table');
+      console.log('📊 Query result:', { 
+        found: exists, 
+        userEmail: userRecord?.email,
+        userId: userRecord?.id 
       });
-
-      const exists = count !== null && count > 0 && users && users.length > 0;
-      console.log(exists ? '✅ User found in database' : '❌ User not found in database');
       
       return exists;
     } catch (error) {
@@ -127,8 +127,8 @@ export const invitationService = {
 
     // TODO: Send email with invitation link
     // For now, we'll handle invitations in-app only
-    console.log(`Invitation created with token: ${token}`);
-    console.log(`Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
+    console.log(`✅ Invitation created successfully with token: ${token}`);
+    console.log(`🔗 Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
   },
 
   // Get pending invitations for current user

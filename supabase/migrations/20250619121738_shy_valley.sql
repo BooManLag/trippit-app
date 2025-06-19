@@ -1,21 +1,19 @@
 /*
-  # Token-Based Trip Invitation System
+  # Fix RLS Circular Dependencies with Security Definer Function
 
-  1. Database Changes
-    - Add max_participants to trips table
-    - Create trip_participants table for tracking who has access
-    - Create trip_invitations table with secure tokens
-    - Add proper RLS policies
-    - Create functions for invitation handling
+  1. Create a single security-definer helper function to check trip access
+  2. Replace all circular RLS policies with simple ones that use this function
+  3. Implement token-based invitation system without recursion
 
-  2. Security
-    - Token-based invitations with secure random tokens
-    - Proper access control via RLS
-    - Capacity checking for trips
-    - Email validation for invitations
+  This approach eliminates infinite recursion by having all policies
+  reference a single function that bypasses RLS internally.
 */
 
--- First, let's add max_participants to trips if it doesn't exist
+-- Drop existing tables to start fresh
+DROP TABLE IF EXISTS trip_invitations CASCADE;
+DROP TABLE IF EXISTS trip_participants CASCADE;
+
+-- Add max_participants to trips if it doesn't exist
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -26,10 +24,6 @@ DO $$ BEGIN
       CHECK (max_participants >= 1 AND max_participants <= 20);
   END IF;
 END $$;
-
--- Drop existing tables if they exist to avoid conflicts
-DROP TABLE IF EXISTS trip_invitations CASCADE;
-DROP TABLE IF EXISTS trip_participants CASCADE;
 
 -- Create trip_participants table
 CREATE TABLE trip_participants (
@@ -56,113 +50,149 @@ CREATE TABLE trip_invitations (
   UNIQUE(trip_id, invitee_email)
 );
 
--- Enable RLS
+-- 🔑 SECURITY DEFINER HELPER FUNCTION
+-- This function bypasses RLS and checks trip access directly
+CREATE OR REPLACE FUNCTION public.can_access_trip(
+  _trip_id uuid,
+  _user_id uuid
+) RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT 
+    EXISTS (
+      SELECT 1 
+      FROM public.trips 
+      WHERE id = _trip_id 
+        AND (
+          user_id = _user_id    -- the owner
+          OR _user_id IN (
+            SELECT user_id 
+            FROM public.trip_participants 
+            WHERE trip_id = _trip_id
+          )
+        )
+    );
+$$;
+
+-- Enable RLS on all tables
+ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trip_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trip_invitations ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies to avoid conflicts
-DROP POLICY IF EXISTS "participants_read_own_trips" ON trip_participants;
-DROP POLICY IF EXISTS "participants_manage_own" ON trip_participants;
-DROP POLICY IF EXISTS "owners_can_invite" ON trip_invitations;
-DROP POLICY IF EXISTS "owners_read_invitations" ON trip_invitations;
-DROP POLICY IF EXISTS "invitees_read_own" ON trip_invitations;
-DROP POLICY IF EXISTS "invitees_update_status" ON trip_invitations;
-
--- RLS Policies for trip_participants
-CREATE POLICY "participants_read_own_trips"
-  ON trip_participants
-  FOR SELECT
-  TO authenticated
-  USING (
-    user_id = auth.uid() OR
-    trip_id IN (SELECT id FROM trips WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY "participants_manage_own"
-  ON trip_participants
-  FOR ALL
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
--- RLS Policies for trip_invitations
-CREATE POLICY "owners_can_invite"
-  ON trip_invitations
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    inviter_id = auth.uid() AND
-    trip_id IN (SELECT id FROM trips WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY "owners_read_invitations"
-  ON trip_invitations
-  FOR SELECT
-  TO authenticated
-  USING (
-    inviter_id = auth.uid() OR
-    trip_id IN (SELECT id FROM trips WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY "invitees_read_own"
-  ON trip_invitations
-  FOR SELECT
-  TO authenticated
-  USING (
-    invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
-  );
-
-CREATE POLICY "invitees_update_status"
-  ON trip_invitations
-  FOR UPDATE
-  TO authenticated
-  USING (
-    invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
-  )
-  WITH CHECK (
-    invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
-  );
-
--- Update trips RLS policies
+-- Drop all existing policies to avoid conflicts
 DROP POLICY IF EXISTS "trips_owner_full_access" ON trips;
 DROP POLICY IF EXISTS "trips_participants_read" ON trips;
 DROP POLICY IF EXISTS "trips_invited_read" ON trips;
 DROP POLICY IF EXISTS "trips_anonymous_read" ON trips;
 
-CREATE POLICY "trips_owner_full_access"
-  ON trips
-  FOR ALL
+-- 🛡️ TRIPS POLICIES (using helper function)
+CREATE POLICY "select trips" 
+  ON trips 
+  FOR SELECT 
+  TO authenticated
+  USING (
+    public.can_access_trip(id, auth.uid()) OR
+    -- Allow reading trips user is invited to
+    id IN (
+      SELECT trip_id FROM trip_invitations 
+      WHERE invitee_email = auth.email() AND status = 'pending'
+    )
+  );
+
+CREATE POLICY "insert trips" 
+  ON trips 
+  FOR INSERT 
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "update trips" 
+  ON trips 
+  FOR UPDATE 
   TO authenticated
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "trips_participants_read"
-  ON trips
-  FOR SELECT
+CREATE POLICY "delete trips" 
+  ON trips 
+  FOR DELETE 
   TO authenticated
-  USING (
-    id IN (SELECT trip_id FROM trip_participants WHERE user_id = auth.uid())
-  );
+  USING (user_id = auth.uid());
 
-CREATE POLICY "trips_invited_read"
-  ON trips
-  FOR SELECT
-  TO authenticated
-  USING (
-    id IN (
-      SELECT trip_id FROM trip_invitations 
-      WHERE invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
-      AND status = 'pending'
-    )
-  );
-
+-- Allow anonymous users to read trips without owners
 CREATE POLICY "trips_anonymous_read"
   ON trips
   FOR SELECT
   TO anon
   USING (user_id IS NULL);
 
--- Update users RLS policies
+-- 🛡️ TRIP_PARTICIPANTS POLICIES (using helper function)
+CREATE POLICY "select participants"
+  ON trip_participants
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.can_access_trip(trip_id, auth.uid())
+  );
+
+CREATE POLICY "insert participants"
+  ON trip_participants
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    user_id = auth.uid() AND
+    public.can_access_trip(trip_id, auth.uid())
+  );
+
+CREATE POLICY "update participants"
+  ON trip_participants
+  FOR UPDATE
+  TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "delete participants"
+  ON trip_participants
+  FOR DELETE
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- 🛡️ TRIP_INVITATIONS POLICIES (no circular references)
+CREATE POLICY "insert invitations"
+  ON trip_invitations
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    inviter_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 
+      FROM trips 
+      WHERE id = trip_invitations.trip_id 
+        AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "select invitations"
+  ON trip_invitations
+  FOR SELECT
+  TO authenticated
+  USING (
+    invitee_email = auth.email() OR
+    inviter_id = auth.uid() OR
+    EXISTS (
+      SELECT 1 
+      FROM trips 
+      WHERE id = trip_invitations.trip_id 
+        AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "update invitations"
+  ON trip_invitations
+  FOR UPDATE
+  TO authenticated
+  USING (invitee_email = auth.email())
+  WITH CHECK (invitee_email = auth.email());
+
+-- 🛡️ USERS POLICIES (simplified)
 DROP POLICY IF EXISTS "users_own_data" ON users;
 DROP POLICY IF EXISTS "users_invitation_context_read" ON users;
 
@@ -178,13 +208,22 @@ CREATE POLICY "users_invitation_context_read"
   FOR SELECT
   TO authenticated
   USING (
+    -- Allow reading inviter details for received invitations
     id IN (
       SELECT inviter_id FROM trip_invitations 
-      WHERE invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+      WHERE invitee_email = auth.email()
+    ) OR
+    -- Allow reading participant details in shared trips
+    id IN (
+      SELECT user_id FROM trip_participants 
+      WHERE trip_id IN (
+        SELECT trip_id FROM trip_participants 
+        WHERE user_id = auth.uid()
+      )
     )
   );
 
--- Function to accept invitation
+-- 🔧 FUNCTION: Accept invitation by token
 CREATE OR REPLACE FUNCTION accept_invitation(p_token text)
 RETURNS TABLE(success boolean, message text, trip_id uuid)
 LANGUAGE plpgsql
@@ -263,7 +302,7 @@ BEGIN
 END;
 $$;
 
--- Function to automatically add trip owner as participant
+-- 🔧 FUNCTION: Automatically add trip owner as participant
 CREATE OR REPLACE FUNCTION add_trip_owner_as_participant()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -278,14 +317,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger to add owner as participant
+-- 🎯 TRIGGER: Add owner as participant when trip is created
 DROP TRIGGER IF EXISTS on_trip_created ON trips;
 CREATE TRIGGER on_trip_created
   AFTER INSERT ON trips
   FOR EACH ROW
   EXECUTE FUNCTION add_trip_owner_as_participant();
 
--- Add indexes for performance (after tables are created)
+-- 📊 INDEXES: For performance
 CREATE INDEX trip_participants_trip_id_idx ON trip_participants(trip_id);
 CREATE INDEX trip_participants_user_id_idx ON trip_participants(user_id);
 CREATE INDEX trip_invitations_token_idx ON trip_invitations(token);

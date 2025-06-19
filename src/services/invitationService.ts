@@ -44,37 +44,22 @@ export const invitationService = {
       const cleanEmail = email.toLowerCase().trim();
       console.log('🔍 Checking if user exists:', cleanEmail);
       
-      // Get all users and check manually (more reliable than complex queries)
-      const { data: allUsers, error } = await supabase
+      // Simple query to check if user exists
+      const { data: userRecord, error } = await supabase
         .from('users')
-        .select('email')
-        .limit(1000); // Get a reasonable number of users
+        .select('id, email')
+        .eq('email', cleanEmail)
+        .maybeSingle();
 
       if (error) {
-        console.error('❌ Error fetching users:', error);
-        return false;
+        console.error('❌ Error querying users:', error);
+        throw error;
       }
 
-      if (!allUsers || allUsers.length === 0) {
-        console.log('📭 No users found in database');
-        return false;
-      }
-
-      console.log(`📊 Checking against ${allUsers.length} users in database`);
+      const exists = userRecord !== null;
+      console.log(exists ? '✅ User found in database' : '❌ User not found in database');
       
-      // Check for exact match (case-insensitive)
-      const userExists = allUsers.some(user => 
-        user.email.toLowerCase().trim() === cleanEmail
-      );
-
-      if (userExists) {
-        console.log('✅ User found in database');
-        return true;
-      } else {
-        console.log('❌ User not found in database');
-        console.log('Available emails:', allUsers.map(u => u.email).slice(0, 10)); // Show first 10 for debugging
-        return false;
-      }
+      return exists;
     } catch (error) {
       console.error('💥 Error in checkUserExists:', error);
       return false;

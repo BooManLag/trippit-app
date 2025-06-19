@@ -58,10 +58,12 @@ const TripDashboardPage: React.FC = () => {
   const [isUserOwner, setIsUserOwner] = useState(false);
   const [canAccessTrip, setCanAccessTrip] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [tipsError, setTipsError] = useState<string | null>(null);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
       setLoadingTips(true);
+      setTipsError(null);
 
       // Validate environment variables first
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -69,6 +71,7 @@ const TripDashboardPage: React.FC = () => {
 
       if (!supabaseUrl || !supabaseAnonKey) {
         console.warn('Missing Supabase environment variables - tips feature disabled');
+        setTipsError('Configuration missing');
         setTips([]);
         return;
       }
@@ -76,6 +79,7 @@ const TripDashboardPage: React.FC = () => {
       // Check if the URL is a placeholder
       if (supabaseUrl.includes('your-project') || supabaseUrl === 'https://your-project-id.supabase.co') {
         console.warn('Supabase URL appears to be a placeholder value - tips feature disabled');
+        setTipsError('Configuration incomplete');
         setTips([]);
         return;
       }
@@ -86,7 +90,7 @@ const TripDashboardPage: React.FC = () => {
 
       // Add timeout and better error handling
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       try {
         const response = await fetch(functionUrl, {
@@ -112,16 +116,19 @@ const TripDashboardPage: React.FC = () => {
           // If it's a 404, the function doesn't exist
           if (response.status === 404) {
             console.warn('get-reddit-tips Edge Function not found. Tips feature disabled.');
+            setTipsError('Function not deployed');
             setTips([]);
             return;
           }
           
+          setTipsError(`Service error (${response.status})`);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const redditTips = await response.json();
         console.log('Successfully fetched Reddit tips:', redditTips);
         setTips(Array.isArray(redditTips) ? redditTips : []);
+        setTipsError(null);
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         
@@ -135,14 +142,17 @@ const TripDashboardPage: React.FC = () => {
         
         if (fetchError.name === 'AbortError') {
           console.warn('Reddit tips request timed out - tips feature disabled for this session');
+          setTipsError('Request timeout');
         } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
           console.warn('Network error connecting to Edge Function - tips feature disabled for this session. This could be due to:');
           console.warn('- Edge Function not deployed');
           console.warn('- Network connectivity issues');
           console.warn('- CORS configuration problems');
           console.warn('- Supabase project configuration issues');
+          setTipsError('Connection failed');
         } else {
           console.warn('Unexpected error fetching Reddit tips:', fetchError);
+          setTipsError('Service unavailable');
         }
         
         setTips([]);
@@ -153,6 +163,7 @@ const TripDashboardPage: React.FC = () => {
         message: error?.message,
         stack: error?.stack
       });
+      setTipsError('Unexpected error');
       setTips([]);
     } finally {
       setLoadingTips(false);
@@ -346,14 +357,13 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Always fetch tips (with improved error handling) - wrapped in try/catch to prevent errors from breaking the flow
-      try {
-        await fetchRedditTips(city, country);
-      } catch (tipsError) {
-        console.warn('Tips fetch failed, continuing without tips:', tipsError);
+      // Always try to fetch tips but don't let errors break the flow
+      fetchRedditTips(city, country).catch(error => {
+        console.warn('Tips fetch failed silently:', error);
+        setTipsError('Service unavailable');
         setTips([]);
         setLoadingTips(false);
-      }
+      });
 
       try {
         await fetchAcceptedUsers(tripId!);
@@ -497,6 +507,25 @@ const TripDashboardPage: React.FC = () => {
       'Wellness': '🧘'
     };
     return icons[category] || '💡';
+  };
+
+  const getTipsErrorMessage = () => {
+    switch (tipsError) {
+      case 'Configuration missing':
+        return 'Supabase configuration is missing';
+      case 'Configuration incomplete':
+        return 'Supabase configuration is incomplete';
+      case 'Function not deployed':
+        return 'Tips service is not deployed';
+      case 'Connection failed':
+        return 'Unable to connect to tips service';
+      case 'Request timeout':
+        return 'Tips service request timed out';
+      case 'Service unavailable':
+        return 'Tips service is temporarily unavailable';
+      default:
+        return 'Tips service is currently unavailable';
+    }
   };
 
   if (loading) {
@@ -899,8 +928,15 @@ const TripDashboardPage: React.FC = () => {
               <div className="text-3xl sm:text-4xl mb-4">💡</div>
               <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">TIPS UNAVAILABLE</h3>
               <p className="outfit-text text-gray-500 text-sm">
-                The tips service is currently unavailable for {trip?.destination}. Please check back later!
+                {getTipsErrorMessage()} for {trip?.destination}. Please check back later!
               </p>
+              {tipsError === 'Function not deployed' && (
+                <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded">
+                  <p className="outfit-text text-yellow-400 text-xs">
+                    💡 <strong>Developer Note:</strong> The tips feature requires the get-reddit-tips Edge Function to be deployed to Supabase.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -19,11 +19,17 @@ interface RedditPost {
   subreddit: string;
 }
 
+// Validate environment variables and initialize Supabase client
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || (() => { 
+  throw new Error('SUPABASE_URL environment variable is not set'); 
+})();
+
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || (() => { 
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set'); 
+})();
+
 // Initialize Supabase client with service role key for token access
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Enhanced cache with better key management
 const cache = new Map<string, any>();

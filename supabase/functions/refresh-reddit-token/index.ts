@@ -20,11 +20,17 @@ const REDDIT_PASSWORD = Deno.env.get('REDDIT_PASSWORD');
 const REDDIT_CLIENT_ID = Deno.env.get('REDDIT_CLIENT_ID');
 const REDDIT_CLIENT_SECRET = Deno.env.get('REDDIT_CLIENT_SECRET');
 
+// Validate environment variables and initialize Supabase client
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || (() => { 
+  throw new Error('SUPABASE_URL environment variable is not set'); 
+})();
+
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || (() => { 
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set'); 
+})();
+
 // Initialize Supabase client with service role key
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function getStoredToken(): Promise<{ access_token: string; expires_at: string } | null> {
   try {

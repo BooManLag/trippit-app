@@ -38,7 +38,7 @@ function generateToken(): string {
 }
 
 export const invitationService = {
-  // Check if user exists in our system using the profiles table
+  // Check if user exists in our system using the users table
   async checkUserExists(email: string): Promise<boolean> {
     try {
       // Clean and validate the email first
@@ -56,10 +56,9 @@ export const invitationService = {
         return false;
       }
       
-      console.log('🔍 Checking if user exists in profiles table:', cleanEmail);
+      console.log('🔍 Checking if user exists in users table:', cleanEmail);
       
-      // Query the public.users table (which serves as our profiles table)
-      // This should work now with the public read policy
+      // Query the public.users table
       const { data: userRecord, error } = await supabase
         .from('users')
         .select('id, email')
@@ -72,7 +71,7 @@ export const invitationService = {
       }
 
       const exists = !!userRecord;
-      console.log(exists ? '✅ User found in profiles table' : '❌ User not found in profiles table');
+      console.log(exists ? '✅ User found in users table' : '❌ User not found in users table');
       console.log('📊 Query result:', { 
         found: exists, 
         userEmail: userRecord?.email,
@@ -156,17 +155,28 @@ export const invitationService = {
     console.log(`🔗 Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
   },
 
-  // Get pending invitations for current user
+  // Get pending invitations for current user with optimized single query
   async getPendingInvitations(): Promise<TripInvitation[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     console.log('📥 Fetching pending invitations for user:', user.email);
 
-    // Get basic invitation data
+    // Use a single query with joins to get all data at once
     const { data: invitations, error } = await supabase
       .from('trip_invitations')
-      .select('id, trip_id, inviter_id, invitee_email, token, status, created_at, responded_at')
+      .select(`
+        id,
+        trip_id,
+        inviter_id,
+        invitee_email,
+        token,
+        status,
+        created_at,
+        responded_at,
+        trips!inner(destination, start_date, end_date, max_participants),
+        users!trip_invitations_inviter_id_fkey(display_name, email)
+      `)
       .eq('invitee_email', user.email)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -182,38 +192,27 @@ export const invitationService = {
       return [];
     }
 
-    // Enrich with trip and inviter data
-    const enrichedInvitations: TripInvitation[] = [];
-
-    for (const invitation of invitations) {
-      try {
-        // Get trip details
-        const { data: tripData, error: tripError } = await supabase
-          .from('trips')
-          .select('destination, start_date, end_date, max_participants')
-          .eq('id', invitation.trip_id)
-          .single();
-
-        // Get inviter details
-        const { data: inviterData, error: inviterError } = await supabase
-          .from('users')
-          .select('display_name, email')
-          .eq('id', invitation.inviter_id)
-          .single();
-
-        if (tripData && inviterData && !tripError && !inviterError) {
-          enrichedInvitations.push({
-            ...invitation,
-            trip: tripData,
-            inviter: inviterData
-          });
-        } else {
-          console.warn('Failed to enrich invitation:', { tripError, inviterError });
-        }
-      } catch (err) {
-        console.warn('Error enriching invitation:', err);
+    // Transform the data to match the expected interface
+    const enrichedInvitations: TripInvitation[] = invitations.map((invitation: any) => ({
+      id: invitation.id,
+      trip_id: invitation.trip_id,
+      inviter_id: invitation.inviter_id,
+      invitee_email: invitation.invitee_email,
+      token: invitation.token,
+      status: invitation.status,
+      created_at: invitation.created_at,
+      responded_at: invitation.responded_at,
+      trip: {
+        destination: invitation.trips.destination,
+        start_date: invitation.trips.start_date,
+        end_date: invitation.trips.end_date,
+        max_participants: invitation.trips.max_participants
+      },
+      inviter: {
+        display_name: invitation.users.display_name,
+        email: invitation.users.email
       }
-    }
+    }));
 
     console.log(`✅ Enriched ${enrichedInvitations.length} invitations`);
     return enrichedInvitations;

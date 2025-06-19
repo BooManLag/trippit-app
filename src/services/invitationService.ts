@@ -155,15 +155,15 @@ export const invitationService = {
     console.log(`🔗 Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
   },
 
-  // Get pending invitations for current user with optimized single query
+  // Get pending invitations for current user with separate queries to avoid RLS join issues
   async getPendingInvitations(): Promise<TripInvitation[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     console.log('📥 Fetching pending invitations for user:', user.email);
 
-    // Use a single query with joins to get all data at once
-    const { data: invitations, error } = await supabase
+    // Step 1: Fetch invitations without joins
+    const { data: invitations, error: invitationsError } = await supabase
       .from('trip_invitations')
       .select(`
         id,
@@ -173,17 +173,15 @@ export const invitationService = {
         token,
         status,
         created_at,
-        responded_at,
-        trips!inner(destination, start_date, end_date, max_participants),
-        users!trip_invitations_inviter_id_fkey(display_name, email)
+        responded_at
       `)
       .eq('invitee_email', user.email)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ Error fetching invitations:', error);
-      throw new Error(`Failed to fetch invitations: ${error.message}`);
+    if (invitationsError) {
+      console.error('❌ Error fetching invitations:', invitationsError);
+      throw new Error(`Failed to fetch invitations: ${invitationsError.message}`);
     }
 
     console.log(`📊 Found ${invitations?.length || 0} pending invitations`);
@@ -192,27 +190,56 @@ export const invitationService = {
       return [];
     }
 
-    // Transform the data to match the expected interface
-    const enrichedInvitations: TripInvitation[] = invitations.map((invitation: any) => ({
-      id: invitation.id,
-      trip_id: invitation.trip_id,
-      inviter_id: invitation.inviter_id,
-      invitee_email: invitation.invitee_email,
-      token: invitation.token,
-      status: invitation.status,
-      created_at: invitation.created_at,
-      responded_at: invitation.responded_at,
-      trip: {
-        destination: invitation.trips.destination,
-        start_date: invitation.trips.start_date,
-        end_date: invitation.trips.end_date,
-        max_participants: invitation.trips.max_participants
-      },
-      inviter: {
-        display_name: invitation.users.display_name,
-        email: invitation.users.email
-      }
-    }));
+    // Step 2: Fetch trip details separately
+    const tripIds = [...new Set(invitations.map(inv => inv.trip_id))];
+    const { data: trips, error: tripsError } = await supabase
+      .from('trips')
+      .select('id, destination, start_date, end_date, max_participants')
+      .in('id', tripIds);
+
+    if (tripsError) {
+      console.error('❌ Error fetching trips:', tripsError);
+      throw new Error(`Failed to fetch trip details: ${tripsError.message}`);
+    }
+
+    // Step 3: Fetch inviter details separately
+    const inviterIds = [...new Set(invitations.map(inv => inv.inviter_id))];
+    const { data: inviters, error: invitersError } = await supabase
+      .from('users')
+      .select('id, display_name, email')
+      .in('id', inviterIds);
+
+    if (invitersError) {
+      console.error('❌ Error fetching inviters:', invitersError);
+      throw new Error(`Failed to fetch inviter details: ${invitersError.message}`);
+    }
+
+    // Step 4: Merge the data in application code
+    const enrichedInvitations: TripInvitation[] = invitations.map((invitation) => {
+      const trip = trips?.find(t => t.id === invitation.trip_id);
+      const inviter = inviters?.find(u => u.id === invitation.inviter_id);
+
+      return {
+        id: invitation.id,
+        trip_id: invitation.trip_id,
+        inviter_id: invitation.inviter_id,
+        invitee_email: invitation.invitee_email,
+        token: invitation.token,
+        status: invitation.status,
+        created_at: invitation.created_at,
+        responded_at: invitation.responded_at,
+        trip: {
+          destination: trip?.destination || 'Unknown',
+          start_date: trip?.start_date || '',
+          end_date: trip?.end_date || '',
+          max_participants: trip?.max_participants || 2
+        },
+        inviter: {
+          display_name: inviter?.display_name || 'Unknown',
+          email: inviter?.email || 'Unknown'
+        }
+      };
+    });
 
     console.log(`✅ Enriched ${enrichedInvitations.length} invitations`);
     return enrichedInvitations;
@@ -291,35 +318,48 @@ export const invitationService = {
     return invitations || [];
   },
 
-  // Get users who have accepted invitations to a trip
+  // Get users who have accepted invitations to a trip with separate queries to avoid RLS join issues
   async getTripAcceptedUsers(tripId: string): Promise<AcceptedUser[]> {
     try {
-      const { data: acceptedInvitations, error } = await supabase
+      // Step 1: Fetch accepted invitations without joins
+      const { data: acceptedInvitations, error: invitationsError } = await supabase
         .from('trip_invitations')
-        .select(`
-          invitee_email,
-          users!inner(id, display_name, email)
-        `)
+        .select('invitee_email')
         .eq('trip_id', tripId)
         .eq('status', 'accepted');
 
-      if (error) {
-        throw new Error(`Failed to fetch accepted users: ${error.message}`);
+      if (invitationsError) {
+        throw new Error(`Failed to fetch accepted invitations: ${invitationsError.message}`);
       }
 
       if (!acceptedInvitations || acceptedInvitations.length === 0) {
         return [];
       }
 
-      // Transform the data to match the expected format
-      return acceptedInvitations.map((invitation: any) => ({
-        id: invitation.users.id,
-        display_name: invitation.users.display_name,
-        email: invitation.users.email,
+      // Step 2: Fetch user details separately using emails
+      const inviteeEmails = acceptedInvitations.map(inv => inv.invitee_email);
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, display_name, email')
+        .in('email', inviteeEmails);
+
+      if (usersError) {
+        throw new Error(`Failed to fetch user details: ${usersError.message}`);
+      }
+
+      if (!users || users.length === 0) {
+        return [];
+      }
+
+      // Step 3: Transform the data to match the expected format
+      return users.map((user) => ({
+        id: user.id,
+        display_name: user.display_name,
+        email: user.email,
         user: {
-          id: invitation.users.id,
-          display_name: invitation.users.display_name,
-          email: invitation.users.email
+          id: user.id,
+          display_name: user.display_name,
+          email: user.email
         }
       }));
     } catch (error: any) {
@@ -330,26 +370,42 @@ export const invitationService = {
 
   // Get trip participants (accepted invitations + owner)
   async getTripParticipants(tripId: string): Promise<any[]> {
-    const { data: participants, error } = await supabase
+    // Step 1: Fetch participants without joins
+    const { data: participants, error: participantsError } = await supabase
       .from('trip_participants')
-      .select(`
-        user_id,
-        role,
-        joined_at,
-        users!inner(id, display_name, email)
-      `)
+      .select('user_id, role, joined_at')
       .eq('trip_id', tripId);
 
-    if (error) {
-      console.error('Error fetching participants:', error);
+    if (participantsError) {
+      console.error('Error fetching participants:', participantsError);
       return [];
     }
 
-    return (participants || []).map(p => ({
-      user_id: p.user_id,
-      role: p.role,
-      joined_at: p.joined_at,
-      user: (p as any).users
-    }));
+    if (!participants || participants.length === 0) {
+      return [];
+    }
+
+    // Step 2: Fetch user details separately
+    const userIds = [...new Set(participants.map(p => p.user_id))];
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, display_name, email')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Error fetching user details:', usersError);
+      return [];
+    }
+
+    // Step 3: Merge the data in application code
+    return participants.map(p => {
+      const user = users?.find(u => u.id === p.user_id);
+      return {
+        user_id: p.user_id,
+        role: p.role,
+        joined_at: p.joined_at,
+        user: user || { id: p.user_id, display_name: 'Unknown', email: 'Unknown' }
+      };
+    });
   }
 };

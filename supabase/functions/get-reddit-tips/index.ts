@@ -204,7 +204,7 @@ async function waitForRateLimit(): Promise<void> {
   
   // Respect minimum delay between requests
   const timeSinceLastRequest = now - lastRequestTime;
-  const minDelay = 1500; // 1.5 seconds minimum between requests
+  const minDelay = 1000; // Reduced to 1 second minimum between requests
   
   if (timeSinceLastRequest < minDelay) {
     const waitTime = minDelay - timeSinceLastRequest;
@@ -647,14 +647,14 @@ Deno.serve(async (req) => {
     console.log(`🎯 Will search in subreddits: ${subreddits.join(', ')}`);
     console.log(`🔍 Using search queries: ${searchQueries.join(', ')}`);
 
-    // Enhanced fetch strategy with more sources
+    // Enhanced fetch strategy with reduced API calls to prevent timeout
     const allTips = [];
     let successfulFetches = 0;
     let totalPosts = 0;
 
-    // Fetch from multiple subreddits with different queries
-    for (const subreddit of subreddits.slice(0, 4)) { // Increased subreddit limit
-      for (const query of searchQueries.slice(0, 2)) {
+    // Reduced number of subreddits and queries to prevent timeout
+    for (const subreddit of subreddits.slice(0, 2)) { // Reduced from 4 to 2
+      for (const query of searchQueries.slice(0, 1)) { // Reduced from 2 to 1
         try {
           console.log(`🔍 Searching r/${subreddit} for "${query}"`);
           const posts = await fetchTopPostsWithAuth(subreddit, query, 8, 'year'); // Increased posts per query
@@ -671,8 +671,7 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Shorter delay for better performance
-          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+          // Removed the explicit 2-second delay - waitForRateLimit() already handles delays
         } catch (error) {
           console.error(`❌ Error fetching from r/${subreddit}:`, error);
         }

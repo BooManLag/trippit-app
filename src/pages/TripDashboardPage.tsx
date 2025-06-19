@@ -63,24 +63,70 @@ const TripDashboardPage: React.FC = () => {
     try {
       setLoadingTips(true);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ city, country }),
-        }
-      );
+      // Validate environment variables first
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (!response.ok) throw new Error('Failed to fetch tips');
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase environment variables');
+        setTips([]);
+        return;
+      }
+
+      // Check if the URL is a placeholder
+      if (supabaseUrl.includes('your-project') || supabaseUrl === 'https://your-project-id.supabase.co') {
+        console.error('Supabase URL appears to be a placeholder value');
+        setTips([]);
+        return;
+      }
+
+      const functionUrl = `${supabaseUrl}/functions/v1/get-reddit-tips`;
+      
+      console.log('Attempting to fetch Reddit tips from:', functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ city, country }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge function response error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        
+        // If it's a 404, the function doesn't exist
+        if (response.status === 404) {
+          console.warn('get-reddit-tips Edge Function not found. Using fallback empty tips.');
+          setTips([]);
+          return;
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const redditTips = await response.json();
-      setTips(redditTips);
+      console.log('Successfully fetched Reddit tips:', redditTips);
+      setTips(Array.isArray(redditTips) ? redditTips : []);
     } catch (error) {
       console.error('Error fetching Reddit tips:', error);
+      
+      // Provide more specific error information
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('Network error: Unable to connect to Supabase Edge Function. This could be due to:');
+        console.error('1. Invalid Supabase URL in environment variables');
+        console.error('2. Edge Function not deployed');
+        console.error('3. Network connectivity issues');
+        console.error('4. CORS issues');
+      }
+      
+      // Set empty tips array as fallback
       setTips([]);
     } finally {
       setLoadingTips(false);
@@ -274,8 +320,8 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Always fetch tips
-      fetchRedditTips(city, country);
+      // Always fetch tips (with improved error handling)
+      await fetchRedditTips(city, country);
       await fetchAcceptedUsers(tripId!);
 
       if (user) {
@@ -797,9 +843,11 @@ const TripDashboardPage: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8 sm:py-12">
-              <div className="text-3xl sm:text-4xl mb-4">🌐</div>
-              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">GATHERING WISDOM</h3>
-              <p className="outfit-text text-gray-500 text-sm">Searching for tips about {trip?.destination}...</p>
+              <div className="text-3xl sm:text-4xl mb-4">💡</div>
+              <h3 className="pixel-text text-yellow-400 mb-2 text-sm sm:text-base">NO TIPS AVAILABLE</h3>
+              <p className="outfit-text text-gray-500 text-sm">
+                Unable to fetch tips for {trip?.destination}. The tips service may be temporarily unavailable.
+              </p>
             </div>
           )}
         </div>

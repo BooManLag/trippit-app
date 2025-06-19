@@ -45,11 +45,7 @@ export const invitationService = {
         .from('users')
         .select('id')
         .eq('email', email.toLowerCase().trim())
-        .single();
-
-      if (error && error.code === 'PGRST116') {
-        return false; // No rows returned - user doesn't exist
-      }
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking user existence:', error);

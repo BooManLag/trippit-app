@@ -21,6 +21,17 @@ export interface TripInvitation {
   };
 }
 
+export interface AcceptedUser {
+  id: string;
+  display_name: string;
+  email: string;
+  user: {
+    id: string;
+    display_name: string;
+    email: string;
+  };
+}
+
 // Generate a secure token
 function generateToken(): string {
   return crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
@@ -205,6 +216,43 @@ export const invitationService = {
     }
 
     return invitations || [];
+  },
+
+  // Get users who have accepted invitations to a trip
+  async getTripAcceptedUsers(tripId: string): Promise<AcceptedUser[]> {
+    try {
+      const { data: acceptedInvitations, error } = await supabase
+        .from('trip_invitations')
+        .select(`
+          invitee_email,
+          users!inner(id, display_name, email)
+        `)
+        .eq('trip_id', tripId)
+        .eq('status', 'accepted');
+
+      if (error) {
+        throw new Error(`Failed to fetch accepted users: ${error.message}`);
+      }
+
+      if (!acceptedInvitations || acceptedInvitations.length === 0) {
+        return [];
+      }
+
+      // Transform the data to match the expected format
+      return acceptedInvitations.map((invitation: any) => ({
+        id: invitation.users.id,
+        display_name: invitation.users.display_name,
+        email: invitation.users.email,
+        user: {
+          id: invitation.users.id,
+          display_name: invitation.users.display_name,
+          email: invitation.users.email
+        }
+      }));
+    } catch (error: any) {
+      console.error('Error fetching accepted users:', error);
+      throw new Error(`Failed to fetch accepted users: ${error.message}`);
+    }
   },
 
   // Get trip participants (accepted invitations + owner)

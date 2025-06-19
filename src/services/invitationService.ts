@@ -97,7 +97,17 @@ export const invitationService = {
       throw new Error('Please provide a valid email address');
     }
 
-    console.log('📧 sendInvitation called with:', { tripId, cleanEmail });
+    console.log('📧 sendInvitation called with:', { 
+      tripId, 
+      inviteeEmail: cleanEmail,
+      currentUserEmail: user.email,
+      currentUserId: user.id
+    });
+
+    // Validate that we're not inviting ourselves
+    if (cleanEmail === user.email?.toLowerCase()) {
+      throw new Error('You cannot invite yourself to a trip');
+    }
 
     // First check if user exists in our system
     const userExists = await this.checkUserExists(cleanEmail);
@@ -108,26 +118,41 @@ export const invitationService = {
     // Generate secure token
     const token = generateToken();
 
+    console.log('💾 Creating invitation with data:', {
+      trip_id: tripId,
+      inviter_id: user.id,
+      invitee_email: cleanEmail,
+      token: token.substring(0, 10) + '...' // Only log first 10 chars for security
+    });
+
     // Create invitation
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('trip_invitations')
       .insert({
         trip_id: tripId,
         inviter_id: user.id,
         invitee_email: cleanEmail,
         token
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
+      console.error('❌ Database error creating invitation:', error);
       if (error.code === '23505') {
         throw new Error('This email has already been invited to this trip');
       }
       throw new Error(`Failed to send invitation: ${error.message}`);
     }
 
+    console.log('✅ Invitation created successfully:', {
+      id: data.id,
+      invitee_email: data.invitee_email,
+      status: data.status
+    });
+
     // TODO: Send email with invitation link
     // For now, we'll handle invitations in-app only
-    console.log(`✅ Invitation created successfully with token: ${token}`);
     console.log(`🔗 Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
   },
 
@@ -135,6 +160,8 @@ export const invitationService = {
   async getPendingInvitations(): Promise<TripInvitation[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+
+    console.log('📥 Fetching pending invitations for user:', user.email);
 
     // Get basic invitation data
     const { data: invitations, error } = await supabase
@@ -145,8 +172,11 @@ export const invitationService = {
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('❌ Error fetching invitations:', error);
       throw new Error(`Failed to fetch invitations: ${error.message}`);
     }
+
+    console.log(`📊 Found ${invitations?.length || 0} pending invitations`);
 
     if (!invitations || invitations.length === 0) {
       return [];
@@ -177,23 +207,29 @@ export const invitationService = {
             trip: tripData,
             inviter: inviterData
           });
+        } else {
+          console.warn('Failed to enrich invitation:', { tripError, inviterError });
         }
       } catch (err) {
         console.warn('Error enriching invitation:', err);
       }
     }
 
+    console.log(`✅ Enriched ${enrichedInvitations.length} invitations`);
     return enrichedInvitations;
   },
 
   // Accept invitation by token
   async acceptInvitation(token: string): Promise<{ success: boolean; message: string; tripId?: string }> {
     try {
+      console.log('🎯 Accepting invitation with token:', token.substring(0, 10) + '...');
+      
       const { data, error } = await supabase.rpc('accept_invitation', {
         p_token: token
       });
 
       if (error) {
+        console.error('❌ RPC error:', error);
         throw new Error(`Failed to accept invitation: ${error.message}`);
       }
 
@@ -202,13 +238,15 @@ export const invitationService = {
         throw new Error('No response from server');
       }
 
+      console.log('✅ Invitation acceptance result:', result);
+
       return {
         success: result.success,
         message: result.message,
         tripId: result.trip_id
       };
     } catch (error: any) {
-      console.error('Error accepting invitation:', error);
+      console.error('💥 Error accepting invitation:', error);
       return {
         success: false,
         message: error.message || 'Failed to accept invitation'
@@ -218,6 +256,8 @@ export const invitationService = {
 
   // Decline invitation by token
   async declineInvitation(token: string): Promise<void> {
+    console.log('❌ Declining invitation with token:', token.substring(0, 10) + '...');
+    
     const { error } = await supabase
       .from('trip_invitations')
       .update({ 
@@ -227,8 +267,11 @@ export const invitationService = {
       .eq('token', token);
 
     if (error) {
+      console.error('❌ Error declining invitation:', error);
       throw new Error(`Failed to decline invitation: ${error.message}`);
     }
+
+    console.log('✅ Invitation declined successfully');
   },
 
   // Get sent invitations for a trip

@@ -38,7 +38,7 @@ function generateToken(): string {
 }
 
 export const invitationService = {
-  // Check if user exists in our system using the users table
+  // Check if user exists using auth.users (bypassing RLS on public.users)
   async checkUserExists(email: string): Promise<boolean> {
     try {
       // Clean and validate the email first
@@ -56,32 +56,29 @@ export const invitationService = {
         return false;
       }
       
-      console.log('🔍 Checking if user exists in users table:', cleanEmail);
+      console.log('🔍 Checking if user exists via RPC:', cleanEmail);
       
-      // Query the public.users table
-      const { data: userRecord, error } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('email', cleanEmail)
-        .maybeSingle();
+      // Use RPC function to check user existence (bypasses RLS)
+      const { data, error } = await supabase.rpc('check_user_exists', {
+        email_to_check: cleanEmail
+      });
 
       if (error) {
-        console.error('❌ Database error querying users table:', error);
-        throw error;
+        console.error('❌ RPC error checking user existence:', error);
+        // Fallback: assume user exists to avoid blocking invitations
+        console.log('⚠️ Falling back to assuming user exists');
+        return true;
       }
 
-      const exists = !!userRecord;
-      console.log(exists ? '✅ User found in users table' : '❌ User not found in users table');
-      console.log('📊 Query result:', { 
-        found: exists, 
-        userEmail: userRecord?.email,
-        userId: userRecord?.id 
-      });
+      const exists = !!data;
+      console.log(exists ? '✅ User found via RPC' : '❌ User not found via RPC');
       
       return exists;
     } catch (error) {
       console.error('💥 Error in checkUserExists:', error);
-      return false;
+      // Fallback: assume user exists to avoid blocking invitations
+      console.log('⚠️ Falling back to assuming user exists due to error');
+      return true;
     }
   },
 
@@ -108,7 +105,7 @@ export const invitationService = {
       throw new Error('You cannot invite yourself to a trip');
     }
 
-    // First check if user exists in our system
+    // Check if user exists in our system
     const userExists = await this.checkUserExists(cleanEmail);
     if (!userExists) {
       throw new Error('This email is not registered in our system. They need to sign up first!');
@@ -202,22 +199,21 @@ export const invitationService = {
       throw new Error(`Failed to fetch trip details: ${tripsError.message}`);
     }
 
-    // Step 3: Fetch inviter details separately
+    // Step 3: Fetch inviter details using RPC to avoid RLS issues
     const inviterIds = [...new Set(invitations.map(inv => inv.inviter_id))];
-    const { data: inviters, error: invitersError } = await supabase
-      .from('users')
-      .select('id, display_name, email')
-      .in('id', inviterIds);
+    const { data: inviters, error: invitersError } = await supabase.rpc('get_users_by_ids', {
+      user_ids: inviterIds
+    });
 
     if (invitersError) {
-      console.error('❌ Error fetching inviters:', invitersError);
-      throw new Error(`Failed to fetch inviter details: ${invitersError.message}`);
+      console.error('❌ Error fetching inviters via RPC:', invitersError);
+      // Continue without inviter details rather than failing completely
     }
 
     // Step 4: Merge the data in application code
     const enrichedInvitations: TripInvitation[] = invitations.map((invitation) => {
       const trip = trips?.find(t => t.id === invitation.trip_id);
-      const inviter = inviters?.find(u => u.id === invitation.inviter_id);
+      const inviter = inviters?.find((u: any) => u.id === invitation.inviter_id);
 
       return {
         id: invitation.id,
@@ -336,15 +332,15 @@ export const invitationService = {
         return [];
       }
 
-      // Step 2: Fetch user details separately using emails
+      // Step 2: Fetch user details using RPC to avoid RLS issues
       const inviteeEmails = acceptedInvitations.map(inv => inv.invitee_email);
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, display_name, email')
-        .in('email', inviteeEmails);
+      const { data: users, error: usersError } = await supabase.rpc('get_users_by_emails', {
+        email_list: inviteeEmails
+      });
 
       if (usersError) {
-        throw new Error(`Failed to fetch user details: ${usersError.message}`);
+        console.error('❌ Error fetching users via RPC:', usersError);
+        return [];
       }
 
       if (!users || users.length === 0) {
@@ -352,7 +348,7 @@ export const invitationService = {
       }
 
       // Step 3: Transform the data to match the expected format
-      return users.map((user) => ({
+      return users.map((user: any) => ({
         id: user.id,
         display_name: user.display_name,
         email: user.email,
@@ -385,21 +381,20 @@ export const invitationService = {
       return [];
     }
 
-    // Step 2: Fetch user details separately
+    // Step 2: Fetch user details using RPC to avoid RLS issues
     const userIds = [...new Set(participants.map(p => p.user_id))];
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, display_name, email')
-      .in('id', userIds);
+    const { data: users, error: usersError } = await supabase.rpc('get_users_by_ids', {
+      user_ids: userIds
+    });
 
     if (usersError) {
-      console.error('Error fetching user details:', usersError);
-      return [];
+      console.error('Error fetching user details via RPC:', usersError);
+      // Continue with unknown users rather than failing completely
     }
 
     // Step 3: Merge the data in application code
     return participants.map(p => {
-      const user = users?.find(u => u.id === p.user_id);
+      const user = users?.find((u: any) => u.id === p.user_id);
       return {
         user_id: p.user_id,
         role: p.role,

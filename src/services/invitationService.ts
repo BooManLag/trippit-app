@@ -41,18 +41,54 @@ export const invitationService = {
   // Check if user exists in our system
   async checkUserExists(email: string): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const cleanEmail = email.toLowerCase().trim();
+      
+      // First try exact match
+      const { data: exactMatch, error: exactError } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email.toLowerCase().trim())
+        .eq('email', cleanEmail)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error checking user existence:', error);
-        return false;
+      if (exactError) {
+        console.error('Error in exact email match:', exactError);
       }
 
-      return !!data;
+      if (exactMatch) {
+        console.log('Found user with exact email match:', cleanEmail);
+        return true;
+      }
+
+      // If exact match fails, try case-insensitive search
+      const { data: caseInsensitiveMatch, error: caseError } = await supabase
+        .from('users')
+        .select('id, email')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+
+      if (caseError) {
+        console.error('Error in case-insensitive email search:', caseError);
+      }
+
+      if (caseInsensitiveMatch) {
+        console.log('Found user with case-insensitive match:', caseInsensitiveMatch.email);
+        return true;
+      }
+
+      // If both fail, try a broader search to see what emails exist
+      const { data: allUsers, error: allError } = await supabase
+        .from('users')
+        .select('email')
+        .limit(100);
+
+      if (allError) {
+        console.error('Error fetching all users for debugging:', allError);
+      } else {
+        console.log('Available emails in database:', allUsers?.map(u => u.email));
+        console.log('Looking for email:', cleanEmail);
+      }
+
+      return false;
     } catch (error) {
       console.error('Error in checkUserExists:', error);
       return false;

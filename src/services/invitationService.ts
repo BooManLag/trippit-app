@@ -41,22 +41,42 @@ export const invitationService = {
   // Check if user exists in our system
   async checkUserExists(email: string): Promise<boolean> {
     try {
-      const cleanEmail = email.toLowerCase().trim();
+      // Clean and validate the email first
+      const cleanEmail = email?.toString()?.toLowerCase()?.trim();
+      
+      if (!cleanEmail) {
+        console.log('❌ Invalid email provided:', email);
+        return false;
+      }
+      
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        console.log('❌ Invalid email format:', cleanEmail);
+        return false;
+      }
+      
       console.log('🔍 Checking if user exists:', cleanEmail);
       
-      // Use maybeSingle() to avoid 406 errors when no match is found
-      const { data: userRecord, error } = await supabase
+      // Use a more explicit query approach
+      const { data: users, error, count } = await supabase
         .from('users')
-        .select('id, email')
+        .select('id, email', { count: 'exact' })
         .eq('email', cleanEmail)
-        .maybeSingle();
+        .limit(1);
 
       if (error) {
-        console.error('❌ Error querying users:', error);
+        console.error('❌ Database error querying users:', error);
         throw error;
       }
 
-      const exists = userRecord !== null;
+      console.log('📊 Query results:', { 
+        count, 
+        usersLength: users?.length, 
+        foundUser: users?.[0]?.email 
+      });
+
+      const exists = count !== null && count > 0 && users && users.length > 0;
       console.log(exists ? '✅ User found in database' : '❌ User not found in database');
       
       return exists;
@@ -71,8 +91,16 @@ export const invitationService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Clean the email first
+    const cleanEmail = inviteeEmail?.toString()?.toLowerCase()?.trim();
+    if (!cleanEmail) {
+      throw new Error('Please provide a valid email address');
+    }
+
+    console.log('📧 sendInvitation called with:', { tripId, cleanEmail });
+
     // First check if user exists in our system
-    const userExists = await this.checkUserExists(inviteeEmail);
+    const userExists = await this.checkUserExists(cleanEmail);
     if (!userExists) {
       throw new Error('This email is not registered in our system. They need to sign up first!');
     }
@@ -86,7 +114,7 @@ export const invitationService = {
       .insert({
         trip_id: tripId,
         inviter_id: user.id,
-        invitee_email: inviteeEmail.toLowerCase().trim(),
+        invitee_email: cleanEmail,
         token
       });
 

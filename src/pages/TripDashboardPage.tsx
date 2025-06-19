@@ -102,7 +102,7 @@ const TripDashboardPage: React.FC = () => {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          const errorText = await response.text();
+          const errorText = await response.text().catch(() => 'Unable to read error response');
           console.warn('Edge function response error:', {
             status: response.status,
             statusText: response.statusText,
@@ -122,21 +122,37 @@ const TripDashboardPage: React.FC = () => {
         const redditTips = await response.json();
         console.log('Successfully fetched Reddit tips:', redditTips);
         setTips(Array.isArray(redditTips) ? redditTips : []);
-      } catch (fetchError) {
+      } catch (fetchError: any) {
         clearTimeout(timeoutId);
+        
+        // More detailed error logging
+        console.warn('Detailed fetch error:', {
+          name: fetchError?.name,
+          message: fetchError?.message,
+          stack: fetchError?.stack,
+          cause: fetchError?.cause
+        });
         
         if (fetchError.name === 'AbortError') {
           console.warn('Reddit tips request timed out - tips feature disabled for this session');
         } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-          console.warn('Network error connecting to Edge Function - tips feature disabled for this session');
+          console.warn('Network error connecting to Edge Function - tips feature disabled for this session. This could be due to:');
+          console.warn('- Edge Function not deployed');
+          console.warn('- Network connectivity issues');
+          console.warn('- CORS configuration problems');
+          console.warn('- Supabase project configuration issues');
         } else {
-          console.warn('Error fetching Reddit tips:', fetchError);
+          console.warn('Unexpected error fetching Reddit tips:', fetchError);
         }
         
         setTips([]);
       }
-    } catch (error) {
-      console.warn('Error in fetchRedditTips:', error);
+    } catch (error: any) {
+      console.warn('Error in fetchRedditTips wrapper:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack
+      });
       setTips([]);
     } finally {
       setLoadingTips(false);
@@ -330,9 +346,21 @@ const TripDashboardPage: React.FC = () => {
       setTrip(tripData);
       const [city, country] = tripData.destination.split(', ');
 
-      // Always fetch tips (with improved error handling)
-      await fetchRedditTips(city, country);
-      await fetchAcceptedUsers(tripId!);
+      // Always fetch tips (with improved error handling) - wrapped in try/catch to prevent errors from breaking the flow
+      try {
+        await fetchRedditTips(city, country);
+      } catch (tipsError) {
+        console.warn('Tips fetch failed, continuing without tips:', tipsError);
+        setTips([]);
+        setLoadingTips(false);
+      }
+
+      try {
+        await fetchAcceptedUsers(tripId!);
+      } catch (usersError) {
+        console.warn('Failed to fetch accepted users:', usersError);
+        setAcceptedUsers([]);
+      }
 
       if (user) {
         // Check if user can access this trip
@@ -340,20 +368,35 @@ const TripDashboardPage: React.FC = () => {
         
         if (hasAccess) {
           // Fetch user-specific data
-          await fetchUserDares(user.id, tripId!);
-          await fetchChecklistItems(user.id, tripId!);
+          try {
+            await fetchUserDares(user.id, tripId!);
+          } catch (daresError) {
+            console.warn('Failed to fetch user dares:', daresError);
+            setUserDares([]);
+            setLoadingDares(false);
+          }
+
+          try {
+            await fetchChecklistItems(user.id, tripId!);
+          } catch (checklistError) {
+            console.warn('Failed to fetch checklist items:', checklistError);
+          }
         }
 
         // Get trip number for this user
-        const { data: allTrips } = await supabase
-          .from('trips')
-          .select('id, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
+        try {
+          const { data: allTrips } = await supabase
+            .from('trips')
+            .select('id, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true });
 
-        if (allTrips) {
-          const currentTripIndex = allTrips.findIndex((t) => t.id === tripId);
-          setTripNumber(currentTripIndex + 1);
+          if (allTrips) {
+            const currentTripIndex = allTrips.findIndex((t) => t.id === tripId);
+            setTripNumber(currentTripIndex + 1);
+          }
+        } catch (tripNumberError) {
+          console.warn('Failed to get trip number:', tripNumberError);
         }
       } else {
         // Not authenticated, show auth modal

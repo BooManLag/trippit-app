@@ -58,21 +58,16 @@ export const invitationService = {
       
       console.log('🔍 Checking if user exists:', cleanEmail);
       
-      // Direct query to users table (RLS policy allows authenticated users to read)
+      // Use maybeSingle() instead of single() to avoid 406 errors
       const { data, error } = await supabase
         .from('users')
         .select('id')
         .eq('email', cleanEmail)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows returned - user doesn't exist
-          console.log('❌ User not found');
-          return false;
-        }
         console.error('❌ Error checking user existence:', error);
-        // On other errors, assume user exists to avoid blocking invitations
+        // On errors, assume user exists to avoid blocking invitations
         console.log('⚠️ Falling back to assuming user exists');
         return true;
       }

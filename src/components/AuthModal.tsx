@@ -62,14 +62,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
         }
 
         if (data.user) {
-          // Check if user profile exists in our users table
+          // Check if user profile exists in our users table using maybeSingle()
           const { data: userProfile, error: profileError } = await supabase
             .from('users')
             .select('*')
             .eq('id', data.user.id)
-            .single();
+            .maybeSingle();
 
-          if (profileError && profileError.code === 'PGRST116') {
+          if (profileError) {
+            console.error('Error checking user profile:', profileError);
+            // Continue with authentication even if profile check fails
+          }
+
+          if (!userProfile) {
             // User doesn't exist in our users table, create it
             const { error: insertError } = await supabase
               .from('users')

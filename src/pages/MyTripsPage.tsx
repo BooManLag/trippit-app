@@ -48,67 +48,19 @@ const MyTripsPage: React.FC = () => {
     try {
       setError(null);
       
-      // Two-query approach to avoid RLS recursion
-      // 1. Fetch trips I own
-      const { data: myTrips, error: myTripsError } = await supabase
+      // Single query approach - RLS will handle filtering automatically
+      // This will return all trips the user owns OR is a participant of
+      const { data: allTrips, error: tripsError } = await supabase
         .from('trips')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (myTripsError) {
-        throw new Error(`Failed to fetch owned trips: ${myTripsError.message}`);
+      if (tripsError) {
+        throw new Error(`Failed to fetch trips: ${tripsError.message}`);
       }
-
-      // 2. Fetch trips I joined as participant
-      const { data: participantData, error: participantError } = await supabase
-        .from('trip_participants')
-        .select('trip_id')
-        .eq('user_id', user.id);
-
-      if (participantError) {
-        throw new Error(`Failed to fetch participant data: ${participantError.message}`);
-      }
-
-      let joinedTrips: any[] = [];
-      if (participantData && participantData.length > 0) {
-        const joinedTripIds = participantData.map(p => p.trip_id);
-        
-        const { data: joinedTripsData, error: joinedTripsError } = await supabase
-          .from('trips')
-          .select('*')
-          .in('id', joinedTripIds)
-          .order('created_at', { ascending: false });
-
-        if (joinedTripsError) {
-          throw new Error(`Failed to fetch joined trips: ${joinedTripsError.message}`);
-        }
-
-        joinedTrips = joinedTripsData || [];
-      }
-
-      // Merge and deduplicate trips
-      const allTripsMap = new Map();
-      
-      // Add owned trips
-      (myTrips || []).forEach(trip => {
-        allTripsMap.set(trip.id, trip);
-      });
-      
-      // Add joined trips (won't overwrite owned trips due to Map)
-      joinedTrips.forEach(trip => {
-        if (!allTripsMap.has(trip.id)) {
-          allTripsMap.set(trip.id, trip);
-        }
-      });
-
-      const allTrips = Array.from(allTripsMap.values());
-
-      // Sort by created_at descending
-      allTrips.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Add status to each trip
-      const tripsWithStatus = allTrips.map(trip => {
+      const tripsWithStatus = (allTrips || []).map(trip => {
         const today = new Date();
         const startDate = new Date(trip.start_date);
         const endDate = new Date(trip.end_date);
@@ -137,7 +89,7 @@ const MyTripsPage: React.FC = () => {
     if (!user) return;
 
     try {
-      // Direct query to avoid RLS recursion - just get invitations for this user's email
+      // Fetch invitations - RLS will handle filtering automatically
       const { data: invitations, error } = await supabase
         .from('trip_invitations')
         .select(`
@@ -150,7 +102,6 @@ const MyTripsPage: React.FC = () => {
           created_at,
           responded_at
         `)
-        .eq('invitee_email', user.email)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 

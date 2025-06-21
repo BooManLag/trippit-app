@@ -25,11 +25,11 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
   const progressPercentage = maxProgress > 0 ? (progress / maxProgress) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="pixel-card max-w-md w-full relative animate-bounce-in">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4">
+      <div className="pixel-card max-w-md w-full relative animate-bounce-in bg-gray-900 border-2 border-yellow-500/30">
         <button
           onClick={onClose}
-          className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-white"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 hover:text-white z-10"
         >
           <X className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>

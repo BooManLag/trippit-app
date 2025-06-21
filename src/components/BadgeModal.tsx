@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Lock, CheckCircle2, Trophy } from 'lucide-react';
 import { Badge, UserBadge } from '../services/badgeService';
 
@@ -24,7 +25,7 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
   const isEarned = !!userBadge;
   const progressPercentage = maxProgress > 0 ? (progress / maxProgress) * 100 : 0;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4">
       <div className="pixel-card max-w-md w-full relative animate-bounce-in bg-gray-900 border-2 border-yellow-500/30">
         <button
@@ -187,6 +188,10 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
       </div>
     </div>
   );
+
+  // Use createPortal to render the modal at the document body level
+  // This ensures it's not constrained by any parent containers
+  return createPortal(modalContent, document.body);
 };
 
 export default BadgeModal;

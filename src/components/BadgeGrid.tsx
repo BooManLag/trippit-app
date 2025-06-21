@@ -107,7 +107,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
 
   if (showCategories) {
     return (
-      <div className="relative">
+      <>
         <div className="space-y-8">
           {Object.entries(groupedBadges).map(([category, categoryBadges]) => (
             <div key={category}>
@@ -160,7 +160,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
           ))}
         </div>
 
-        {/* Badge Modal - Positioned outside the grid container */}
+        {/* Badge Modal - Now rendered via portal to document.body */}
         {selectedBadge && (
           <BadgeModal
             isOpen={showModal}
@@ -169,7 +169,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
             {...getSelectedBadgeData()}
           />
         )}
-      </div>
+      </>
     );
   }
 
@@ -179,7 +179,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
   const hasMore = badges.length > displayLimit;
 
   return (
-    <div className="relative">
+    <>
       <div className="flex items-center justify-center">
         {/* Show only earned badges in compact mode, or first 4 if no earned badges */}
         <div className="flex items-center gap-4">
@@ -241,7 +241,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
         </div>
       )}
 
-      {/* Badge Modal - Positioned outside the main container */}
+      {/* Badge Modal - Now rendered via portal to document.body */}
       {selectedBadge && (
         <BadgeModal
           isOpen={showModal}
@@ -250,7 +250,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
           {...getSelectedBadgeData()}
         />
       )}
-    </div>
+    </>
   );
 };
 

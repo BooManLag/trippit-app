@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { AuthStatus } from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
 import ShareTripModal from '../components/ShareTripModal';
+import BadgeGrid from '../components/BadgeGrid';
+import { useBadgeTracking } from '../hooks/useBadgeTracking';
 import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
@@ -63,6 +65,12 @@ const TripDashboardPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [tipsError, setTipsError] = useState<string | null>(null);
   const [tripOwner, setTripOwner] = useState<{id: string, display_name?: string, email?: string} | null>(null);
+
+  // Badge tracking hook
+  const { checkAllBadges, trackDareCompletion, trackChecklistCompletion } = useBadgeTracking(
+    currentUser?.id || null, 
+    tripId || null
+  );
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
@@ -308,6 +316,11 @@ const TripDashboardPage: React.FC = () => {
             : ud
         )
       );
+
+      // Track badge progress when dare is completed
+      if (isCompleting) {
+        await trackDareCompletion();
+      }
     }
   };
 
@@ -433,6 +446,11 @@ const TripDashboardPage: React.FC = () => {
           } catch (checklistError) {
             console.warn('Failed to fetch checklist items:', checklistError);
           }
+
+          // Check for badge achievements after loading data
+          setTimeout(() => {
+            checkAllBadges();
+          }, 1000);
         }
 
         // Get trip number for this user
@@ -694,8 +712,34 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="pixel-card bg-gray-900/90 border-2 border-purple-500/20 flex items-center justify-center mb-6 sm:mb-8">
-          <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
+        {/* Badge Section - Replace the "BADGES COMING SOON" placeholder */}
+        <div className="pixel-card bg-gray-900/90 border-2 border-yellow-500/20 mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div className="flex items-center gap-3">
+              <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
+              <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
+            </div>
+            <button 
+              onClick={() => navigate(`/badges?tripId=${tripId}`)}
+              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+            >
+              VIEW ALL
+            </button>
+          </div>
+
+          {currentUser ? (
+            <BadgeGrid 
+              userId={currentUser.id} 
+              tripId={tripId || undefined}
+              showCategories={false}
+              compact={true}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <Crown className="w-12 h-12 text-yellow-500 mx-auto mb-4 opacity-50" />
+              <p className="pixel-text text-yellow-400 text-sm">SIGN IN TO VIEW BADGES</p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">

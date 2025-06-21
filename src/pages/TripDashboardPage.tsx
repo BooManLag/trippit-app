@@ -18,6 +18,7 @@ interface TripDetails {
   end_date: string;
   max_participants?: number;
   user_id?: string;
+  participant_ids?: string[];
 }
 
 interface UserDare {
@@ -197,8 +198,50 @@ const TripDashboardPage: React.FC = () => {
 
   const fetchAcceptedUsers = async (tripId: string) => {
     try {
-      const acceptedUsers = await invitationService.getTripAcceptedUsers(tripId);
-      setAcceptedUsers(acceptedUsers);
+      // Use a simple query to get trip participants without complex joins
+      const { data: participants, error } = await supabase
+        .from('trip_participants')
+        .select(`
+          user_id,
+          role,
+          joined_at
+        `)
+        .eq('trip_id', tripId);
+
+      if (error) {
+        console.error('Error fetching participants:', error);
+        setAcceptedUsers([]);
+        return;
+      }
+
+      if (!participants || participants.length === 0) {
+        setAcceptedUsers([]);
+        return;
+      }
+
+      // Get user details separately to avoid RLS issues
+      const userIds = participants.map(p => p.user_id);
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, email, display_name')
+        .in('id', userIds);
+
+      if (usersError) {
+        console.error('Error fetching user details:', usersError);
+        setAcceptedUsers([]);
+        return;
+      }
+
+      // Combine participant and user data
+      const enrichedUsers = participants.map(participant => {
+        const user = users?.find(u => u.id === participant.user_id);
+        return {
+          ...participant,
+          user: user || { id: participant.user_id, email: 'Unknown', display_name: 'Unknown' }
+        };
+      });
+
+      setAcceptedUsers(enrichedUsers);
     } catch (error) {
       console.error('Error fetching accepted users:', error);
       setAcceptedUsers([]);
@@ -303,33 +346,10 @@ const TripDashboardPage: React.FC = () => {
       return true;
     }
 
-    // Check if user has accepted invitation to this trip
-    const { data: acceptedInvitation } = await supabase
-      .from('trip_invitations')
-      .select('id')
-      .eq('trip_id', tripId)
-      .eq('invitee_email', user.email)
-      .eq('status', 'accepted')
-      .single();
-
-    if (acceptedInvitation) {
+    // Check if user is in participant_ids array
+    if (tripData.participant_ids && tripData.participant_ids.includes(user.id)) {
       setCanAccessTrip(true);
       return true;
-    }
-
-    // Check if user has pending invitation
-    const { data: pendingInvitation } = await supabase
-      .from('trip_invitations')
-      .select('id')
-      .eq('trip_id', tripId)
-      .eq('invitee_email', user.email)
-      .eq('status', 'pending')
-      .single();
-
-    if (pendingInvitation) {
-      // User has pending invitation, redirect to My Trips to handle it
-      navigate('/my-trips');
-      return false;
     }
 
     // User has no access to this trip
@@ -574,7 +594,7 @@ const TripDashboardPage: React.FC = () => {
   const completedDaresList = getCompletedDares();
 
   // Calculate total people who can access the trip (owner + accepted invitations)
-  const totalAccessibleUsers = 1 + acceptedUsers.length; // 1 for owner + accepted users
+  const totalAccessibleUsers = 1 + acceptedUsers.filter(u => u.role !== 'owner').length;
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -596,10 +616,11 @@ const TripDashboardPage: React.FC = () => {
                 <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
                   TRIP #{tripNumber}
                 </h3>
+                {/* Share Trip Button - Always visible for trip owners */}
                 {isUserOwner && (
                   <button
                     onClick={() => setShowShareModal(true)}
-                    className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1"
+                    className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 hover:scale-105 transition-transform"
                   >
                     <Share2 className="w-3 h-3" />
                     INVITE FRIENDS
@@ -625,12 +646,12 @@ const TripDashboardPage: React.FC = () => {
                     </div>
                     
                     {/* Show accepted users */}
-                    {acceptedUsers.map((acceptedUser) => (
+                    {acceptedUsers.filter(u => u.role !== 'owner').map((acceptedUser) => (
                       <div
-                        key={acceptedUser.email}
+                        key={acceptedUser.user_id}
                         className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700"
                       >
-                        {acceptedUser.user.display_name || acceptedUser.email.split('@')[0]}
+                        {acceptedUser.user.display_name || acceptedUser.user.email.split('@')[0]}
                       </div>
                     ))}
                   </div>

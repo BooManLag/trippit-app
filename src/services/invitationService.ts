@@ -130,7 +130,7 @@ export const invitationService = {
       currentUserId: user.id
     });
 
-    // Validate that we're not inviting ourselves
+    // CRITICAL: Check if we're trying to invite ourselves
     if (cleanEmail === user.email?.toLowerCase()) {
       throw new Error('You cannot invite yourself to a trip');
     }

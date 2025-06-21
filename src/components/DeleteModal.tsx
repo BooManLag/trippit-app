@@ -35,7 +35,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
           <div className="flex flex-col sm:flex-row gap-4">
             <button
               onClick={onClose}
-              className="pixel-button-secondary flex-1"
+              className="pixel-button-secondary bg-gray-600 hover:bg-gray-500 flex-1"
             >
               CANCEL
             </button>

@@ -19,6 +19,8 @@ interface TripDetails {
   max_participants?: number;
   user_id?: string;
   participant_ids?: string[];
+  owner_email?: string;
+  owner_display_name?: string;
 }
 
 interface UserDare {
@@ -60,6 +62,7 @@ const TripDashboardPage: React.FC = () => {
   const [canAccessTrip, setCanAccessTrip] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [tipsError, setTipsError] = useState<string | null>(null);
+  const [tripOwner, setTripOwner] = useState<{id: string, display_name?: string, email?: string} | null>(null);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
@@ -214,6 +217,8 @@ const TripDashboardPage: React.FC = () => {
         return;
       }
 
+      console.log('Participants data:', participants);
+
       // Transform the RPC result to match expected format
       const enrichedUsers = participants.map((participant: any) => ({
         user_id: participant.user_id,
@@ -221,12 +226,22 @@ const TripDashboardPage: React.FC = () => {
         joined_at: participant.joined_at,
         user: {
           id: participant.user_id,
-          display_name: participant.user_display_name || 'Unknown',
+          display_name: participant.user_display_name || participant.user_email?.split('@')[0] || 'Unknown',
           email: participant.user_email || 'Unknown'
         }
       }));
 
       setAcceptedUsers(enrichedUsers);
+      
+      // Find the owner in the participants list
+      const owner = enrichedUsers.find(user => user.role === 'owner');
+      if (owner) {
+        setTripOwner({
+          id: owner.user_id,
+          display_name: owner.user.display_name,
+          email: owner.user.email
+        });
+      }
     } catch (error) {
       console.error('Error fetching accepted users:', error);
       setAcceptedUsers([]);
@@ -359,6 +374,8 @@ const TripDashboardPage: React.FC = () => {
       }
 
       const trip = tripData[0];
+      console.log('Trip data from RPC:', trip);
+      
       setTrip({
         id: trip.trip_id,
         destination: trip.destination,
@@ -366,8 +383,19 @@ const TripDashboardPage: React.FC = () => {
         end_date: trip.end_date,
         max_participants: trip.max_participants,
         user_id: trip.user_id,
-        participant_ids: trip.participant_ids
+        participant_ids: trip.participant_ids,
+        owner_email: trip.owner_email,
+        owner_display_name: trip.owner_display_name
       });
+
+      // Set trip owner information
+      if (trip.user_id) {
+        setTripOwner({
+          id: trip.user_id,
+          display_name: trip.owner_display_name || trip.owner_email?.split('@')[0] || 'Unknown',
+          email: trip.owner_email
+        });
+      }
 
       const [city, country] = trip.destination.split(', ');
 
@@ -588,7 +616,7 @@ const TripDashboardPage: React.FC = () => {
   const completedDaresList = getCompletedDares();
 
   // Calculate total people who can access the trip (owner + participants, excluding owner from participants count)
-  const totalAccessibleUsers = 1 + acceptedUsers.filter(u => u.role !== 'owner').length;
+  const totalAccessibleUsers = acceptedUsers.length;
 
   return (
     <div className="min-h-screen text-white">
@@ -626,26 +654,21 @@ const TripDashboardPage: React.FC = () => {
               </p>
               
               {/* Show trip members */}
-              {(isUserOwner || acceptedUsers.length > 0) && (
+              {acceptedUsers.length > 0 && (
                 <div className="mt-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Users className="w-4 h-4 text-blue-400" />
                     <span className="pixel-text text-xs text-blue-400">ADVENTURERS ({totalAccessibleUsers})</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {/* Show trip owner */}
-                    <div className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700">
-                      {currentUser.display_name || currentUser.email.split('@')[0]}
-                      {isUserOwner && <span className="ml-1 text-yellow-400">👑</span>}
-                    </div>
-                    
-                    {/* Show accepted users (excluding owner) */}
-                    {acceptedUsers.filter(u => u.role !== 'owner').map((acceptedUser) => (
+                    {/* Show all participants including owner */}
+                    {acceptedUsers.map((participant) => (
                       <div
-                        key={acceptedUser.user_id}
+                        key={participant.user_id}
                         className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700"
                       >
-                        {acceptedUser.user.display_name || acceptedUser.user.email.split('@')[0]}
+                        {participant.user.display_name || participant.user.email?.split('@')[0] || 'Unknown'}
+                        {participant.role === 'owner' && <span className="ml-1 text-yellow-400">👑</span>}
                       </div>
                     ))}
                   </div>

@@ -93,155 +93,54 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
     );
   }
 
-  // Group badges by category if needed
-  const groupedBadges = showCategories 
-    ? badges.reduce((acc, badge) => {
-        if (!acc[badge.category]) acc[badge.category] = [];
-        acc[badge.category].push(badge);
-        return acc;
-      }, {} as Record<string, Badge[]>)
-    : { 'All Badges': badges };
-
-  // For compact mode, show only first 4 badges
-  const displayLimit = compact ? 4 : undefined;
-
-  if (showCategories) {
-    return (
-      <>
-        <div className="space-y-8">
-          {Object.entries(groupedBadges).map(([category, categoryBadges]) => (
-            <div key={category}>
-              <h3 className="pixel-text text-yellow-400 text-sm mb-4 flex items-center gap-2">
-                <span>{category}</span>
-                <div className="flex-1 h-px bg-gradient-to-r from-yellow-500/50 to-transparent"></div>
-              </h3>
-              <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-4">
-                {categoryBadges.slice(0, displayLimit).map((badge) => {
-                  const status = getBadgeStatus(badge);
-                  const isEarned = status.type === 'earned';
-                  
-                  return (
-                    <div 
-                      key={badge.id} 
-                      className="flex flex-col items-center cursor-pointer group"
-                      onClick={() => handleBadgeClick(badge)}
-                    >
-                      <div className="relative">
-                        <div 
-                          className={`
-                            w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-4
-                            ${isEarned 
-                              ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
-                              : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
-                            }
-                          `}
-                        >
-                          <span 
-                            className={`
-                              text-2xl transition-all duration-300
-                              ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
-                              group-hover:scale-110
-                            `}
-                          >
-                            {badge.emoji}
-                          </span>
-                        </div>
-
-                        {/* Glow effect for earned badges */}
-                        {isEarned && (
-                          <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Badge Modal - Now rendered via portal to document.body */}
-        {selectedBadge && (
-          <BadgeModal
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            badge={selectedBadge}
-            {...getSelectedBadgeData()}
-          />
-        )}
-      </>
-    );
-  }
-
-  // Simple horizontal display for compact mode
-  const badgesToShow = displayLimit ? badges.slice(0, displayLimit) : badges;
-  const earnedBadges = badgesToShow.filter(badge => getBadgeStatus(badge).type === 'earned');
-  const hasMore = badges.length > displayLimit;
+  // Limit the number of badges to the first 6
+  const badgesToShow = badges.slice(0, 6);  // Only display the first 6 badges
 
   return (
-    <>
-      <div className="flex items-center justify-center">
-        {/* Show only earned badges in compact mode, or first 4 if no earned badges */}
-        <div className="flex items-center gap-4">
-          {(earnedBadges.length > 0 ? earnedBadges : badgesToShow).map((badge) => {
-            const status = getBadgeStatus(badge);
-            const isEarned = status.type === 'earned';
-            
-            return (
-              <div 
-                key={badge.id} 
-                className="flex flex-col items-center cursor-pointer group"
-                onClick={() => handleBadgeClick(badge)}
-              >
-                <div className="relative">
-                  <div 
+    <div className="space-y-8">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+        {badgesToShow.map((badge) => {
+          const status = getBadgeStatus(badge);
+          const isEarned = status.type === 'earned';
+          
+          return (
+            <div 
+              key={badge.id} 
+              className="flex flex-col items-center cursor-pointer group"
+              onClick={() => handleBadgeClick(badge)}
+            >
+              <div className="relative">
+                <div 
+                  className={`
+                    w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-4
+                    ${isEarned 
+                      ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
+                      : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
+                    }
+                  `}
+                >
+                  <span 
                     className={`
-                      w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-4
-                      ${isEarned 
-                        ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
-                        : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
-                      }
+                      text-2xl transition-all duration-300
+                      ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
+                      group-hover:scale-110
                     `}
                   >
-                    <span 
-                      className={`
-                        text-2xl transition-all duration-300
-                        ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
-                        group-hover:scale-110
-                      `}
-                    >
-                      {badge.emoji}
-                    </span>
-                  </div>
-
-                  {/* Glow effect for earned badges */}
-                  {isEarned && (
-                    <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
-                  )}
+                    {badge.emoji}
+                  </span>
                 </div>
-              </div>
-            );
-          })}
 
-          {/* Show more indicator only if there are more badges */}
-          {hasMore && compact && (
-            <div className="flex items-center text-blue-400 hover:text-blue-300 transition-colors cursor-pointer">
-              <span className="pixel-text text-xs mr-1">VIEW ALL</span>
-              <ChevronRight className="w-4 h-4" />
+                {/* Glow effect for earned badges */}
+                {isEarned && (
+                  <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Empty state for no earned badges in compact mode */}
-      {compact && earnedBadges.length === 0 && (
-        <div className="text-center py-6">
-          <div className="text-3xl mb-2">🎯</div>
-          <p className="pixel-text text-gray-500 text-xs">COMPLETE ACTIVITIES TO EARN BADGES</p>
-        </div>
-      )}
-
-      {/* Badge Modal - Now rendered via portal to document.body */}
+      {/* Badge Modal */}
       {selectedBadge && (
         <BadgeModal
           isOpen={showModal}
@@ -250,7 +149,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
           {...getSelectedBadgeData()}
         />
       )}
-    </>
+    </div>
   );
 };
 

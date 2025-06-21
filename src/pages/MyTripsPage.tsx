@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw, Mail } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw, Mail, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import BackButton from '../components/BackButton';
 import { AuthStatus } from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 import AuthModal from '../components/AuthModal';
@@ -247,7 +246,13 @@ const MyTripsPage: React.FC = () => {
         {/* Header */}
         <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 lg:mb-12 gap-4 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="flex items-center gap-4 min-w-0 flex-1">
-            <BackButton to="/" />
+            {/* Red Back Button */}
+            <button 
+              onClick={() => navigate('/')} 
+              className="text-red-400 hover:text-red-300 transition-colors hover:scale-110 flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
+            </button>
             <div>
               <h2 className="pixel-text mobile-heading text-blue-400 glow-text">MY ADVENTURES</h2>
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">Your personal travel journey</p>

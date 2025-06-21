@@ -223,20 +223,9 @@ const TripDashboardPage: React.FC = () => {
             <Gamepad2 className="w-4 sm:w-5 h-4 sm:h-5" />
             PLAY GAME
           </button>
-        </div>
-
-        {/* Diary Button */}
-        <div className="pixel-card bg-gray-900/90 border-2 border-purple-500/20 mb-6 sm:mb-8">
-          <div className="flex items-center gap-3 mb-4 sm:mb-6">
-            <BookOpen className="h-5 sm:h-6 w-5 sm:w-6 text-purple-400" />
-            <h3 className="pixel-text text-sm sm:text-lg">TRAVEL DIARY</h3>
-          </div>
-          <p className="outfit-text text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">
-            Record your daily adventures and create lasting memories of your trip!
-          </p>
           <button
             onClick={() => navigate(`/diary?tripId=${tripId}`)}
-            className="pixel-button-secondary w-full flex items-center justify-center gap-2"
+            className="pixel-button-secondary w-full mt-3 flex items-center justify-center gap-2"
           >
             <BookOpen className="w-4 sm:w-5 h-4 sm:h-5" />
             OPEN DIARY

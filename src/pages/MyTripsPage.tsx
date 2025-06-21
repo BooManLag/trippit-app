@@ -100,7 +100,8 @@ const MyTripsPage: React.FC = () => {
         id: inv.id,
         invitee_email: inv.invitee_email,
         current_user_email: user.email,
-        trip_destination: inv.trip.destination
+        trip_destination: inv.trip.destination,
+        matches_current_user: inv.invitee_email === user.email
       })));
 
       setPendingInvitations(invitations);
@@ -282,22 +283,6 @@ const MyTripsPage: React.FC = () => {
                 <RefreshCw className="w-3 h-3" />
                 RETRY
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Debug Information - Only show in development */}
-        {process.env.NODE_ENV === 'development' && user && (
-          <div className="pixel-card bg-yellow-500/10 border-2 border-yellow-500/30 mb-6">
-            <h4 className="pixel-text text-yellow-400 text-sm mb-2">DEBUG INFO</h4>
-            <div className="outfit-text text-yellow-300 text-xs space-y-1">
-              <p>Current User Email: {user.email}</p>
-              <p>Pending Invitations Found: {pendingInvitations.length}</p>
-              {pendingInvitations.map((inv, idx) => (
-                <p key={idx}>
-                  Invitation {idx + 1}: {inv.invitee_email} (matches: {inv.invitee_email === user.email ? 'YES' : 'NO'})
-                </p>
-              ))}
             </div>
           </div>
         )}

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import BackButton from '../components/BackButton';
 import { AuthStatus } from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
 import ShareTripModal from '../components/ShareTripModal';
@@ -671,7 +670,13 @@ const TripDashboardPage: React.FC = () => {
         
         <div className="flex items-center justify-between mb-6 sm:mb-8 relative z-[100]">
           <div className="flex items-center gap-4">
-            <BackButton />
+            {/* Fixed Back Button - directly navigate to my-trips */}
+            <button 
+              onClick={() => navigate('/my-trips')} 
+              className="text-blue-400 hover:text-blue-300 transition-colors hover:scale-110"
+            >
+              <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
+            </button>
             <h1 className="pixel-text text-xl sm:text-2xl lg:text-3xl">TRIP DASHBOARD</h1>
           </div>
           <AuthStatus />
@@ -741,13 +746,14 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Badge Section - Replace the "BADGES COMING SOON" placeholder */}
+        {/* Badge Section - Fixed navigation to badges page */}
         <div className="pixel-card bg-gray-900/90 border-2 border-yellow-500/20 mb-6 sm:mb-8">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <div className="flex items-center gap-3">
               <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
               <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
             </div>
+            {/* Fixed VIEW ALL button to navigate to badges page */}
             <button 
               onClick={() => navigate(`/badges?tripId=${tripId}`)}
               className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"

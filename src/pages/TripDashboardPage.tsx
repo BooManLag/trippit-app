@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
 import { AuthStatus } from '../components/AuthStatus';
@@ -58,6 +58,7 @@ const TripDashboardPage: React.FC = () => {
   const [tips, setTips] = useState<RedditTip[]>([]);
   const [userDares, setUserDares] = useState<UserDare[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [diaryEntries, setDiaryEntries] = useState<any[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isUserOwner, setIsUserOwner] = useState(false);
@@ -204,6 +205,28 @@ const TripDashboardPage: React.FC = () => {
       setUserDares([]);
     } finally {
       setLoadingDares(false);
+    }
+  };
+
+  const fetchDiaryEntries = async (userId: string, tripId: string) => {
+    try {
+      const { data: entries, error } = await supabase
+        .from('diary_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('trip_id', tripId)
+        .order('day_number', { ascending: false })
+        .limit(3);
+
+      if (error) {
+        console.error('Error fetching diary entries:', error);
+        return;
+      }
+
+      setDiaryEntries(entries || []);
+    } catch (error) {
+      console.error('Error fetching diary entries:', error);
+      setDiaryEntries([]);
     }
   };
 
@@ -445,6 +468,12 @@ const TripDashboardPage: React.FC = () => {
             await fetchChecklistItems(user.id, tripId!);
           } catch (checklistError) {
             console.warn('Failed to fetch checklist items:', checklistError);
+          }
+
+          try {
+            await fetchDiaryEntries(user.id, tripId!);
+          } catch (diaryError) {
+            console.warn('Failed to fetch diary entries:', diaryError);
           }
 
           // Check for badge achievements after loading data
@@ -792,6 +821,78 @@ const TripDashboardPage: React.FC = () => {
               PLAY GAME
             </button>
           </div>
+        </div>
+
+        {/* Travel Diary Card */}
+        <div className="pixel-card bg-gray-900/90 mb-6 sm:mb-8 border-2 border-purple-500/20">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-5 sm:h-6 w-5 sm:w-6 text-purple-400" />
+              <h3 className="pixel-text text-sm sm:text-lg">TRAVEL DIARY</h3>
+              {diaryEntries.length > 0 && (
+                <span className="pixel-text text-xs sm:text-sm text-purple-400">
+                  {diaryEntries.length} entries
+                </span>
+              )}
+            </div>
+            <button 
+              onClick={() => navigate(`/diary?tripId=${tripId}`)}
+              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+            >
+              {diaryEntries.length > 0 ? 'VIEW ALL' : 'START WRITING'}
+            </button>
+          </div>
+
+          {diaryEntries.length > 0 ? (
+            <div className="space-y-3">
+              {diaryEntries.slice(0, 2).map((entry) => (
+                <div key={entry.id} className="pixel-card bg-gray-800/50 border border-purple-500/10">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="pixel-text text-purple-400 text-xs">
+                        {entry.day_number}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="outfit-text font-semibold text-white text-sm break-words">
+                          {entry.title}
+                        </h4>
+                        {entry.mood && <span className="text-sm">{entry.mood}</span>}
+                      </div>
+                      <p className="outfit-text text-gray-400 text-xs leading-relaxed break-words">
+                        {entry.content.length > 100 ? `${entry.content.substring(0, 100)}...` : entry.content}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {diaryEntries.length > 2 && (
+                <div className="text-center">
+                  <button
+                    onClick={() => navigate(`/diary?tripId=${tripId}`)}
+                    className="pixel-text text-xs text-purple-400 hover:text-purple-300"
+                  >
+                    +{diaryEntries.length - 2} more entries
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Heart className="w-12 h-12 text-purple-400 mx-auto mb-4 opacity-50" />
+              <h4 className="pixel-text text-purple-400 mb-2 text-sm">START YOUR TRAVEL DIARY</h4>
+              <p className="outfit-text text-gray-500 text-sm mb-4">
+                Document your daily adventures and create lasting memories
+              </p>
+              <button
+                onClick={() => navigate(`/diary?tripId=${tripId}`)}
+                className="pixel-button-primary bg-purple-600 hover:bg-purple-500"
+              >
+                WRITE FIRST ENTRY
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Dare Bucket List Section */}

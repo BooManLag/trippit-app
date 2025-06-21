@@ -17,15 +17,12 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
   onClose,
   badge,
   userBadge,
-  progress = 0,
-  maxProgress = 1
 }) => {
   if (!isOpen) return null;
 
   const isEarned = !!userBadge;
-  const progressPercentage = maxProgress > 0 ? (progress / maxProgress) * 100 : 0;
 
-  const modalContent = (
+  return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4">
       <div className="pixel-card max-w-md w-full relative animate-bounce-in bg-gray-900 border-2 border-yellow-500/30">
         <button
@@ -60,36 +57,6 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
             {/* Glow effect for earned badges */}
             {isEarned && (
               <div className="absolute inset-0 w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm mx-auto" />
-            )}
-
-            {/* Progress Ring for Unearned Badges */}
-            {!isEarned && progress > 0 && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg 
-                  className="w-24 h-24 sm:w-32 sm:h-32 transform -rotate-90"
-                  viewBox="0 0 100 100"
-                >
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="rgba(59, 130, 246, 0.2)"
-                    strokeWidth="6"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="rgb(59, 130, 246)"
-                    strokeWidth="6"
-                    strokeDasharray={`${progressPercentage * 2.83} 283`}
-                    strokeLinecap="round"
-                    className="transition-all duration-500"
-                  />
-                </svg>
-              </div>
             )}
           </div>
 
@@ -126,29 +93,6 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
           </p>
         </div>
 
-        {/* Progress Information */}
-        {!isEarned && (
-          <div className="pixel-card bg-blue-500/10 border-blue-500/20 mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="pixel-text text-blue-400 text-sm">PROGRESS</span>
-              <span className="pixel-text text-blue-400 text-sm">
-                {progress}/{maxProgress}
-              </span>
-            </div>
-            <div className="w-full bg-gray-700 h-3 rounded-full overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-            <div className="mt-2 text-center">
-              <span className="outfit-text text-xs text-gray-400">
-                {progressPercentage.toFixed(0)}% Complete
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Earned Date */}
         {isEarned && userBadge && (
           <div className="pixel-card bg-green-500/10 border-green-500/20 mb-6">
@@ -161,23 +105,6 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
           </div>
         )}
 
-        {/* Requirements */}
-        <div className="pixel-card bg-gray-900/30 border border-gray-700 mb-6">
-          <h4 className="pixel-text text-purple-400 text-sm mb-2">REQUIREMENTS</h4>
-          <div className="outfit-text text-gray-400 text-sm">
-            {badge.requirement_type === 'count' && (
-              <span>Complete {badge.requirement_value} {badge.requirement_value === 1 ? 'action' : 'actions'}</span>
-            )}
-            {badge.requirement_type === 'boolean' && (
-              <span>Complete the required action</span>
-            )}
-            {badge.requirement_type === 'combo' && (
-              <span>Complete multiple different activities</span>
-            )}
-            {badge.is_per_trip ? ' on this trip' : ' across all trips'}
-          </div>
-        </div>
-
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -188,10 +115,6 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
       </div>
     </div>
   );
-
-  // Use createPortal to render the modal at the document body level
-  // This ensures it's not constrained by any parent containers
-  return createPortal(modalContent, document.body);
 };
 
 export default BadgeModal;

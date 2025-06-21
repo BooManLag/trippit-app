@@ -109,7 +109,7 @@ CREATE TRIGGER trigger_prevent_self_invitation
 
 -- SECURITY DEFINER function to accept invitations
 CREATE OR REPLACE FUNCTION accept_invitation(p_token text)
-RETURNS TABLE(success boolean, message text, trip_id uuid)
+RETURNS TABLE(success boolean, message text, joined_trip_id uuid)
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$

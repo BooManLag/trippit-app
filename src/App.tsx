@@ -14,6 +14,10 @@ import ChecklistPage from './pages/ChecklistPage';
 import BucketListPage from './pages/BucketListPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 
+// Components
+import BoltBadge from './components/BoltBadge';
+import Sparkles from './components/Sparkles';
+
 // Auth redirect component
 const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const navigate = useNavigate();
@@ -53,6 +57,8 @@ function App() {
     <div className="min-h-screen text-white">
       <Router>
         <AuthRedirect>
+          <BoltBadge />
+          <Sparkles />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create-trip" element={<CreateTripPage />} />

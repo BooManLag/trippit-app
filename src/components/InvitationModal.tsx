@@ -126,7 +126,7 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
             <button
               onClick={() => handleResponse(false)}
               disabled={loading}
-              className="pixel-button-secondary flex items-center justify-center gap-2 flex-1 disabled:opacity-50"
+              className="pixel-button-secondary flex items-center justify-center gap-2 flex-1 disabled:opacity-50 bg-gray-600 hover:bg-gray-500"
             >
               <XCircle className="w-4 sm:w-5 h-4 sm:h-5" />
               DECLINE
@@ -135,7 +135,7 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
             <button
               onClick={() => handleResponse(true)}
               disabled={loading}
-              className="pixel-button-primary flex items-center justify-center gap-2 flex-1 disabled:opacity-50 hover-glow"
+              className="pixel-button-primary flex items-center justify-center gap-2 flex-1 disabled:opacity-50 hover-glow bg-blue-600 hover:bg-blue-500"
             >
               <CheckCircle2 className="w-4 sm:w-5 h-4 sm:h-5" />
               ACCEPT

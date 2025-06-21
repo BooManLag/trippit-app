@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trophy, Star, Award, Target, Crown } from 'lucide-react';
+import { ArrowLeft, Trophy, Star, Award, Target, Crown, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AuthStatus } from '../components/AuthStatus';
-import BadgeGrid from '../components/BadgeGrid';
-import { badgeService, UserBadge } from '../services/badgeService';
+import { badgeService, Badge, UserBadge, BadgeProgress } from '../services/badgeService';
+import BadgeModal from '../components/BadgeModal';
 
 const BadgesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,9 +13,13 @@ const BadgesPage: React.FC = () => {
   const { user } = useAuth();
   
   const [trip, setTrip] = useState<any>(null);
-  const [recentBadges, setRecentBadges] = useState<UserBadge[]>([]);
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+  const [badgeProgress, setBadgeProgress] = useState<BadgeProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -44,9 +48,16 @@ const BadgesPage: React.FC = () => {
           }
         }
 
-        // Fetch recent badges
-        const userBadges = await badgeService.getUserBadges(user.id, tripId || undefined);
-        setRecentBadges(userBadges.slice(0, 5));
+        // Fetch all data
+        const [allBadges, earnedBadges, progress] = await Promise.all([
+          badgeService.getAllBadges(),
+          badgeService.getUserBadges(user.id, tripId || undefined),
+          badgeService.getBadgeProgress(user.id, tripId || undefined)
+        ]);
+
+        setBadges(allBadges);
+        setUserBadges(earnedBadges);
+        setBadgeProgress(progress);
 
       } catch (error) {
         console.error('Error fetching badge data:', error);
@@ -57,6 +68,45 @@ const BadgesPage: React.FC = () => {
 
     fetchData();
   }, [user, tripId, navigate]);
+
+  const getBadgeStatus = (badge: Badge) => {
+    const earned = userBadges.find(ub => ub.badge_id === badge.id);
+    if (earned) return { type: 'earned' as const, data: earned };
+
+    const progress = badgeProgress.find(bp => bp.badge_key === badge.badge_key);
+    if (progress) return { type: 'progress' as const, data: progress };
+
+    return { type: 'locked' as const, data: null };
+  };
+
+  const handleBadgeClick = (badge: Badge) => {
+    setSelectedBadge(badge);
+    setShowModal(true);
+  };
+
+  const getSelectedBadgeData = () => {
+    if (!selectedBadge) return {};
+    
+    const status = getBadgeStatus(selectedBadge);
+    return {
+      userBadge: status.type === 'earned' ? status.data : undefined,
+      progress: status.type === 'progress' ? status.data.current_count : 0,
+      maxProgress: status.type === 'progress' ? status.data.target_count : selectedBadge.requirement_value
+    };
+  };
+
+  // Group badges by category
+  const badgesByCategory = badges.reduce((acc, badge) => {
+    if (!acc[badge.category]) {
+      acc[badge.category] = [];
+    }
+    acc[badge.category].push(badge);
+    return acc;
+  }, {} as Record<string, Badge[]>);
+
+  const categories = Object.keys(badgesByCategory);
+  const earnedCount = userBadges.length;
+  const totalCount = badges.length;
 
   if (!user) {
     return (
@@ -117,68 +167,193 @@ const BadgesPage: React.FC = () => {
           <AuthStatus className="flex-shrink-0" />
         </div>
 
-        {/* Recent Achievements Highlight */}
-        {recentBadges.length > 0 && (
-          <div className={`pixel-card bg-gradient-to-br from-yellow-900/20 to-orange-900/20 mb-6 sm:mb-8 border-2 border-yellow-500/30 animate-slide-in-up delay-200`}>
-            <div className="flex items-center gap-3 mb-4">
+        {/* Progress Summary */}
+        <div className={`pixel-card bg-gradient-to-br from-yellow-900/20 to-orange-900/20 mb-6 sm:mb-8 border-2 border-yellow-500/30 animate-slide-in-up delay-200`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
               <Crown className="w-6 h-6 text-yellow-400 animate-pulse" />
               <h3 className="pixel-text text-yellow-400 text-sm sm:text-base lg:text-lg glow-text">
-                LATEST ACHIEVEMENTS
+                ACHIEVEMENT PROGRESS
               </h3>
-              <div className="flex-1 h-px bg-gradient-to-r from-yellow-500/50 to-transparent"></div>
-              <span className="pixel-text text-xs text-yellow-400">
-                {recentBadges.length} recent
-              </span>
             </div>
-            
-            <div className="grid grid-cols-5 sm:grid-cols-8 lg:grid-cols-10 gap-3">
-              {recentBadges.map((userBadge, index) => (
-                <div 
-                  key={userBadge.id}
-                  className={`animate-slide-in-up`}
-                  style={{ animationDelay: `${index * 100 + 300}ms` }}
-                >
-                  <div className="relative group">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 flex items-center justify-center border-4 border-yellow-300 group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-lg sm:text-2xl group-hover:scale-110 transition-transform duration-300">
-                        {userBadge.badge.emoji}
-                      </span>
-                    </div>
-                    
-                    {/* Glow effect */}
-                    <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
-                    
-                    {/* Badge name */}
-                    <div className="text-center mt-2">
-                      <div className="pixel-text text-xs text-yellow-400 break-words leading-tight">
-                        {userBadge.badge.name}
-                      </div>
-                    </div>
-                  </div>
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="pixel-text text-yellow-400 text-lg sm:text-xl">
+                  {earnedCount}
                 </div>
-              ))}
+                <div className="pixel-text text-xs text-gray-400">EARNED</div>
+              </div>
+              <div className="text-center">
+                <div className="pixel-text text-orange-400 text-lg sm:text-xl">
+                  {totalCount}
+                </div>
+                <div className="pixel-text text-xs text-gray-400">TOTAL</div>
+              </div>
             </div>
+          </div>
+          
+          <div className="w-full bg-gray-700 h-4 rounded-full overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 h-full transition-all duration-500 flex items-center justify-center"
+              style={{ width: `${totalCount > 0 ? (earnedCount / totalCount) * 100 : 0}%` }}
+            >
+              {earnedCount > 0 && (
+                <span className="pixel-text text-xs text-black font-bold">
+                  {Math.round((earnedCount / totalCount) * 100)}%
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12 sm:py-16">
+            <div className="animate-bounce-in">
+              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-yellow-500 animate-spin mr-3" />
+              <span className="pixel-text text-yellow-400 text-sm sm:text-base">LOADING ACHIEVEMENTS...</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8 sm:space-y-12">
+            {categories.map((category, categoryIndex) => (
+              <div 
+                key={category}
+                className={`animate-slide-in-up`}
+                style={{ animationDelay: `${categoryIndex * 100 + 300}ms` }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <Target className="w-6 h-6 text-blue-400" />
+                  <h3 className="pixel-text text-blue-400 text-sm sm:text-base lg:text-lg glow-text">
+                    {category.toUpperCase()}
+                  </h3>
+                  <div className="flex-1 h-px bg-gradient-to-r from-blue-500/50 to-transparent"></div>
+                  <span className="pixel-text text-xs text-blue-400">
+                    {userBadges.filter(ub => ub.badge.category === category).length}/{badgesByCategory[category].length}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+                  {badgesByCategory[category].map((badge, badgeIndex) => {
+                    const status = getBadgeStatus(badge);
+                    const isEarned = status.type === 'earned';
+                    const hasProgress = status.type === 'progress';
+                    
+                    return (
+                      <div 
+                        key={badge.id}
+                        className={`flex flex-col items-center cursor-pointer group animate-slide-in-up`}
+                        style={{ animationDelay: `${categoryIndex * 100 + badgeIndex * 50 + 400}ms` }}
+                        onClick={() => handleBadgeClick(badge)}
+                      >
+                        <div className="relative">
+                          <div 
+                            className={`
+                              w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 border-4
+                              ${isEarned 
+                                ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
+                                : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
+                              }
+                            `}
+                          >
+                            <span 
+                              className={`
+                                text-2xl sm:text-3xl transition-all duration-300
+                                ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
+                                group-hover:scale-110
+                              `}
+                            >
+                              {badge.emoji}
+                            </span>
+                          </div>
+
+                          {/* Progress Ring for badges with progress */}
+                          {!isEarned && hasProgress && status.data && (
+                            <div className="absolute inset-0">
+                              <svg 
+                                className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90"
+                                viewBox="0 0 100 100"
+                              >
+                                <circle
+                                  cx="50"
+                                  cy="50"
+                                  r="45"
+                                  fill="none"
+                                  stroke="rgba(59, 130, 246, 0.2)"
+                                  strokeWidth="8"
+                                />
+                                <circle
+                                  cx="50"
+                                  cy="50"
+                                  r="45"
+                                  fill="none"
+                                  stroke="rgb(59, 130, 246)"
+                                  strokeWidth="8"
+                                  strokeDasharray={`${(status.data.current_count / status.data.target_count) * 283} 283`}
+                                  strokeLinecap="round"
+                                  className="transition-all duration-500"
+                                />
+                              </svg>
+                            </div>
+                          )}
+
+                          {/* Glow effect for earned badges */}
+                          {isEarned && (
+                            <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
+                          )}
+                        </div>
+
+                        {/* Badge Info */}
+                        <div className="mt-3 text-center max-w-24">
+                          <h4 className={`
+                            pixel-text text-xs sm:text-sm
+                            ${isEarned ? 'text-yellow-400' : 'text-gray-500'}
+                            break-words leading-tight
+                          `}>
+                            {badge.name}
+                          </h4>
+                          
+                          {hasProgress && status.data && !isEarned && (
+                            <div className="outfit-text text-xs text-gray-400 mt-1">
+                              {status.data.current_count}/{status.data.target_count}
+                            </div>
+                          )}
+
+                          {isEarned && (
+                            <div className="outfit-text text-xs text-yellow-300 mt-1">
+                              <Star className="w-3 h-3 inline mr-1" />
+                              EARNED
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Main Badge Grid */}
-        <div className={`animate-slide-in-up delay-400`}>
-          {loading ? (
-            <div className="flex items-center justify-center py-12 sm:py-16">
-              <div className="animate-bounce-in">
-                <Trophy className="w-8 sm:w-12 h-8 sm:h-12 text-yellow-500 animate-spin mr-3" />
-                <span className="pixel-text text-yellow-400 text-sm sm:text-base">LOADING ACHIEVEMENTS...</span>
-              </div>
-            </div>
-          ) : (
-            <BadgeGrid 
-              userId={user.id} 
-              tripId={tripId || undefined}
-              showCategories={true}
-              compact={false}
-            />
-          )}
-        </div>
+        {/* Empty State */}
+        {!loading && badges.length === 0 && (
+          <div className="text-center py-12 animate-bounce-in delay-500">
+            <div className="text-6xl mb-4">🏆</div>
+            <h3 className="pixel-text text-xl text-yellow-400 mb-4">NO BADGES YET</h3>
+            <p className="outfit-text text-gray-500 mb-6">
+              Complete activities to earn your first badge!
+            </p>
+          </div>
+        )}
+
+        {/* Badge Modal */}
+        {selectedBadge && (
+          <BadgeModal
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            badge={selectedBadge}
+            {...getSelectedBadgeData()}
+          />
+        )}
 
         {/* Motivational Footer */}
         <div className={`text-center mt-8 sm:mt-12 animate-slide-in-up delay-600`}>
@@ -189,8 +364,8 @@ const BadgesPage: React.FC = () => {
               <Star className="w-5 h-5 text-yellow-400 animate-pulse" />
             </div>
             <p className="outfit-text text-gray-500 text-sm">
-              {recentBadges.length > 0 
-                ? `🎉 You've earned ${recentBadges.length} badge${recentBadges.length !== 1 ? 's' : ''} recently! Keep exploring to unlock more achievements! 🎉`
+              {earnedCount > 0 
+                ? `🎉 You've earned ${earnedCount} badge${earnedCount !== 1 ? 's' : ''}! Keep exploring to unlock more achievements! 🎉`
                 : '✨ Start your adventure to earn your first badge! Complete dares, checklists, and invite friends to unlock achievements! ✨'
               }
             </p>

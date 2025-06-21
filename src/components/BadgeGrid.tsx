@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, UserBadge, BadgeProgress, badgeService } from '../services/badgeService';
-import { BadgeItem } from './BadgeItem';
+import BadgeItem from './BadgeItem';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from './Button';
 import { ChevronDown, ChevronUp } from 'lucide-react';

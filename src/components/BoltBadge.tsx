@@ -15,7 +15,7 @@ const BoltBadge: React.FC<BoltBadgeProps> = ({ className = '' }) => {
       <img 
         src="/white_circle_360x360.png" 
         alt="Powered by Bolt" 
-        className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24"
+        className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 animate-spin-slow"
       />
     </a>
   );

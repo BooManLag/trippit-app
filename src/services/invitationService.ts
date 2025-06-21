@@ -84,6 +84,34 @@ export const invitationService = {
     }
   },
 
+  // Validate invitation before sending
+  async validateInvitation(tripId: string, inviteeEmail: string): Promise<{ valid: boolean; message: string }> {
+    try {
+      const { data, error } = await supabase.rpc('validate_invitation_request', {
+        p_trip_id: tripId,
+        p_invitee_email: inviteeEmail.toLowerCase().trim()
+      });
+
+      if (error) {
+        console.error('❌ Error validating invitation:', error);
+        return { valid: false, message: error.message };
+      }
+
+      const result = data?.[0];
+      if (!result) {
+        return { valid: false, message: 'Validation failed' };
+      }
+
+      return {
+        valid: result.is_valid,
+        message: result.error_message || 'Validation successful'
+      };
+    } catch (error: any) {
+      console.error('💥 Error in validateInvitation:', error);
+      return { valid: false, message: error.message || 'Validation failed' };
+    }
+  },
+
   // Send invitation with token
   async sendInvitation(tripId: string, inviteeEmail: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
@@ -105,6 +133,12 @@ export const invitationService = {
     // Validate that we're not inviting ourselves
     if (cleanEmail === user.email?.toLowerCase()) {
       throw new Error('You cannot invite yourself to a trip');
+    }
+
+    // Use the database validation function first
+    const validation = await this.validateInvitation(tripId, cleanEmail);
+    if (!validation.valid) {
+      throw new Error(validation.message);
     }
 
     // Check if user exists in our system
@@ -139,6 +173,9 @@ export const invitationService = {
       console.error('❌ Database error creating invitation:', error);
       if (error.code === '23505') {
         throw new Error('This email has already been invited to this trip');
+      }
+      if (error.message.includes('Cannot invite yourself')) {
+        throw new Error('You cannot invite yourself to a trip');
       }
       throw new Error(`Failed to send invitation: ${error.message}`);
     }

@@ -595,7 +595,7 @@ const DiaryPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* Title */}
                 <div>
                   <label className="block pixel-text text-xs text-purple-400 mb-2">
@@ -610,49 +610,51 @@ const DiaryPage: React.FC = () => {
                   />
                 </div>
 
-                {/* Mood and Weather */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Mood and Weather - FIXED ALIGNMENT */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Mood Section */}
                   <div>
-                    <label className="block pixel-text text-xs text-purple-400 mb-2">
+                    <label className="block pixel-text text-xs text-purple-400 mb-3">
                       😊 MOOD
                     </label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {moods.map((mood) => (
                         <button
                           key={mood.label}
                           type="button"
                           onClick={() => setEditingEntry({...editingEntry, mood: mood.emoji})}
-                          className={`p-2 text-center transition-all ${
+                          className={`p-3 text-center transition-all duration-200 border-2 rounded-lg ${
                             editingEntry.mood === mood.emoji
-                              ? 'bg-purple-500/30 border-2 border-purple-500'
-                              : 'bg-gray-800 border-2 border-gray-600 hover:border-purple-500/50'
+                              ? 'bg-purple-500/30 border-purple-500 scale-105' 
+                              : 'bg-gray-800 border-gray-600 hover:border-purple-500/50 hover:bg-gray-700'
                           }`}
                         >
-                          <div className="text-lg">{mood.emoji}</div>
-                          <div className="text-xs text-gray-400">{mood.label}</div>
+                          <div className="text-xl mb-1">{mood.emoji}</div>
+                          <div className="text-xs text-gray-400 leading-tight">{mood.label}</div>
                         </button>
                       ))}
                     </div>
                   </div>
 
+                  {/* Weather Section */}
                   <div>
-                    <label className="block pixel-text text-xs text-purple-400 mb-2">
+                    <label className="block pixel-text text-xs text-purple-400 mb-3">
                       🌤️ WEATHER
                     </label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {weatherOptions.map((weather) => (
                         <button
                           key={weather.label}
                           type="button"
                           onClick={() => setEditingEntry({...editingEntry, weather: weather.emoji})}
-                          className={`p-2 text-center transition-all ${
+                          className={`p-3 text-center transition-all duration-200 border-2 rounded-lg ${
                             editingEntry.weather === weather.emoji
-                              ? 'bg-purple-500/30 border-2 border-purple-500'
-                              : 'bg-gray-800 border-2 border-gray-600 hover:border-purple-500/50'
+                              ? 'bg-purple-500/30 border-purple-500 scale-105' 
+                              : 'bg-gray-800 border-gray-600 hover:border-purple-500/50 hover:bg-gray-700'
                           }`}
                         >
-                          <div className="text-lg">{weather.emoji}</div>
-                          <div className="text-xs text-gray-400">{weather.label}</div>
+                          <div className="text-xl mb-1">{weather.emoji}</div>
+                          <div className="text-xs text-gray-400 leading-tight">{weather.label}</div>
                         </button>
                       ))}
                     </div>
@@ -688,7 +690,7 @@ const DiaryPage: React.FC = () => {
                 </div>
 
                 {/* Privacy Toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700 rounded">
+                <div className="flex items-center justify-between p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
                   <div className="flex items-center gap-2">
                     {editingEntry.is_published ? (
                       <Unlock className="w-4 h-4 text-green-400" />

@@ -8,8 +8,6 @@ interface BadgeModalProps {
   onClose: () => void;
   badge: Badge;
   userBadge?: UserBadge;
-  progress?: number;
-  maxProgress?: number;
 }
 
 const BadgeModal: React.FC<BadgeModalProps> = ({
@@ -22,7 +20,7 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
 
   const isEarned = !!userBadge;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4">
       <div className="pixel-card max-w-md w-full relative animate-bounce-in bg-gray-900 border-2 border-yellow-500/30">
         <button
@@ -115,6 +113,10 @@ const BadgeModal: React.FC<BadgeModalProps> = ({
       </div>
     </div>
   );
+
+  // Use createPortal to render the modal at the document body level
+  // This ensures it's not constrained by any parent containers
+  return createPortal(modalContent, document.body);
 };
 
 export default BadgeModal;

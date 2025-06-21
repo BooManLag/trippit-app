@@ -109,17 +109,23 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       return;
     }
 
-    // Check if email is already a participant or invited (any status)
+    // Clean the email for comparison
     const emailLower = email.toLowerCase().trim();
-    const isAlreadyParticipant = participants.some(p => p.user.email.toLowerCase() === emailLower);
-    const existingInvitation = sentInvitations.find(inv => 
-      inv.invitee_email.toLowerCase() === emailLower
+
+    // Check if email is already a participant
+    const isAlreadyParticipant = participants.some(p => 
+      p.user.email.toLowerCase() === emailLower
     );
 
     if (isAlreadyParticipant) {
       setError('This person is already a participant in the trip');
       return;
     }
+
+    // Check if email has been invited before (any status)
+    const existingInvitation = sentInvitations.find(inv => 
+      inv.invitee_email.toLowerCase() === emailLower
+    );
 
     if (existingInvitation) {
       if (existingInvitation.status === 'pending') {
@@ -143,6 +149,13 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
       setLoading(true);
       setError(null);
       setSuccess(null);
+
+      // Use the validation function first
+      const validation = await invitationService.validateInvitation(tripId, emailLower);
+      if (!validation.valid) {
+        setError(validation.message);
+        return;
+      }
 
       await invitationService.sendInvitation(tripId, emailLower);
       

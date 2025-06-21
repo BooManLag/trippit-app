@@ -124,3 +124,5 @@ export function BadgeGrid({ tripId, category }: BadgeGridProps) {
     </div>
   );
 }
+
+export default BadgeGrid

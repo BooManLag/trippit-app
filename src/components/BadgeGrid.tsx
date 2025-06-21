@@ -168,7 +168,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
         </button>
       </div>
 
-      {/* Badge Grid - Current Tab */}
+      {/* Badge Grid - Current Tab - Only Circles */}
       <div className="grid grid-cols-5 gap-4 justify-items-center">
         {currentBadges.map((badge, index) => {
           const status = getBadgeStatus(badge);
@@ -181,86 +181,68 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
               className="cursor-pointer group"
               onClick={() => handleBadgeClick(badge)}
             >
-              <div className="flex flex-col items-center">
-                <div className="relative mb-2">
-                  <div 
+              <div className="relative">
+                <div 
+                  className={`
+                    w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 border-4
+                    ${isEarned 
+                      ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
+                      : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
+                    }
+                  `}
+                >
+                  <span 
                     className={`
-                      w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 border-4
-                      ${isEarned 
-                        ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
-                        : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
-                      }
+                      text-xl sm:text-2xl transition-all duration-300
+                      ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
+                      group-hover:scale-110
                     `}
                   >
-                    <span 
-                      className={`
-                        text-xl sm:text-2xl transition-all duration-300
-                        ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
-                        group-hover:scale-110
-                      `}
+                    {badge.emoji}
+                  </span>
+                </div>
+
+                {/* Progress Ring for badges with progress */}
+                {!isEarned && hasProgress && status.data && (
+                  <div className="absolute inset-0">
+                    <svg 
+                      className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90"
+                      viewBox="0 0 100 100"
                     >
-                      {badge.emoji}
-                    </span>
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="none"
+                        stroke="rgba(59, 130, 246, 0.2)"
+                        strokeWidth="8"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="none"
+                        stroke="rgb(59, 130, 246)"
+                        strokeWidth="8"
+                        strokeDasharray={`${(status.data.current_count / status.data.target_count) * 283} 283`}
+                        strokeLinecap="round"
+                        className="transition-all duration-500"
+                      />
+                    </svg>
                   </div>
+                )}
 
-                  {/* Progress Ring for badges with progress */}
-                  {!isEarned && hasProgress && status.data && (
-                    <div className="absolute inset-0">
-                      <svg 
-                        className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90"
-                        viewBox="0 0 100 100"
-                      >
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="rgba(59, 130, 246, 0.2)"
-                          strokeWidth="8"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="rgb(59, 130, 246)"
-                          strokeWidth="8"
-                          strokeDasharray={`${(status.data.current_count / status.data.target_count) * 283} 283`}
-                          strokeLinecap="round"
-                          className="transition-all duration-500"
-                        />
-                      </svg>
-                    </div>
-                  )}
+                {/* Glow effect for earned badges */}
+                {isEarned && (
+                  <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
+                )}
 
-                  {/* Glow effect for earned badges */}
-                  {isEarned && (
-                    <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
-                  )}
-                </div>
-
-                {/* Badge Info */}
-                <div className="text-center max-w-20">
-                  <h4 className={`
-                    pixel-text text-xs leading-tight text-center
-                    ${isEarned ? 'text-yellow-400' : 'text-gray-500'}
-                    break-words
-                  `}>
-                    {badge.name}
-                  </h4>
-                  
-                  {hasProgress && status.data && !isEarned && (
-                    <div className="outfit-text text-xs text-gray-400 mt-1">
-                      {status.data.current_count}/{status.data.target_count}
-                    </div>
-                  )}
-
-                  {isEarned && (
-                    <div className="flex items-center justify-center mt-1">
-                      <Star className="w-3 h-3 text-yellow-400" />
-                    </div>
-                  )}
-                </div>
+                {/* Small earned indicator */}
+                {isEarned && (
+                  <div className="absolute -bottom-1 -right-1">
+                    <Star className="w-4 h-4 text-yellow-400 drop-shadow-lg" />
+                  </div>
+                )}
               </div>
             </div>
           );

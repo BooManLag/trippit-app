@@ -191,102 +191,57 @@ export const invitationService = {
     console.log(`🔗 Invitation link would be: ${window.location.origin}/accept-invite?token=${token}`);
   },
 
-  // Get pending invitations for current user with separate queries to avoid RLS join issues
+  // Get pending invitations for current user using the new RPC function
   async getPendingInvitations(): Promise<TripInvitation[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     console.log('📥 Fetching pending invitations for user:', user.email);
 
-    // CRITICAL: Only fetch invitations where invitee_email matches current user's email
-    const { data: invitations, error: invitationsError } = await supabase
-      .from('trip_invitations')
-      .select(`
-        id,
-        trip_id,
-        inviter_id,
-        invitee_email,
-        token,
-        status,
-        created_at,
-        responded_at
-      `)
-      .eq('invitee_email', user.email) // This is the key filter
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    try {
+      // Use the new RPC function that returns properly enriched data
+      const { data, error } = await supabase.rpc('get_pending_invitations_for_user');
 
-    if (invitationsError) {
-      console.error('❌ Error fetching invitations:', invitationsError);
-      throw new Error(`Failed to fetch invitations: ${invitationsError.message}`);
-    }
+      if (error) {
+        console.error('❌ Error fetching invitations via RPC:', error);
+        throw new Error(`Failed to fetch invitations: ${error.message}`);
+      }
 
-    console.log(`📊 Found ${invitations?.length || 0} pending invitations for ${user.email}`);
+      if (!data || data.length === 0) {
+        console.log('📊 No pending invitations found');
+        return [];
+      }
 
-    if (!invitations || invitations.length === 0) {
-      return [];
-    }
+      console.log(`📊 Found ${data.length} pending invitations via RPC`);
 
-    // Debug: Log the invitations to see what we're getting
-    console.log('🔍 Debug - Raw invitations:', invitations.map(inv => ({
-      id: inv.id,
-      invitee_email: inv.invitee_email,
-      current_user_email: user.email,
-      matches: inv.invitee_email === user.email
-    })));
-
-    // Step 2: Fetch trip details separately
-    const tripIds = [...new Set(invitations.map(inv => inv.trip_id))];
-    const { data: trips, error: tripsError } = await supabase
-      .from('trips')
-      .select('id, destination, start_date, end_date, max_participants')
-      .in('id', tripIds);
-
-    if (tripsError) {
-      console.error('❌ Error fetching trips:', tripsError);
-      throw new Error(`Failed to fetch trip details: ${tripsError.message}`);
-    }
-
-    // Step 3: Fetch inviter details separately
-    const inviterIds = [...new Set(invitations.map(inv => inv.inviter_id))];
-    const { data: inviters, error: invitersError } = await supabase
-      .from('users')
-      .select('id, display_name, email')
-      .in('id', inviterIds);
-
-    if (invitersError) {
-      console.error('❌ Error fetching inviters:', invitersError);
-      // Continue without inviter details rather than failing completely
-    }
-
-    // Step 4: Merge the data in application code
-    const enrichedInvitations: TripInvitation[] = invitations.map((invitation) => {
-      const trip = trips?.find(t => t.id === invitation.trip_id);
-      const inviter = inviters?.find(u => u.id === invitation.inviter_id);
-
-      return {
-        id: invitation.id,
-        trip_id: invitation.trip_id,
-        inviter_id: invitation.inviter_id,
-        invitee_email: invitation.invitee_email,
-        token: invitation.token,
-        status: invitation.status,
-        created_at: invitation.created_at,
-        responded_at: invitation.responded_at,
+      // Transform the RPC result to match our interface
+      const enrichedInvitations: TripInvitation[] = data.map((row: any) => ({
+        id: row.invitation_id,
+        trip_id: row.trip_id,
+        inviter_id: row.inviter_id,
+        invitee_email: row.invitee_email,
+        token: row.token,
+        status: row.status,
+        created_at: row.created_at,
+        responded_at: row.responded_at,
         trip: {
-          destination: trip?.destination || 'Unknown',
-          start_date: trip?.start_date || '',
-          end_date: trip?.end_date || '',
-          max_participants: trip?.max_participants || 2
+          destination: row.trip_destination,
+          start_date: row.trip_start_date,
+          end_date: row.trip_end_date,
+          max_participants: row.trip_max_participants
         },
         inviter: {
-          display_name: inviter?.display_name || 'Unknown',
-          email: inviter?.email || 'Unknown'
+          display_name: row.inviter_display_name || row.inviter_email.split('@')[0],
+          email: row.inviter_email
         }
-      };
-    });
+      }));
 
-    console.log(`✅ Enriched ${enrichedInvitations.length} invitations for ${user.email}`);
-    return enrichedInvitations;
+      console.log(`✅ Enriched ${enrichedInvitations.length} invitations via RPC`);
+      return enrichedInvitations;
+    } catch (error: any) {
+      console.error('💥 Error in getPendingInvitations:', error);
+      throw new Error(`Failed to fetch invitations: ${error.message}`);
+    }
   },
 
   // Accept invitation by token
@@ -362,49 +317,32 @@ export const invitationService = {
     return invitations || [];
   },
 
-  // Get users who have accepted invitations to a trip with separate queries to avoid RLS join issues
+  // Get users who have accepted invitations to a trip using the new RPC function
   async getTripAcceptedUsers(tripId: string): Promise<AcceptedUser[]> {
     try {
-      // Step 1: Fetch accepted invitations without joins
-      const { data: acceptedInvitations, error: invitationsError } = await supabase
-        .from('trip_invitations')
-        .select('invitee_email')
-        .eq('trip_id', tripId)
-        .eq('status', 'accepted');
+      // Use the new RPC function for better data consistency
+      const { data, error } = await supabase.rpc('get_trip_participants_with_users', {
+        p_trip_id: tripId
+      });
 
-      if (invitationsError) {
-        throw new Error(`Failed to fetch accepted invitations: ${invitationsError.message}`);
+      if (error) {
+        console.error('❌ Error fetching participants via RPC:', error);
+        throw new Error(`Failed to fetch participants: ${error.message}`);
       }
 
-      if (!acceptedInvitations || acceptedInvitations.length === 0) {
+      if (!data || data.length === 0) {
         return [];
       }
 
-      // Step 2: Fetch user details by email
-      const inviteeEmails = acceptedInvitations.map(inv => inv.invitee_email);
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, display_name, email')
-        .in('email', inviteeEmails);
-
-      if (usersError) {
-        console.error('❌ Error fetching users:', usersError);
-        return [];
-      }
-
-      if (!users || users.length === 0) {
-        return [];
-      }
-
-      // Step 3: Transform the data to match the expected format
-      return users.map((user: any) => ({
-        id: user.id,
-        display_name: user.display_name,
-        email: user.email,
+      // Transform the RPC result to match the expected format
+      return data.map((participant: any) => ({
+        id: participant.user_id,
+        display_name: participant.user_display_name,
+        email: participant.user_email,
         user: {
-          id: user.id,
-          display_name: user.display_name,
-          email: user.email
+          id: participant.user_id,
+          display_name: participant.user_display_name,
+          email: participant.user_email
         }
       }));
     } catch (error: any) {
@@ -416,43 +354,31 @@ export const invitationService = {
   // Get trip participants (from trip_participants table)
   async getTripParticipants(tripId: string): Promise<any[]> {
     try {
-      // Step 1: Fetch participants without joins
-      const { data: participants, error: participantsError } = await supabase
-        .from('trip_participants')
-        .select('user_id, role, joined_at')
-        .eq('trip_id', tripId);
-
-      if (participantsError) {
-        console.error('Error fetching participants:', participantsError);
-        return [];
-      }
-
-      if (!participants || participants.length === 0) {
-        return [];
-      }
-
-      // Step 2: Fetch user details separately
-      const userIds = [...new Set(participants.map(p => p.user_id))];
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, display_name, email')
-        .in('id', userIds);
-
-      if (usersError) {
-        console.error('Error fetching user details:', usersError);
-        // Continue with unknown users rather than failing completely
-      }
-
-      // Step 3: Merge the data in application code
-      return participants.map(p => {
-        const user = users?.find(u => u.id === p.user_id);
-        return {
-          user_id: p.user_id,
-          role: p.role,
-          joined_at: p.joined_at,
-          user: user || { id: p.user_id, display_name: 'Unknown', email: 'Unknown' }
-        };
+      // Use the new RPC function for consistency
+      const { data, error } = await supabase.rpc('get_trip_participants_with_users', {
+        p_trip_id: tripId
       });
+
+      if (error) {
+        console.error('Error fetching participants:', error);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Transform to match expected format
+      return data.map((p: any) => ({
+        user_id: p.user_id,
+        role: p.role,
+        joined_at: p.joined_at,
+        user: {
+          id: p.user_id,
+          display_name: p.user_display_name || 'Unknown',
+          email: p.user_email || 'Unknown'
+        }
+      }));
     } catch (error: any) {
       console.error('Error fetching trip participants:', error);
       return [];

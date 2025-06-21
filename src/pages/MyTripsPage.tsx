@@ -91,7 +91,7 @@ const MyTripsPage: React.FC = () => {
     try {
       console.log('🔍 Fetching invitations for user:', user.email);
       
-      // CRITICAL: Use the invitationService which has the correct filtering
+      // CRITICAL: Use the invitationService which now uses the RPC function
       const { invitationService } = await import('../services/invitationService');
       const invitations = await invitationService.getPendingInvitations();
       
@@ -242,7 +242,7 @@ const MyTripsPage: React.FC = () => {
   const past = trips.filter(trip => trip.end_date < today);
 
   return (
-    <div className="min-h-screen w-full mobile-padding py-6 sm:py-8 lg:py-12 bg-black text-white flex justify-center relative overflow-hidden">
+    <div className="min-h-screen w-full mobile-padding py-6 sm:py-8 lg:py-12 text-white flex justify-center relative overflow-hidden">
       <div className="w-full max-w-6xl relative z-10">
         {/* Header */}
         <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 lg:mb-12 gap-4 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>

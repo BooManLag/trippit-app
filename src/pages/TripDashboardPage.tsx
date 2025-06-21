@@ -198,18 +198,13 @@ const TripDashboardPage: React.FC = () => {
 
   const fetchAcceptedUsers = async (tripId: string) => {
     try {
-      // Use a simple query to get trip participants without complex joins
-      const { data: participants, error } = await supabase
-        .from('trip_participants')
-        .select(`
-          user_id,
-          role,
-          joined_at
-        `)
-        .eq('trip_id', tripId);
+      // Use the new RPC function for better data consistency
+      const { data: participants, error } = await supabase.rpc('get_trip_participants_with_users', {
+        p_trip_id: tripId
+      });
 
       if (error) {
-        console.error('Error fetching participants:', error);
+        console.error('Error fetching participants via RPC:', error);
         setAcceptedUsers([]);
         return;
       }
@@ -219,27 +214,17 @@ const TripDashboardPage: React.FC = () => {
         return;
       }
 
-      // Get user details separately to avoid RLS issues
-      const userIds = participants.map(p => p.user_id);
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, email, display_name')
-        .in('id', userIds);
-
-      if (usersError) {
-        console.error('Error fetching user details:', usersError);
-        setAcceptedUsers([]);
-        return;
-      }
-
-      // Combine participant and user data
-      const enrichedUsers = participants.map(participant => {
-        const user = users?.find(u => u.id === participant.user_id);
-        return {
-          ...participant,
-          user: user || { id: participant.user_id, email: 'Unknown', display_name: 'Unknown' }
-        };
-      });
+      // Transform the RPC result to match expected format
+      const enrichedUsers = participants.map((participant: any) => ({
+        user_id: participant.user_id,
+        role: participant.role,
+        joined_at: participant.joined_at,
+        user: {
+          id: participant.user_id,
+          display_name: participant.user_display_name || 'Unknown',
+          email: participant.user_email || 'Unknown'
+        }
+      }));
 
       setAcceptedUsers(enrichedUsers);
     } catch (error) {
@@ -362,20 +347,29 @@ const TripDashboardPage: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
 
-      const { data: tripData, error: tripError } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('id', tripId)
-        .single();
+      // Use the new RPC function for better data consistency
+      const { data: tripData, error: tripError } = await supabase.rpc('get_trip_with_participants', {
+        p_trip_id: tripId
+      });
 
-      if (tripError || !tripData) {
+      if (tripError || !tripData || tripData.length === 0) {
         console.error('Trip not found:', tripError);
         navigate('/my-trips');
         return;
       }
 
-      setTrip(tripData);
-      const [city, country] = tripData.destination.split(', ');
+      const trip = tripData[0];
+      setTrip({
+        id: trip.trip_id,
+        destination: trip.destination,
+        start_date: trip.start_date,
+        end_date: trip.end_date,
+        max_participants: trip.max_participants,
+        user_id: trip.user_id,
+        participant_ids: trip.participant_ids
+      });
+
+      const [city, country] = trip.destination.split(', ');
 
       // Always try to fetch tips but don't let errors break the flow
       fetchRedditTips(city, country).catch(error => {
@@ -394,7 +388,7 @@ const TripDashboardPage: React.FC = () => {
 
       if (user) {
         // Check if user can access this trip
-        const hasAccess = await checkTripAccess(user, tripData);
+        const hasAccess = await checkTripAccess(user, trip);
         
         if (hasAccess) {
           // Fetch user-specific data
@@ -550,7 +544,7 @@ const TripDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <div className="min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="pixel-text text-blue-400">LOADING...</p>
@@ -561,7 +555,7 @@ const TripDashboardPage: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
+      <div className="min-h-screen text-white">
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => navigate('/my-trips')}
@@ -573,7 +567,7 @@ const TripDashboardPage: React.FC = () => {
 
   if (!canAccessTrip) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <div className="min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
           <p className="pixel-text text-red-400 mb-4">ACCESS DENIED</p>
           <p className="outfit-text text-gray-400 mb-6">You don't have access to this trip.</p>
@@ -593,11 +587,11 @@ const TripDashboardPage: React.FC = () => {
   const incompleteDares = getIncompleteDares();
   const completedDaresList = getCompletedDares();
 
-  // Calculate total people who can access the trip (owner + accepted invitations)
+  // Calculate total people who can access the trip (owner + participants, excluding owner from participants count)
   const totalAccessibleUsers = 1 + acceptedUsers.filter(u => u.role !== 'owner').length;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen text-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         
         <div className="flex items-center justify-between mb-6 sm:mb-8">
@@ -642,10 +636,10 @@ const TripDashboardPage: React.FC = () => {
                     {/* Show trip owner */}
                     <div className="bg-gray-800 px-2 py-1 rounded text-xs outfit-text text-gray-300 border border-gray-700">
                       {currentUser.display_name || currentUser.email.split('@')[0]}
-                      <span className="ml-1 text-yellow-400">👑</span>
+                      {isUserOwner && <span className="ml-1 text-yellow-400">👑</span>}
                     </div>
                     
-                    {/* Show accepted users */}
+                    {/* Show accepted users (excluding owner) */}
                     {acceptedUsers.filter(u => u.role !== 'owner').map((acceptedUser) => (
                       <div
                         key={acceptedUser.user_id}

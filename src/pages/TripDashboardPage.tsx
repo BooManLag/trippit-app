@@ -102,7 +102,7 @@ const TripDashboardPage: React.FC = () => {
 
       // Add timeout and better error handling
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout to 15 seconds
 
       try {
         const response = await fetch(functionUrl, {
@@ -144,7 +144,7 @@ const TripDashboardPage: React.FC = () => {
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         
-        // More detailed error logging
+        // More detailed error logging and handling
         console.warn('Detailed fetch error:', {
           name: fetchError?.name,
           message: fetchError?.message,
@@ -156,12 +156,23 @@ const TripDashboardPage: React.FC = () => {
           console.warn('Reddit tips request timed out - tips feature disabled for this session');
           setTipsError('Request timeout');
         } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-          console.warn('Network error connecting to Edge Function - tips feature disabled for this session. This could be due to:');
-          console.warn('- Edge Function not deployed');
+          console.warn('Network error connecting to Edge Function - this could be due to:');
+          console.warn('- Edge Function not deployed to Supabase');
           console.warn('- Network connectivity issues');
           console.warn('- CORS configuration problems');
           console.warn('- Supabase project configuration issues');
-          setTipsError('Connection failed');
+          console.warn('- Local development environment issues');
+          
+          // Check if we're in development mode
+          const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('webcontainer');
+          if (isDevelopment) {
+            setTipsError('Development mode - function unavailable');
+          } else {
+            setTipsError('Connection failed');
+          }
+        } else if (fetchError.message?.includes('NetworkError') || fetchError.message?.includes('ERR_NETWORK')) {
+          console.warn('Network connectivity issue detected');
+          setTipsError('Network error');
         } else {
           console.warn('Unexpected error fetching Reddit tips:', fetchError);
           setTipsError('Service unavailable');
@@ -435,12 +446,15 @@ const TripDashboardPage: React.FC = () => {
       const [city, country] = trip.destination.split(', ');
 
       // Always try to fetch tips but don't let errors break the flow
-      fetchRedditTips(city, country).catch(error => {
+      // Use a more graceful approach that doesn't throw errors
+      try {
+        await fetchRedditTips(city, country);
+      } catch (error) {
         console.warn('Tips fetch failed silently:', error);
         setTipsError('Service unavailable');
         setTips([]);
         setLoadingTips(false);
-      });
+      }
 
       try {
         await fetchAcceptedUsers(tripId!);
@@ -620,6 +634,10 @@ const TripDashboardPage: React.FC = () => {
         return 'Tips service is not deployed';
       case 'Connection failed':
         return 'Unable to connect to tips service';
+      case 'Network error':
+        return 'Network connectivity issue detected';
+      case 'Development mode - function unavailable':
+        return 'Tips service unavailable in development mode';
       case 'Request timeout':
         return 'Tips service request timed out';
       case 'Service unavailable':
@@ -1067,10 +1085,18 @@ const TripDashboardPage: React.FC = () => {
               <p className="outfit-text text-gray-500 text-sm">
                 {getTipsErrorMessage()} for {trip?.destination}. Please check back later!
               </p>
-              {tipsError === 'Function not deployed' && (
+              {(tipsError === 'Function not deployed' || tipsError === 'Development mode - function unavailable') && (
                 <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded">
                   <p className="outfit-text text-yellow-400 text-xs">
                     💡 <strong>Developer Note:</strong> The tips feature requires the get-reddit-tips Edge Function to be deployed to Supabase.
+                    {tipsError === 'Development mode - function unavailable' && ' This feature is not available in the current development environment.'}
+                  </p>
+                </div>
+              )}
+              {tipsError === 'Network error' && (
+                <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded">
+                  <p className="outfit-text text-red-400 text-xs">
+                    🌐 <strong>Network Issue:</strong> Unable to connect to the tips service. Please check your internet connection and try again.
                   </p>
                 </div>
               )}

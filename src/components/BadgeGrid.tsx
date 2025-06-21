@@ -98,7 +98,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="flex justify-between gap-4">
         {badgesToShow.map((badge) => {
           const status = getBadgeStatus(badge);
           const isEarned = status.type === 'earned';

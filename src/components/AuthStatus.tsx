@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface AuthStatusProps {
   className?: string;
+  showSignOut?: boolean; // New prop to control sign out visibility
 }
 
-const AuthStatus: React.FC<AuthStatusProps> = ({ className = '' }) => {
+const AuthStatus: React.FC<AuthStatusProps> = ({ className = '', showSignOut = true }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -87,6 +88,18 @@ const AuthStatus: React.FC<AuthStatusProps> = ({ className = '' }) => {
     );
   }
 
+  // If showSignOut is false, just show the user info without dropdown
+  if (!showSignOut) {
+    return (
+      <div className={`flex items-center gap-2 text-green-400 ${className}`}>
+        <User className="w-4 h-4" />
+        <span className="pixel-text text-xs">
+          {user.user_metadata?.display_name || user.email?.split('@')[0] || 'USER'}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
@@ -113,7 +126,6 @@ const AuthStatus: React.FC<AuthStatusProps> = ({ className = '' }) => {
               onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-3 py-2 text-left text-red-400 hover:text-red-300 hover:bg-gray-700/50 rounded transition-colors"
             >
-              <LogOut className="w-4 h-4" />
               <span className="outfit-text text-sm">Sign Out</span>
             </button>
           </div>

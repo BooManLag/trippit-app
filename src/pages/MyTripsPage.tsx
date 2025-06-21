@@ -254,7 +254,8 @@ const MyTripsPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-4 relative z-[100]">
-            <AuthStatus className="flex-shrink-0" />
+            {/* AuthStatus without sign out functionality */}
+            <AuthStatus className="flex-shrink-0" showSignOut={false} />
             <button
               onClick={() => navigate('/create-trip')}
               className="pixel-button-primary flex items-center justify-center gap-2 w-full sm:w-auto hover-float"

@@ -53,28 +53,39 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
 };
 
 function App() {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
   return (
     <div className="min-h-screen text-white">
-      <Router>
-        <AuthRedirect>
-          <BoltBadge />
-          <Sparkles />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/create-trip" element={<CreateTripPage />} />
-            <Route path="/trip-created" element={<TripCreatedPage />} />
-            <Route path="/my-trips" element={<MyTripsPage />} />
-            <Route path="/trip/:tripId" element={<TripDashboardPage />} />
-            <Route path="/game" element={<GamePage />} />
-            <Route path="/tips" element={<TipsPage />} />
-            <Route path="/checklist" element={<ChecklistPage />} />
-            <Route path="/bucket-list" element={<BucketListPage />} />
-            <Route path="/accept-invite" element={<AcceptInvitePage />} />
-          </Routes>
-        </AuthRedirect>
-      </Router>
+      <AuthRedirect>
+        {/* Only show BoltBadge on the home page */}
+        {isHomePage && <BoltBadge />}
+        <Sparkles />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/create-trip" element={<CreateTripPage />} />
+          <Route path="/trip-created" element={<TripCreatedPage />} />
+          <Route path="/my-trips" element={<MyTripsPage />} />
+          <Route path="/trip/:tripId" element={<TripDashboardPage />} />
+          <Route path="/game" element={<GamePage />} />
+          <Route path="/tips" element={<TipsPage />} />
+          <Route path="/checklist" element={<ChecklistPage />} />
+          <Route path="/bucket-list" element={<BucketListPage />} />
+          <Route path="/accept-invite" element={<AcceptInvitePage />} />
+        </Routes>
+      </AuthRedirect>
     </div>
   );
 }
 
-export default App;
+// Wrapper component to provide Router context
+function AppWithRouter() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
+
+export default AppWithRouter;

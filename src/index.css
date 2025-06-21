@@ -27,12 +27,16 @@
 /* Custom Components */
 @layer components {
   .pixel-button {
-    @apply pixel-text px-3 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 rounded-none relative 
+    @apply pixel-text px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 rounded-none relative 
            transition-all duration-300 
            before:content-[''] before:absolute before:inset-0
            before:border-2 before:border-white/20
            hover:translate-y-[-2px] hover:scale-105 text-xs sm:text-sm lg:text-base
-           transform-gpu;
+           transform-gpu min-h-[44px] leading-tight;
+    /* Ensure text doesn't overflow */
+    word-wrap: break-word;
+    hyphens: auto;
+    overflow-wrap: break-word;
   }
 
   .pixel-button-primary {
@@ -56,9 +60,11 @@
   }
 
   .pixel-card {
-    @apply bg-gray-900/90 backdrop-blur-sm p-3 sm:p-4 lg:p-6 rounded-none border-2 border-white/20
+    @apply bg-gray-900/90 backdrop-blur-sm p-4 sm:p-6 lg:p-8 rounded-none border-2 border-white/20
            transition-all duration-300 hover:border-white/40 hover:scale-[1.02]
            transform-gpu relative overflow-hidden;
+    /* Add more breathing room on mobile */
+    margin-bottom: 1rem;
   }
   
   .pixel-card::before {
@@ -79,8 +85,8 @@
   .input-pixel {
     @apply bg-gray-800/90 backdrop-blur-sm border-2 border-blue-500/20 text-white rounded-none 
            focus:outline-none focus:border-blue-500/50 transition-all duration-300
-           px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base
-           hover:border-blue-500/30 focus:scale-[1.02] transform-gpu;
+           px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base
+           hover:border-blue-500/30 focus:scale-[1.02] transform-gpu min-h-[44px];
   }
 }
 
@@ -95,14 +101,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .pixel-text {
     font-family: 'Press Start 2P', monospace;
     letter-spacing: 0.05em;
-    line-height: 1.5;
+    line-height: 1.6; /* Increased line height for better mobile readability */
   }
 
   .outfit-text {
     font-family: 'Outfit', sans-serif;
+    line-height: 1.5;
   }
 
-  /* Mobile-specific utilities */
+  /* Mobile-specific utilities with better spacing */
   .mobile-padding {
     @apply px-4 sm:px-6 lg:px-8;
   }
@@ -112,11 +119,34 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   .mobile-heading {
-    @apply text-lg sm:text-xl lg:text-2xl xl:text-3xl;
+    @apply text-base sm:text-xl lg:text-2xl xl:text-3xl;
   }
 
   .mobile-grid {
     @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  /* Mobile spacing utilities */
+  .mobile-space-y {
+    @apply space-y-4 sm:space-y-6 lg:space-y-8;
+  }
+
+  .mobile-gap {
+    @apply gap-3 sm:gap-4 lg:gap-6;
+  }
+
+  .mobile-mb {
+    @apply mb-4 sm:mb-6 lg:mb-8;
+  }
+
+  /* Slow spin animation for Bolt badge */
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Enhanced animations */
@@ -211,16 +241,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     }
   }
 
-  /* Slow spin animation for Bolt badge */
-  @keyframes spin-slow {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
@@ -288,25 +308,47 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .delay-1000 { animation-delay: 1s; }
 }
 
-/* Responsive font sizes for pixel text */
+/* Responsive font sizes for pixel text with better mobile scaling */
 @media (max-width: 640px) {
   .pixel-text {
-    font-size: 0.75rem;
-    line-height: 1.4;
+    font-size: 0.7rem;
+    line-height: 1.6;
+    letter-spacing: 0.03em;
+  }
+  
+  /* Ensure buttons have proper minimum height on mobile */
+  .pixel-button {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 0.7rem;
+  }
+  
+  /* Better mobile card spacing */
+  .pixel-card {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
   }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
   .pixel-text {
-    font-size: 0.875rem;
-    line-height: 1.45;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+  
+  .pixel-button {
+    font-size: 0.8rem;
   }
 }
 
 @media (min-width: 1025px) {
   .pixel-text {
-    font-size: 1rem;
+    font-size: 0.9rem;
     line-height: 1.5;
+  }
+  
+  .pixel-button {
+    font-size: 0.9rem;
   }
 }
 
@@ -397,18 +439,41 @@ button:focus {
 @media (max-width: 768px) {
   .pixel-button,
   button {
-    min-height: 44px; /* iOS recommended touch target */
-    min-width: 44px;
+    min-height: 48px; /* iOS recommended touch target */
+    min-width: 48px;
+    /* Better text wrapping for mobile */
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
   
   .pixel-card {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    /* More breathing room on mobile */
+    padding: 1.25rem;
   }
   
   /* Larger tap targets for mobile */
   .mobile-tap-target {
     min-height: 48px;
     min-width: 48px;
+  }
+  
+  /* Better mobile spacing */
+  .mobile-space-y > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  /* Improved mobile text sizing */
+  .mobile-text {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .mobile-heading {
+    font-size: 1rem;
+    line-height: 1.4;
   }
 }
 

@@ -48,7 +48,7 @@ const HomePage: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg blur-xl opacity-30 animate-pulse"></div>
             
             {/* Main title with bouncy animation */}
-            <h1 className="relative pixel-text text-4xl sm:text-5xl lg:text-7xl leading-relaxed transform hover:scale-105 transition-transform duration-300 cursor-default text-white">
+            <h1 className="relative pixel-text text-3xl sm:text-4xl lg:text-6xl xl:text-7xl leading-relaxed transform hover:scale-105 transition-transform duration-300 cursor-default text-white">
               <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>T</span>
               <span className="inline-block animate-bounce" style={{ animationDelay: '100ms' }}>r</span>
               <span className="inline-block animate-bounce" style={{ animationDelay: '200ms' }}>i</span>
@@ -67,26 +67,27 @@ const HomePage: React.FC = () => {
 
         {/* Animated subtitle */}
         <div className={`transform transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <h2 className="pixel-text text-lg sm:text-xl lg:text-2xl mb-6 sm:mb-8 lg:mb-10 text-yellow-400 animate-pulse glow-text">
+          <h2 className="pixel-text text-sm sm:text-lg lg:text-xl mb-6 sm:mb-8 lg:mb-10 text-yellow-400 animate-pulse glow-text">
             Fun. Memorable. Helpful.
           </h2>
         </div>
 
         {/* Animated description */}
         <div className={`transform transition-all duration-1000 delay-500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <p className="outfit-text text-base sm:text-lg lg:text-xl mb-8 sm:mb-12 lg:mb-16 max-w-2xl mx-auto text-white px-4 bg-black/30 py-3 rounded-lg backdrop-blur-sm">
+          <p className="outfit-text text-sm sm:text-base lg:text-lg mb-8 sm:mb-12 lg:mb-16 max-w-2xl mx-auto text-white px-4 py-3 rounded-lg backdrop-blur-sm bg-black/30 leading-relaxed">
             Tripp'it helps first-time travelers prepare smarter and laugh through their mistakes.
           </p>
         </div>
 
         {/* Animated action buttons */}
-        <div className={`space-y-4 sm:space-y-6 mb-12 sm:mb-16 lg:mb-20 max-w-md mx-auto transform transition-all duration-1000 delay-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className={`mobile-space-y max-w-md mx-auto transform transition-all duration-1000 delay-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <button
             onClick={() => navigate('/game')}
             className="pixel-button-primary w-full group relative overflow-hidden"
           >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              🎮 SURVIVE A SCENARIO
+            <span className="relative z-10 flex items-center justify-center mobile-gap">
+              <span>🎮</span>
+              <span>SURVIVE A SCENARIO</span>
               <span className="group-hover:animate-bounce">🎯</span>
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
@@ -96,8 +97,9 @@ const HomePage: React.FC = () => {
             onClick={handlePlanTrip}
             className="pixel-button-secondary w-full group relative overflow-hidden"
           >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              ✈️ PLAN MY TRIP
+            <span className="relative z-10 flex items-center justify-center mobile-gap">
+              <span>✈️</span>
+              <span>PLAN MY TRIP</span>
               <span className="group-hover:animate-bounce">🗺️</span>
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
@@ -105,7 +107,7 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Animated feature cards */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16 lg:mb-20 transform transition-all duration-1000 delay-900 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mobile-gap mobile-mb transform transition-all duration-1000 delay-900 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           {[
             {
               icon: "🤪",
@@ -143,7 +145,7 @@ const HomePage: React.FC = () => {
               <h3 className="pixel-text text-xs sm:text-sm mb-2 text-white group-hover:text-blue-400 transition-colors">
                 {feature.title}
               </h3>
-              <p className="outfit-text text-gray-400 text-xs sm:text-sm group-hover:text-gray-300 transition-colors">
+              <p className="outfit-text text-gray-400 text-xs sm:text-sm group-hover:text-gray-300 transition-colors leading-relaxed">
                 {feature.description}
               </p>
             </div>
@@ -151,12 +153,12 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Animated how it works section */}
-        <section className={`mb-12 sm:mb-16 lg:mb-20 transform transition-all duration-1000 delay-1100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <h2 className="pixel-text text-lg sm:text-2xl lg:text-3xl mb-6 sm:mb-8 lg:mb-10 relative text-white">
+        <section className={`mobile-mb transform transition-all duration-1000 delay-1100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <h2 className="pixel-text text-base sm:text-xl lg:text-2xl mobile-mb relative text-white">
             HOW IT WORKS
             <span className="absolute -top-2 -right-8 text-yellow-400 animate-spin text-sm">⚡</span>
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 mobile-gap text-left">
             {[
               "Choose your destination and trip dates",
               "Discover tips and bucket list goals",
@@ -168,10 +170,10 @@ const HomePage: React.FC = () => {
                 className="flex items-start pixel-card group hover:scale-105 transition-all duration-300 hover:border-green-500/40"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm group-hover:animate-pulse">
+                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm group-hover:animate-pulse flex-shrink-0">
                   {index + 1}.
                 </span>
-                <p className="outfit-text text-gray-300 text-sm sm:text-base group-hover:text-white transition-colors">
+                <p className="outfit-text text-gray-300 text-sm sm:text-base group-hover:text-white transition-colors leading-relaxed">
                   {step}
                 </p>
               </div>
@@ -183,13 +185,13 @@ const HomePage: React.FC = () => {
         <div className={`transform transition-all duration-1000 delay-1300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="pixel-card bg-gradient-to-r from-purple-900/70 to-blue-900/70 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
             <div className="text-2xl mb-4 animate-bounce">🚀</div>
-            <h3 className="pixel-text text-lg sm:text-xl lg:text-2xl mb-4 text-purple-400 glow-text">READY FOR ADVENTURE?</h3>
-            <p className="outfit-text text-gray-300 mb-6 text-sm sm:text-base lg:text-lg">
+            <h3 className="pixel-text text-base sm:text-lg lg:text-xl mobile-mb text-purple-400 glow-text">READY FOR ADVENTURE?</h3>
+            <p className="outfit-text text-gray-300 mobile-mb text-sm sm:text-base lg:text-lg leading-relaxed">
               Join thousands of travelers who've survived their trips with style!
             </p>
             <button
               onClick={handlePlanTrip}
-              className="pixel-button-primary bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transform hover:scale-105 transition-all duration-300"
+              className="pixel-button-primary bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transform hover:scale-105 transition-all duration-300 w-full sm:w-auto"
             >
               START YOUR JOURNEY 🌟
             </button>

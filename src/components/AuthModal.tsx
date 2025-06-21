@@ -115,7 +115,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           <div className="inline-flex items-center justify-center h-12 sm:h-16 w-12 sm:w-16 rounded-full bg-blue-500/20 mb-4">
             <Mail className="h-6 sm:h-8 w-6 sm:w-8 text-blue-500" />
           </div>
-          <h2 className="pixel-text text-lg sm:text-2xl mb-2">
+          <h2 className="pixel-text text-base sm:text-xl mb-2">
             {isSignUp ? 'CREATE ACCOUNT' : 'WELCOME BACK'}
           </h2>
           <p className="outfit-text text-gray-400 text-sm sm:text-base">
@@ -125,7 +125,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mobile-space-y">
           {isSignUp && (
             <div>
               <label className="block pixel-text text-xs sm:text-sm mb-2 text-blue-400">
@@ -169,13 +169,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           </div>
 
           {error && (
-            <div className="text-sm outfit-text text-red-500 break-words">
+            <div className="text-sm outfit-text text-red-500 break-words p-3 bg-red-500/10 border border-red-500/20 rounded">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="text-sm outfit-text text-green-500 break-words">
+            <div className="text-sm outfit-text text-green-500 break-words p-3 bg-green-500/10 border border-green-500/20 rounded">
               {success}
             </div>
           )}
@@ -183,12 +183,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           <button
             type="submit"
             disabled={loading}
-            className="pixel-button-primary w-full flex items-center justify-center"
+            className="pixel-button-primary w-full flex items-center justify-center mobile-gap"
           >
             {loading ? (
-              <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
+              <>
+                <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
+                <span>PROCESSING...</span>
+              </>
             ) : (
-              isSignUp ? 'SIGN UP' : 'SIGN IN'
+              <span>{isSignUp ? 'SIGN UP' : 'SIGN IN'}</span>
             )}
           </button>
 
@@ -200,7 +203,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                 setError(null);
                 setSuccess(null);
               }}
-              className="text-blue-400 hover:text-blue-300 text-sm sm:text-base"
+              className="text-blue-400 hover:text-blue-300 text-sm sm:text-base underline"
             >
               {isSignUp
                 ? 'Already have an account? Sign in'

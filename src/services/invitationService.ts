@@ -313,7 +313,7 @@ export const invitationService = {
       return {
         success: result.success,
         message: result.message,
-        tripId: result.trip_id
+        tripId: result.joined_trip_id
       };
     } catch (error: any) {
       console.error('💥 Error accepting invitation:', error);

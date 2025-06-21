@@ -89,66 +89,21 @@ const MyTripsPage: React.FC = () => {
     if (!user) return;
 
     try {
-      // Fetch invitations - RLS will handle filtering automatically
-      const { data: invitations, error } = await supabase
-        .from('trip_invitations')
-        .select(`
-          id,
-          trip_id,
-          inviter_id,
-          invitee_email,
-          token,
-          status,
-          created_at,
-          responded_at
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+      console.log('🔍 Fetching invitations for user:', user.email);
+      
+      // CRITICAL: Use the invitationService which has the correct filtering
+      const { invitationService } = await import('../services/invitationService');
+      const invitations = await invitationService.getPendingInvitations();
+      
+      console.log('📊 Received invitations:', invitations.length);
+      console.log('🔍 Debug - Invitations details:', invitations.map(inv => ({
+        id: inv.id,
+        invitee_email: inv.invitee_email,
+        current_user_email: user.email,
+        trip_destination: inv.trip.destination
+      })));
 
-      if (error) {
-        throw new Error(`Failed to fetch invitations: ${error.message}`);
-      }
-
-      if (!invitations || invitations.length === 0) {
-        setPendingInvitations([]);
-        return;
-      }
-
-      // Fetch trip details and inviter details separately
-      const tripIds = invitations.map(inv => inv.trip_id);
-      const inviterIds = invitations.map(inv => inv.inviter_id);
-
-      const [tripsResponse, invitersResponse] = await Promise.all([
-        supabase
-          .from('trips')
-          .select('id, destination, start_date, end_date')
-          .in('id', tripIds),
-        supabase
-          .from('users')
-          .select('id, email, display_name')
-          .in('id', inviterIds)
-      ]);
-
-      if (tripsResponse.error) {
-        throw new Error(`Failed to fetch trip details: ${tripsResponse.error.message}`);
-      }
-
-      if (invitersResponse.error) {
-        throw new Error(`Failed to fetch inviter details: ${invitersResponse.error.message}`);
-      }
-
-      // Create lookup maps
-      const tripsMap = new Map(tripsResponse.data?.map(trip => [trip.id, trip]) || []);
-      const invitersMap = new Map(invitersResponse.data?.map(user => [user.id, user]) || []);
-
-      // Combine the data
-      const enrichedInvitations = invitations.map(invitation => ({
-        ...invitation,
-        trip: tripsMap.get(invitation.trip_id),
-        inviter: invitersMap.get(invitation.inviter_id)
-      })).filter(inv => inv.trip && inv.inviter); // Only include invitations with valid trip and inviter data
-
-      setPendingInvitations(enrichedInvitations);
+      setPendingInvitations(invitations);
     } catch (error: any) {
       console.error('Error fetching invitations:', error);
       // Don't set error state for invitations - just log it
@@ -327,6 +282,22 @@ const MyTripsPage: React.FC = () => {
                 <RefreshCw className="w-3 h-3" />
                 RETRY
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Information - Only show in development */}
+        {process.env.NODE_ENV === 'development' && user && (
+          <div className="pixel-card bg-yellow-500/10 border-2 border-yellow-500/30 mb-6">
+            <h4 className="pixel-text text-yellow-400 text-sm mb-2">DEBUG INFO</h4>
+            <div className="outfit-text text-yellow-300 text-xs space-y-1">
+              <p>Current User Email: {user.email}</p>
+              <p>Pending Invitations Found: {pendingInvitations.length}</p>
+              {pendingInvitations.map((inv, idx) => (
+                <p key={idx}>
+                  Invitation {idx + 1}: {inv.invitee_email} (matches: {inv.invitee_email === user.email ? 'YES' : 'NO'})
+                </p>
+              ))}
             </div>
           </div>
         )}

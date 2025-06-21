@@ -198,7 +198,7 @@ export const invitationService = {
 
     console.log('📥 Fetching pending invitations for user:', user.email);
 
-    // Step 1: Fetch invitations without joins
+    // CRITICAL: Only fetch invitations where invitee_email matches current user's email
     const { data: invitations, error: invitationsError } = await supabase
       .from('trip_invitations')
       .select(`
@@ -211,7 +211,7 @@ export const invitationService = {
         created_at,
         responded_at
       `)
-      .eq('invitee_email', user.email)
+      .eq('invitee_email', user.email) // This is the key filter
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
@@ -220,11 +220,19 @@ export const invitationService = {
       throw new Error(`Failed to fetch invitations: ${invitationsError.message}`);
     }
 
-    console.log(`📊 Found ${invitations?.length || 0} pending invitations`);
+    console.log(`📊 Found ${invitations?.length || 0} pending invitations for ${user.email}`);
 
     if (!invitations || invitations.length === 0) {
       return [];
     }
+
+    // Debug: Log the invitations to see what we're getting
+    console.log('🔍 Debug - Raw invitations:', invitations.map(inv => ({
+      id: inv.id,
+      invitee_email: inv.invitee_email,
+      current_user_email: user.email,
+      matches: inv.invitee_email === user.email
+    })));
 
     // Step 2: Fetch trip details separately
     const tripIds = [...new Set(invitations.map(inv => inv.trip_id))];
@@ -277,7 +285,7 @@ export const invitationService = {
       };
     });
 
-    console.log(`✅ Enriched ${enrichedInvitations.length} invitations`);
+    console.log(`✅ Enriched ${enrichedInvitations.length} invitations for ${user.email}`);
     return enrichedInvitations;
   },
 

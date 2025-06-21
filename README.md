@@ -25,12 +25,21 @@ Behind the scenes Trippit is built with React, TypeScript, Tailwind CSS and Supa
    VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
    ```
    These values come from your Supabase dashboard.
-3. **Run the development server**
+3. **Initialize the database**
+   Apply the baseline migration using a Postgres client or the Supabase CLI:
+   ```bash
+   # Using Supabase CLI
+   supabase db reset --file supabase/migrations/20250612_initial.sql
+   # Or using psql
+   psql < supabase/migrations/20250612_initial.sql
+   ```
+   Ensure this file contains the full schema exported from a working instance.
+4. **Run the development server**
    ```bash
    npm run dev
    ```
    Visit `http://localhost:5173` in your browser to see Trippit in action.
-4. **Build for production**
+5. **Build for production**
    ```bash
    npm run build
    ```

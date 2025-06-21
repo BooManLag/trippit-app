@@ -533,19 +533,6 @@ const TripDashboardPage: React.FC = () => {
     fetchTripDetails();
   }, [tripId, navigate]);
 
-  // WORKAROUND: Direct navigation to badges page using window.location
-  const handleBadgesNavigation = () => {
-    console.log('🎯 Direct navigation to badges page');
-    console.log('Current tripId:', tripId);
-    
-    // Use window.location.href for direct navigation
-    const targetUrl = `/badges?tripId=${tripId}`;
-    console.log('Navigating to:', targetUrl);
-    
-    // Force navigation using window.location
-    window.location.href = targetUrl;
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'long',
@@ -777,20 +764,11 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Badge Section - Fixed navigation to badges page */}
+        {/* Badge Section - Horizontal Scrollable */}
         <div className="pixel-card bg-gray-900/90 border-2 border-yellow-500/20 mb-6 sm:mb-8">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div className="flex items-center gap-3">
-              <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
-              <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
-            </div>
-            {/* WORKAROUND: Using window.location for direct navigation */}
-            <button 
-              onClick={handleBadgesNavigation}
-              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors hover:underline"
-            >
-              VIEW ALL
-            </button>
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
+            <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
+            <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
           </div>
 
           {currentUser ? (

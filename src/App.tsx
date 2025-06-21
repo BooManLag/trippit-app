@@ -13,7 +13,6 @@ import TipsPage from './pages/TipsPage';
 import ChecklistPage from './pages/ChecklistPage';
 import BucketListPage from './pages/BucketListPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
-import BadgesPage from './pages/BadgesPage';
 import DiaryPage from './pages/DiaryPage';
 
 // Components
@@ -75,7 +74,6 @@ function App() {
           <Route path="/checklist" element={<ChecklistPage />} />
           <Route path="/bucket-list" element={<BucketListPage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
-          <Route path="/badges" element={<BadgesPage />} />
           <Route path="/diary" element={<DiaryPage />} />
         </Routes>
       </AuthRedirect>

@@ -228,7 +228,7 @@ const MyTripsPage: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen text-white flex items-center justify-center">
         <div className="animate-bounce-in">
           <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-blue-500 animate-spin" />
           <p className="pixel-text text-blue-400 mt-4 text-sm sm:text-base">LOADING ADVENTURES...</p>
@@ -253,7 +253,7 @@ const MyTripsPage: React.FC = () => {
               <p className="outfit-text text-gray-400 mt-1 text-sm sm:text-base">Your personal travel journey</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 relative z-[100]">
             <AuthStatus className="flex-shrink-0" />
             <button
               onClick={() => navigate('/create-trip')}
@@ -300,7 +300,7 @@ const MyTripsPage: React.FC = () => {
               {pendingInvitations.map((invitation, index) => (
                 <div
                   key={invitation.id}
-                  className={`pixel-card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 group animate-slide-in-up cursor-pointer`}
+                  className={`pixel-card bg-gradient-to-br from-purple-900/20 to-pink-900/20 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 group animate-slide-in-up cursor-pointer relative z-10`}
                   style={{ animationDelay: `${index * 100 + 200}ms` }}
                   onClick={() => setSelectedInvitation(invitation)}
                 >
@@ -350,7 +350,7 @@ const MyTripsPage: React.FC = () => {
                   {upcoming.map((trip, index) => (
                     <div
                       key={trip.id}
-                      className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 hover:border-blue-500/60 transition-all duration-300 group animate-slide-in-left`}
+                      className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 hover:border-blue-500/60 transition-all duration-300 group animate-slide-in-left relative z-10`}
                       style={{ animationDelay: `${index * 100 + 300}ms` }}
                     >
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
@@ -408,7 +408,7 @@ const MyTripsPage: React.FC = () => {
                   {past.map((trip, index) => (
                     <div
                       key={trip.id}
-                      className={`pixel-card bg-gradient-to-br from-gray-900/50 to-gray-800/50 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all duration-300 group animate-slide-in-right`}
+                      className={`pixel-card bg-gradient-to-br from-gray-900/50 to-gray-800/50 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all duration-300 group animate-slide-in-right relative z-10`}
                       style={{ animationDelay: `${index * 100 + 600}ms` }}
                     >
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">

@@ -1,5 +1,6 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from './lib/supabase';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -13,22 +14,58 @@ import ChecklistPage from './pages/ChecklistPage';
 import BucketListPage from './pages/BucketListPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 
+// Auth redirect component
+const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // If user logs out and is on a protected page, redirect to home
+      if (!user && !location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite')) {
+        navigate('/');
+      }
+    };
+    
+    // Check auth on mount
+    checkAuth();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        // When user signs out, redirect to home page unless they're on a public page
+        if (!location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite')) {
+          navigate('/');
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [navigate, location.pathname]);
+  
+  return <>{children}</>;
+};
+
 function App() {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white">
       <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/create-trip" element={<CreateTripPage />} />
-          <Route path="/trip-created" element={<TripCreatedPage />} />
-          <Route path="/my-trips" element={<MyTripsPage />} />
-          <Route path="/trip/:tripId" element={<TripDashboardPage />} />
-          <Route path="/game" element={<GamePage />} />
-          <Route path="/tips" element={<TipsPage />} />
-          <Route path="/checklist" element={<ChecklistPage />} />
-          <Route path="/bucket-list" element={<BucketListPage />} />
-          <Route path="/accept-invite" element={<AcceptInvitePage />} />
-        </Routes>
+        <AuthRedirect>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/create-trip" element={<CreateTripPage />} />
+            <Route path="/trip-created" element={<TripCreatedPage />} />
+            <Route path="/my-trips" element={<MyTripsPage />} />
+            <Route path="/trip/:tripId" element={<TripDashboardPage />} />
+            <Route path="/game" element={<GamePage />} />
+            <Route path="/tips" element={<TipsPage />} />
+            <Route path="/checklist" element={<ChecklistPage />} />
+            <Route path="/bucket-list" element={<BucketListPage />} />
+            <Route path="/accept-invite" element={<AcceptInvitePage />} />
+          </Routes>
+        </AuthRedirect>
       </Router>
     </div>
   );

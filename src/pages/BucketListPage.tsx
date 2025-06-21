@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle, Zap, Star, Filter, Users, UserPlus, Crown } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle, Zap, Star, Filter, Users, UserPlus, Crown, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
 import daresData from '../data/dares.json';
@@ -55,6 +55,7 @@ const BucketListPage: React.FC = () => {
   const [showAvailableDares, setShowAvailableDares] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedDare, setSelectedDare] = useState<DareItem | null>(null);
+  const [selectedDareModal, setSelectedDareModal] = useState<any>(null);
 
   const categories = ['All', 'Food & Drink', 'Culture', 'Adventure', 'Photography', 'Local Life', 'Shopping', 'Entertainment', 'Experience', 'Nature', 'Wellness', 'Nightlife', 'Sightseeing'];
 
@@ -348,7 +349,7 @@ const BucketListPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowAvailableDares(!showAvailableDares)}
-                className="pixel-button-secondary flex items-center gap-2"
+                className="pixel-button-secondary bg-gray-600 hover:bg-gray-500 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 BROWSE
@@ -422,7 +423,7 @@ const BucketListPage: React.FC = () => {
                             setSelectedDare(dare);
                             setShowAssignModal(true);
                           }}
-                          className="pixel-button-secondary text-xs px-2 py-1 flex items-center gap-1"
+                          className="pixel-button-secondary bg-gray-600 hover:bg-gray-500 text-xs px-2 py-1 flex items-center gap-1"
                         >
                           <UserPlus className="w-3 h-3" />
                           ASSIGN
@@ -515,11 +516,12 @@ const BucketListPage: React.FC = () => {
               return (
                 <div 
                   key={dare.userDareId} 
-                  className={`pixel-card transition-all group relative ${
+                  className={`pixel-card transition-all group relative cursor-pointer ${
                     completed 
                       ? 'bg-green-500/10 border-green-500/30 hover:border-green-500/50' 
                       : 'bg-gray-900 border-red-500/30 hover:border-red-500/50'
                   }`}
+                  onClick={() => setSelectedDareModal(dare)}
                 >
                   {/* Participant Badge */}
                   <div className="absolute top-4 left-4 z-10">
@@ -535,15 +537,18 @@ const BucketListPage: React.FC = () => {
                   {/* Completion Checkbox */}
                   <div 
                     className="absolute top-4 right-4 cursor-pointer z-10"
-                    onClick={() => toggleDareCompletion({ 
-                      id: dare.userDareId, 
-                      user_id: dare.userId,
-                      trip_id: tripId!,
-                      bucket_item_id: dare.id, 
-                      completed_at: dare.completedAt,
-                      notes: dare.notes,
-                      created_at: ''
-                    })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDareCompletion({ 
+                        id: dare.userDareId, 
+                        user_id: dare.userId,
+                        trip_id: tripId!,
+                        bucket_item_id: dare.id, 
+                        completed_at: dare.completedAt,
+                        notes: dare.notes,
+                        created_at: ''
+                      });
+                    }}
                   >
                     {completed ? (
                       <CheckCircle2 className="w-6 h-6 text-green-400" />
@@ -582,16 +587,8 @@ const BucketListPage: React.FC = () => {
                     <p className={`outfit-text text-sm leading-relaxed mb-4 ${
                       completed ? 'text-gray-500' : 'text-gray-300'
                     }`}>
-                      {dare.description}
+                      {dare.description.length > 100 ? `${dare.description.substring(0, 100)}...` : dare.description}
                     </p>
-
-                    {/* Notes */}
-                    {dare.notes && (
-                      <div className="mb-4 p-2 bg-gray-800/50 border border-gray-700 rounded">
-                        <span className="pixel-text text-xs text-blue-400">NOTE: </span>
-                        <span className="outfit-text text-xs text-gray-300">{dare.notes}</span>
-                      </div>
-                    )}
 
                     {/* Footer */}
                     <div className="flex items-center justify-between">
@@ -607,7 +604,10 @@ const BucketListPage: React.FC = () => {
                       </div>
                       {isOwn && (
                         <button
-                          onClick={() => deleteDare(dare.userDareId, dare.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteDare(dare.userDareId, dare.id);
+                          }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-400 p-1"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -693,6 +693,104 @@ const BucketListPage: React.FC = () => {
                     </div>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dare Detail Modal */}
+        {selectedDareModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="pixel-card max-w-2xl w-full relative max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setSelectedDareModal(null)}
+                className="absolute top-3 right-3 text-gray-400 hover:text-white z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">{getCategoryIcon(selectedDareModal.category)}</span>
+                  <div>
+                    <h3 className="pixel-text text-lg text-red-400 mb-1">
+                      {selectedDareModal.title}
+                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="pixel-text text-xs text-red-400">{selectedDareModal.category}</span>
+                      <span className={`pixel-text text-xs ${getDifficultyColor(selectedDareModal.difficulty)}`}>
+                        {selectedDareModal.difficulty}
+                      </span>
+                      <span className="text-sm">{getFunLevelEmoji(selectedDareModal.funLevel)}</span>
+                      {selectedDareModal.completed && (
+                        <span className="pixel-text text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
+                          CONQUERED!
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pixel-card bg-gray-800/50 border-gray-700 mb-6">
+                  <p className="outfit-text text-gray-300 leading-relaxed break-words">
+                    {selectedDareModal.description}
+                  </p>
+                </div>
+
+                {selectedDareModal.notes && (
+                  <div className="pixel-card bg-blue-500/10 border-blue-500/20 mb-6">
+                    <h4 className="pixel-text text-blue-400 text-sm mb-2">NOTES:</h4>
+                    <p className="outfit-text text-gray-300 text-sm">{selectedDareModal.notes}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="pixel-text text-xs text-purple-400">
+                      {selectedDareModal.isOwn ? '🎯 YOUR DARE' : `👤 ${getParticipantName(selectedDareModal.userId)}'S DARE`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedDareModal.completed ? (
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-400" />
+                        <span className="pixel-text text-xs text-green-400">CONQUERED!</span>
+                      </div>
+                    ) : (
+                      <span className="pixel-text text-xs text-red-400">READY TO DARE?</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedDareModal(null)}
+                    className="pixel-button-secondary bg-gray-600 hover:bg-gray-500 flex-1"
+                  >
+                    CLOSE
+                  </button>
+                  <button
+                    onClick={() => {
+                      toggleDareCompletion({ 
+                        id: selectedDareModal.userDareId, 
+                        user_id: selectedDareModal.userId,
+                        trip_id: tripId!,
+                        bucket_item_id: selectedDareModal.id, 
+                        completed_at: selectedDareModal.completedAt,
+                        notes: selectedDareModal.notes,
+                        created_at: ''
+                      });
+                      setSelectedDareModal(null);
+                    }}
+                    className={`pixel-button-primary flex-1 ${
+                      selectedDareModal.completed 
+                        ? 'bg-yellow-600 hover:bg-yellow-500' 
+                        : 'bg-green-600 hover:bg-green-500'
+                    }`}
+                  >
+                    {selectedDareModal.completed ? 'MARK INCOMPLETE' : 'MARK COMPLETE'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

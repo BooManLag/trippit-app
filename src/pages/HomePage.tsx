@@ -79,8 +79,8 @@ const HomePage: React.FC = () => {
           </p>
         </div>
 
-        {/* Animated action buttons */}
-        <div className={`mobile-space-y max-w-md mx-auto transform transition-all duration-1000 delay-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        {/* Animated action buttons with MUCH MORE SPACING */}
+        <div className={`space-y-6 sm:space-y-8 mb-16 sm:mb-20 lg:mb-24 max-w-md mx-auto transform transition-all duration-1000 delay-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <button
             onClick={() => navigate('/game')}
             className="pixel-button-primary w-full group relative overflow-hidden"
@@ -106,8 +106,8 @@ const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Animated feature cards */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mobile-gap mobile-mb transform transition-all duration-1000 delay-900 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        {/* Animated feature cards with PROPER SPACING */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-16 sm:mb-20 lg:mb-24 transform transition-all duration-1000 delay-900 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           {[
             {
               icon: "🤪",
@@ -152,13 +152,13 @@ const HomePage: React.FC = () => {
           ))}
         </div>
 
-        {/* Animated how it works section */}
-        <section className={`mobile-mb transform transition-all duration-1000 delay-1100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <h2 className="pixel-text text-base sm:text-xl lg:text-2xl mobile-mb relative text-white">
+        {/* Animated how it works section with MORE SPACING */}
+        <section className={`mb-16 sm:mb-20 lg:mb-24 transform transition-all duration-1000 delay-1100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <h2 className="pixel-text text-base sm:text-xl lg:text-2xl mb-8 sm:mb-12 lg:mb-16 relative text-white">
             HOW IT WORKS
             <span className="absolute -top-2 -right-8 text-yellow-400 animate-spin text-sm">⚡</span>
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 mobile-gap text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-left">
             {[
               "Choose your destination and trip dates",
               "Discover tips and bucket list goals",
@@ -181,12 +181,12 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Floating call-to-action */}
-        <div className={`transform transition-all duration-1000 delay-1300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        {/* Floating call-to-action with PROPER SPACING */}
+        <div className={`mb-16 sm:mb-20 lg:mb-24 transform transition-all duration-1000 delay-1300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="pixel-card bg-gradient-to-r from-purple-900/70 to-blue-900/70 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
             <div className="text-2xl mb-4 animate-bounce">🚀</div>
-            <h3 className="pixel-text text-base sm:text-lg lg:text-xl mobile-mb text-purple-400 glow-text">READY FOR ADVENTURE?</h3>
-            <p className="outfit-text text-gray-300 mobile-mb text-sm sm:text-base lg:text-lg leading-relaxed">
+            <h3 className="pixel-text text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 text-purple-400 glow-text">READY FOR ADVENTURE?</h3>
+            <p className="outfit-text text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base lg:text-lg leading-relaxed">
               Join thousands of travelers who've survived their trips with style!
             </p>
             <button

@@ -80,4 +80,6 @@ The database uses row level security to keep data private. Alongside standard
 ownership rules, authenticated users may view basic profile details for other
 users if they share a trip or have exchanged a trip invitation. Only the
 `id`, `display_name` and `email` fields are intended to be accessed under this
-policy.
+policy. These permissions are enforced through the policies defined in
+`supabase/migrations/20250621105506_rustic_wood.sql` which also grants
+`SELECT` access to authenticated users.

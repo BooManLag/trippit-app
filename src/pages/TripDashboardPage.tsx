@@ -616,6 +616,18 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
+  // Debug function to check navigation
+  const handleBadgesNavigation = () => {
+    console.log('🔍 Debug: Badges navigation clicked');
+    console.log('🔍 Current tripId:', tripId);
+    console.log('🔍 Target URL:', `/badges?tripId=${tripId}`);
+    
+    // Use window.location for debugging
+    const targetUrl = `/badges?tripId=${tripId}`;
+    console.log('🔍 Navigating to:', targetUrl);
+    navigate(targetUrl);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -753,10 +765,10 @@ const TripDashboardPage: React.FC = () => {
               <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
               <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
             </div>
-            {/* Fixed VIEW ALL button to navigate to badges page */}
+            {/* Fixed VIEW ALL button with debug logging */}
             <button 
-              onClick={() => navigate(`/badges?tripId=${tripId}`)}
-              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+              onClick={handleBadgesNavigation}
+              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               VIEW ALL
             </button>

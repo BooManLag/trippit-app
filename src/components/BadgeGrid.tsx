@@ -1,44 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, UserBadge, BadgeProgress, badgeService } from '../services/badgeService';
-import BadgeItem from './BadgeItem';
-import { useAuth } from '../hooks/useAuth';
-import Button from './Button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, ChevronRight } from 'lucide-react';
 
 interface BadgeGridProps {
+  userId: string;
   tripId?: string;
-  category?: string;
+  showCategories?: boolean;
+  compact?: boolean;
 }
 
-export function BadgeGrid({ tripId, category }: BadgeGridProps) {
-  const { user } = useAuth();
+const BadgeGrid: React.FC<BadgeGridProps> = ({ 
+  userId, 
+  tripId, 
+  showCategories = false, 
+  compact = false 
+}) => {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [badgeProgress, setBadgeProgress] = useState<BadgeProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetchBadgeData();
-  }, [user, tripId, category]);
+  }, [userId, tripId]);
 
   const fetchBadgeData = async () => {
-    if (!user) return;
+    if (!userId) return;
 
     try {
       setLoading(true);
       const [allBadges, earnedBadges, progress] = await Promise.all([
         badgeService.getAllBadges(),
-        badgeService.getUserBadges(user.id, tripId),
-        badgeService.getBadgeProgress(user.id, tripId)
+        badgeService.getUserBadges(userId, tripId),
+        badgeService.getBadgeProgress(userId, tripId)
       ]);
 
-      let filteredBadges = allBadges;
-      if (category) {
-        filteredBadges = allBadges.filter(badge => badge.category === category);
-      }
-
-      setBadges(filteredBadges);
+      setBadges(allBadges);
       setUserBadges(earnedBadges);
       setBadgeProgress(progress);
     } catch (error) {
@@ -60,69 +57,176 @@ export function BadgeGrid({ tripId, category }: BadgeGridProps) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
-            <div className="w-12 h-12 bg-gray-200 rounded-full mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded"></div>
-          </div>
-        ))}
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 text-yellow-500 animate-spin mr-3" />
+        <span className="pixel-text text-yellow-400 text-sm">LOADING BADGES...</span>
       </div>
     );
   }
 
   if (badges.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-6xl mb-4">🏆</div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">No badges available</h3>
-        <p className="text-gray-600">Check back later for new badges to earn!</p>
+      <div className="text-center py-8">
+        <div className="text-4xl mb-4">🏆</div>
+        <h3 className="pixel-text text-yellow-400 mb-2">NO BADGES YET</h3>
+        <p className="outfit-text text-gray-500 text-sm">Complete activities to earn your first badge!</p>
       </div>
     );
   }
 
-  const displayedBadges = showAll ? badges : badges.slice(0, 6);
-  const hasMoreBadges = badges.length > 6;
+  // Group badges by category if needed
+  const groupedBadges = showCategories 
+    ? badges.reduce((acc, badge) => {
+        if (!acc[badge.category]) acc[badge.category] = [];
+        acc[badge.category].push(badge);
+        return acc;
+      }, {} as Record<string, Badge[]>)
+    : { 'All Badges': badges };
+
+  // For compact mode, show only first 4-6 badges
+  const displayLimit = compact ? 4 : undefined;
+
+  if (showCategories) {
+    return (
+      <div className="space-y-8">
+        {Object.entries(groupedBadges).map(([category, categoryBadges]) => (
+          <div key={category}>
+            <h3 className="pixel-text text-yellow-400 text-sm mb-4 flex items-center gap-2">
+              <span>{category}</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-yellow-500/50 to-transparent"></div>
+            </h3>
+            <div className="flex flex-wrap gap-4">
+              {categoryBadges.slice(0, displayLimit).map((badge) => {
+                const status = getBadgeStatus(badge);
+                const isEarned = status.type === 'earned';
+                
+                return (
+                  <div key={badge.id} className="flex flex-col items-center group">
+                    <div className="relative">
+                      <div 
+                        className={`
+                          w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-4
+                          ${isEarned 
+                            ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
+                            : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500'
+                          }
+                        `}
+                      >
+                        <span 
+                          className={`
+                            text-2xl transition-all duration-300
+                            ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
+                            group-hover:scale-110
+                          `}
+                        >
+                          {badge.emoji}
+                        </span>
+                      </div>
+
+                      {/* Glow effect for earned badges */}
+                      {isEarned && (
+                        <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
+                      )}
+                    </div>
+                    
+                    {/* Badge name */}
+                    <div className="text-center mt-2 max-w-20">
+                      <div className={`pixel-text text-xs break-words leading-tight ${isEarned ? 'text-yellow-400' : 'text-gray-500'}`}>
+                        {badge.name}
+                      </div>
+                    </div>
+
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 max-w-48 text-center">
+                      <div className="outfit-text font-semibold mb-1">{badge.name}</div>
+                      <div className="outfit-text text-gray-300">{badge.description}</div>
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Simple horizontal display for compact mode
+  const badgesToShow = displayLimit ? badges.slice(0, displayLimit) : badges;
+  const hasMore = displayLimit && badges.length > displayLimit;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayedBadges.map((badge) => {
+    <div>
+      <div className="flex items-center gap-4 flex-wrap">
+        {badgesToShow.map((badge) => {
           const status = getBadgeStatus(badge);
+          const isEarned = status.type === 'earned';
+          
           return (
-            <BadgeItem
-              key={badge.id}
-              badge={badge}
-              status={status}
-            />
+            <div key={badge.id} className="flex flex-col items-center group">
+              <div className="relative">
+                <div 
+                  className={`
+                    w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-4
+                    ${isEarned 
+                      ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
+                      : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500'
+                    }
+                  `}
+                >
+                  <span 
+                    className={`
+                      text-2xl transition-all duration-300
+                      ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
+                      group-hover:scale-110
+                    `}
+                  >
+                    {badge.emoji}
+                  </span>
+                </div>
+
+                {/* Glow effect for earned badges */}
+                {isEarned && (
+                  <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
+                )}
+              </div>
+              
+              {/* Badge name */}
+              <div className="text-center mt-2 max-w-20">
+                <div className={`pixel-text text-xs break-words leading-tight ${isEarned ? 'text-yellow-400' : 'text-gray-500'}`}>
+                  {badge.name}
+                </div>
+              </div>
+
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 max-w-48 text-center">
+                <div className="outfit-text font-semibold mb-1">{badge.name}</div>
+                <div className="outfit-text text-gray-300">{badge.description}</div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"/>
+              </div>
+            </div>
           );
         })}
+
+        {/* Show more indicator */}
+        {hasMore && (
+          <div className="flex items-center text-blue-400 hover:text-blue-300 transition-colors">
+            <span className="pixel-text text-xs mr-1">+{badges.length - displayLimit} MORE</span>
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        )}
       </div>
 
-      {hasMoreBadges && (
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            onClick={() => setShowAll(!showAll)}
-            className="flex items-center gap-2"
-          >
-            {showAll ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Show Less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                View More ({badges.length - 6} more)
-              </>
-            )}
-          </Button>
+      {/* Empty state for no earned badges in compact mode */}
+      {compact && userBadges.length === 0 && (
+        <div className="text-center py-6">
+          <div className="text-3xl mb-2">🎯</div>
+          <p className="pixel-text text-gray-500 text-xs">COMPLETE ACTIVITIES TO EARN BADGES</p>
         </div>
       )}
     </div>
   );
-}
+};
 
-export default BadgeGrid
+export default BadgeGrid;

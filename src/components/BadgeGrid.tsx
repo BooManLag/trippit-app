@@ -93,12 +93,12 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
     );
   }
 
-  // Limit the number of badges to the first 6
-  const badgesToShow = badges.slice(0, 6);  // Only display the first 6 badges
+  // Limit the number of badges to the first 4
+  const badgesToShow = badges.slice(0, 4);  // Only display the first 4 badges
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {badgesToShow.map((badge) => {
           const status = getBadgeStatus(badge);
           const isEarned = status.type === 'earned';

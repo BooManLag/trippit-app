@@ -17,7 +17,7 @@ import DiaryPage from './pages/DiaryPage';
 
 // Components
 import BoltBadge from './components/BoltBadge';
-import Sparkles from './components/Sparkles';
+import TravelElements from './components/TravelElements';
 
 // Auth redirect component
 const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
@@ -62,7 +62,7 @@ function App() {
       <AuthRedirect>
         {/* Only show BoltBadge on the home page */}
         {isHomePage && <BoltBadge />}
-        <Sparkles />
+        <TravelElements />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/create-trip" element={<CreateTripPage />} />

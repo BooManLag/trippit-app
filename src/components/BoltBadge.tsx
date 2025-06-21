@@ -1,27 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 interface BoltBadgeProps {
   className?: string;
 }
 
 const BoltBadge: React.FC<BoltBadgeProps> = ({ className = '' }) => {
-  const [rotation, setRotation] = useState(0);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRotation(prev => (prev + 1) % 360);
-    }, 50);
-    
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <a 
       href="https://bolt.new/" 
       target="_blank" 
       rel="noopener noreferrer"
-      className={`fixed top-4 right-4 z-50 transition-all duration-300 hover:scale-110 ${className}`}
-      style={{ transform: `rotate(${rotation}deg)` }}
+      className={`absolute top-4 right-4 z-50 transition-all duration-300 hover:scale-110 ${className}`}
     >
       <img 
         src="/white_circle_360x360.png" 

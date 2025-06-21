@@ -61,7 +61,7 @@ const AuthStatus: React.FC<AuthStatusProps> = ({ className = '' }) => {
     try {
       await supabase.auth.signOut();
       setShowDropdown(false);
-      // Always redirect to home page after logout
+      // Navigate to home page after logout
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);

@@ -456,7 +456,7 @@ const MyTripsPage: React.FC = () => {
             )}
           </div>
         ) : !error ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 text-center p-6 sm:p-8 lg:p-12 animate-bounce-in delay-300">
+          <div className="flex flex-col items-center justify-center h-[60vh] pixel-card bg-gradient-to-br from-gray-900/80 to-gray-800/80 border-2 border-blue-500/30 text-center p-6 sm:p-8 lg:p-12 animate-bounce-in delay-300 backdrop-blur-sm">
             <div className="text-6xl sm:text-8xl mb-6 animate-float">🗺️</div>
             <h3 className="pixel-text mobile-heading text-gray-300 mb-4 glow-text">START YOUR FIRST ADVENTURE</h3>
             <p className="outfit-text text-gray-500 mb-6 sm:mb-8 text-sm sm:text-base lg:text-lg max-w-md">

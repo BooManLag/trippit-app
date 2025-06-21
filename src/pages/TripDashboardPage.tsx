@@ -519,6 +519,19 @@ const TripDashboardPage: React.FC = () => {
     fetchTripDetails();
   }, [tripId, navigate]);
 
+  // WORKAROUND: Direct navigation to badges page using window.location
+  const handleBadgesNavigation = () => {
+    console.log('🎯 Direct navigation to badges page');
+    console.log('Current tripId:', tripId);
+    
+    // Use window.location.href for direct navigation
+    const targetUrl = `/badges?tripId=${tripId}`;
+    console.log('Navigating to:', targetUrl);
+    
+    // Force navigation using window.location
+    window.location.href = targetUrl;
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'long',
@@ -614,18 +627,6 @@ const TripDashboardPage: React.FC = () => {
       default:
         return 'Tips service is currently unavailable';
     }
-  };
-
-  // Debug function to check navigation
-  const handleBadgesNavigation = () => {
-    console.log('🔍 Debug: Badges navigation clicked');
-    console.log('🔍 Current tripId:', tripId);
-    console.log('🔍 Target URL:', `/badges?tripId=${tripId}`);
-    
-    // Use window.location for debugging
-    const targetUrl = `/badges?tripId=${tripId}`;
-    console.log('🔍 Navigating to:', targetUrl);
-    navigate(targetUrl);
   };
 
   if (loading) {
@@ -765,10 +766,10 @@ const TripDashboardPage: React.FC = () => {
               <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
               <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
             </div>
-            {/* Fixed VIEW ALL button with debug logging */}
+            {/* WORKAROUND: Using window.location for direct navigation */}
             <button 
               onClick={handleBadgesNavigation}
-              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors hover:underline"
             >
               VIEW ALL
             </button>

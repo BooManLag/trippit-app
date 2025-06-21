@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
-import AuthStatus from '../components/AuthStatus';
+import { AuthStatus } from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 import AuthModal from '../components/AuthModal';
 import InvitationModal from '../components/InvitationModal';

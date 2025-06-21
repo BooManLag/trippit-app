@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import AuthStatus from '../components/AuthStatus';
+import { AuthStatus } from '../components/AuthStatus';
 
 interface RedditTip {
   id: string;

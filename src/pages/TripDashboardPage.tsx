@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BackButton from '../components/BackButton';
-import AuthStatus from '../components/AuthStatus';
+import { AuthStatus } from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
 import ShareTripModal from '../components/ShareTripModal';
 import { ChecklistItem } from '../types';

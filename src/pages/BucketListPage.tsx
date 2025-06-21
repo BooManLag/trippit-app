@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle, Zap, Star, Filter, Users, UserPlus, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import AuthStatus from '../components/AuthStatus';
+import { AuthStatus } from '../components/AuthStatus';
 import daresData from '../data/dares.json';
 
 interface DareItem {

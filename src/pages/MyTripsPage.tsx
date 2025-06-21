@@ -258,7 +258,7 @@ const MyTripsPage: React.FC = () => {
             <AuthStatus className="flex-shrink-0" showSignOut={false} />
             <button
               onClick={() => navigate('/create-trip')}
-              className="pixel-button-primary flex items-center justify-center gap-2 w-full sm:w-auto hover-float"
+              className="pixel-button-primary bg-blue-600 hover:bg-blue-500 flex items-center justify-center gap-2 w-full sm:w-auto hover-float"
             >
               <PlusCircle className="w-4 sm:w-5 h-4 sm:h-5" />
               NEW ADVENTURE
@@ -279,7 +279,7 @@ const MyTripsPage: React.FC = () => {
               </div>
               <button
                 onClick={retryFetchTrips}
-                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 flex-shrink-0"
+                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 flex-shrink-0 bg-gray-600 hover:bg-gray-500"
               >
                 <RefreshCw className="w-3 h-3" />
                 RETRY
@@ -465,7 +465,7 @@ const MyTripsPage: React.FC = () => {
             </p>
             <button
               onClick={() => navigate('/create-trip')}
-              className="pixel-button-primary w-full sm:w-auto hover-float animate-pulse-glow"
+              className="pixel-button-primary bg-blue-600 hover:bg-blue-500 w-full sm:w-auto hover-float animate-pulse-glow"
             >
               CREATE FIRST ADVENTURE
             </button>

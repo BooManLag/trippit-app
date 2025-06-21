@@ -20,7 +20,7 @@
   /* Ensure the background covers everything */
   #root {
     min-height: 100vh;
-    background: inherit;
+    background-color: rgba(0, 0, 0, 0.6); /* Dark overlay for better readability */
   }
 }
 

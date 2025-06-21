@@ -228,7 +228,7 @@ const MyTripsPage: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-bounce-in">
           <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-blue-500 animate-spin" />
           <p className="pixel-text text-blue-400 mt-4 text-sm sm:text-base">LOADING ADVENTURES...</p>
@@ -242,7 +242,7 @@ const MyTripsPage: React.FC = () => {
   const past = trips.filter(trip => trip.end_date < today);
 
   return (
-    <div className="min-h-screen w-full mobile-padding py-6 sm:py-8 lg:py-12 text-white flex justify-center relative overflow-hidden">
+    <div className="min-h-screen w-full mobile-padding py-6 sm:py-8 lg:py-12 flex justify-center relative overflow-hidden">
       <div className="w-full max-w-6xl relative z-10">
         {/* Header */}
         <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 lg:mb-12 gap-4 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>

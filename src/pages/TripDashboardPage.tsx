@@ -572,7 +572,7 @@ const TripDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="pixel-text text-blue-400">LOADING...</p>
@@ -583,7 +583,7 @@ const TripDashboardPage: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen text-white">
+      <div className="min-h-screen">
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => navigate('/my-trips')}
@@ -595,7 +595,7 @@ const TripDashboardPage: React.FC = () => {
 
   if (!canAccessTrip) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="pixel-text text-red-400 mb-4">ACCESS DENIED</p>
           <p className="outfit-text text-gray-400 mb-6">You don't have access to this trip.</p>
@@ -619,7 +619,7 @@ const TripDashboardPage: React.FC = () => {
   const totalAccessibleUsers = acceptedUsers.length;
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         
         <div className="flex items-center justify-between mb-6 sm:mb-8 relative z-[100]">
@@ -630,7 +630,7 @@ const TripDashboardPage: React.FC = () => {
           <AuthStatus />
         </div>
 
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-blue-500/20">
+        <div className="pixel-card bg-gray-900/90 mb-6 sm:mb-8 border-2 border-blue-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-6">
             <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
             <div className="flex-1">
@@ -694,13 +694,13 @@ const TripDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="pixel-card bg-gray-900 border-2 border-purple-500/20 flex items-center justify-center mb-6 sm:mb-8">
+        <div className="pixel-card bg-gray-900/90 border-2 border-purple-500/20 flex items-center justify-center mb-6 sm:mb-8">
           <span className="pixel-text text-purple-400 text-xs sm:text-sm">BADGES COMING SOON</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Checklist Card */}
-          <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <div className="pixel-card bg-gray-900/90 border-2 border-blue-500/20">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center gap-3">
                 <CheckSquare className="h-5 sm:h-6 w-5 sm:w-6 text-green-500" />
@@ -714,7 +714,7 @@ const TripDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="text-center p-3 sm:p-4 bg-gray-800 border border-blue-500/10 mb-4 sm:mb-6">
+            <div className="text-center p-3 sm:p-4 bg-gray-800/80 backdrop-blur-sm border border-blue-500/10 mb-4 sm:mb-6">
               <div className="pixel-text text-2xl sm:text-4xl text-yellow-400 mb-2">
                 {remainingTasks}
               </div>
@@ -732,7 +732,7 @@ const TripDashboardPage: React.FC = () => {
           </div>
 
           {/* Game Card */}
-          <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+          <div className="pixel-card bg-gray-900/90 border-2 border-blue-500/20">
             <div className="flex items-center gap-3 mb-4 sm:mb-6">
               <Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
               <h3 className="pixel-text text-sm sm:text-lg">WHERE'D I GO?</h3>
@@ -751,7 +751,7 @@ const TripDashboardPage: React.FC = () => {
         </div>
 
         {/* Dare Bucket List Section */}
-        <div className="pixel-card bg-gray-900 mb-6 sm:mb-8 border-2 border-red-500/20">
+        <div className="pixel-card bg-gray-900/90 mb-6 sm:mb-8 border-2 border-red-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
               <Target className="h-5 sm:h-6 w-5 sm:w-6 text-red-400" />
@@ -800,7 +800,7 @@ const TripDashboardPage: React.FC = () => {
                       return (
                         <div 
                           key={userDare.id} 
-                          className="pixel-card bg-gray-800 border border-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group"
+                          className="pixel-card bg-gray-800/90 border border-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group"
                           onClick={() => toggleDare(userDare)}
                         >
                           <div className="flex items-start gap-3">
@@ -902,7 +902,7 @@ const TripDashboardPage: React.FC = () => {
         </div>
 
         {/* Tips Section */}
-        <div className="pixel-card bg-gray-900 border-2 border-blue-500/20">
+        <div className="pixel-card bg-gray-900/90 border-2 border-blue-500/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-400" />
@@ -931,7 +931,7 @@ const TripDashboardPage: React.FC = () => {
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {tips.slice(0, 3).map(tip => (
-                <div key={tip.id} className="pixel-card bg-gray-800 border border-blue-500/10 hover:border-blue-500/30 transition-all">
+                <div key={tip.id} className="pixel-card bg-gray-800/90 border border-blue-500/10 hover:border-blue-500/30 transition-all">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                       <span className="text-base sm:text-lg">{getCategoryIcon(tip.category)}</span>

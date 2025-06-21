@@ -27,7 +27,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen text-white overflow-hidden relative">
+    <div className="min-h-screen overflow-hidden relative">
       {/* Background overlay for better text readability */}
       <div className="absolute inset-0 bg-black/40 z-0"></div>
       

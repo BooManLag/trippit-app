@@ -67,12 +67,17 @@ const TripDashboardPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [tipsError, setTipsError] = useState<string | null>(null);
   const [tripOwner, setTripOwner] = useState<{id: string, display_name?: string, email?: string} | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   // Badge tracking hook
   const { checkAllBadges, trackDareCompletion, trackChecklistCompletion } = useBadgeTracking(
     currentUser?.id || null, 
     tripId || null
   );
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   const fetchRedditTips = async (city: string, country: string) => {
     try {
@@ -685,33 +690,32 @@ const TripDashboardPage: React.FC = () => {
   const totalAccessibleUsers = acceptedUsers.length;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         
-        <div className="flex items-center justify-between mb-6 sm:mb-8 relative z-[100]">
+        <div className={`flex items-center justify-between mb-6 sm:mb-8 relative z-[100] transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="flex items-center gap-4">
-            {/* Fixed Back Button - directly navigate to my-trips */}
             <button 
               onClick={() => navigate('/my-trips')} 
               className="text-blue-400 hover:text-blue-300 transition-colors hover:scale-110"
             >
               <ArrowLeft className="w-4 sm:w-5 h-4 sm:h-5" />
             </button>
-            <h1 className="pixel-text text-xl sm:text-2xl lg:text-3xl">TRIP DASHBOARD</h1>
+            <h1 className="pixel-text text-lg sm:text-xl lg:text-2xl text-blue-400 glow-text">TRIP DASHBOARD</h1>
           </div>
           <AuthStatus />
         </div>
 
-        <div className="pixel-card bg-gray-900/90 mb-6 sm:mb-8 border-2 border-blue-500/20">
+        <div className={`pixel-card bg-gradient-to-br from-gray-900/90 to-gray-800/90 mb-6 sm:mb-8 border-2 border-blue-500/20 animate-slide-in-up delay-200`}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-6">
             <Trophy className="h-10 sm:h-12 w-10 sm:w-12 text-yellow-400 flex-shrink-0" />
             <div className="flex-1">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                 <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
                   TRIP #{tripNumber}
                 </h3>
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {/* Create Itinerary Button */}
                   <button
                     onClick={() => setShowItineraryModal(true)}
@@ -778,10 +782,10 @@ const TripDashboardPage: React.FC = () => {
         </div>
 
         {/* Badge Section - Horizontal Scrollable */}
-        <div className="pixel-card bg-gray-900/90 border-2 border-yellow-500/20 mb-6 sm:mb-8">
+        <div className={`pixel-card bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-yellow-500/20 mb-6 sm:mb-8 animate-slide-in-up delay-300`}>
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <Award className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
-            <h3 className="pixel-text text-sm sm:text-lg">ACHIEVEMENT BADGES</h3>
+            <h3 className="pixel-text text-sm sm:text-lg text-yellow-400 glow-text">ACHIEVEMENT BADGES</h3>
           </div>
 
           {currentUser ? (
@@ -801,15 +805,15 @@ const TripDashboardPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Checklist Card */}
-          <div className="pixel-card bg-gray-900/90 border-2 border-blue-500/20">
+          <div className={`pixel-card bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-blue-500/20 animate-slide-in-left delay-400`}>
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center gap-3">
                 <CheckSquare className="h-5 sm:h-6 w-5 sm:w-6 text-green-500" />
-                <h3 className="pixel-text text-sm sm:text-lg">CHECKLIST</h3>
+                <h3 className="pixel-text text-sm sm:text-lg text-green-400 glow-text">CHECKLIST</h3>
               </div>
               <button 
                 onClick={() => navigate(`/checklist?tripId=${tripId}`)}
-                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:underline"
               >
                 VIEW ALL
               </button>
@@ -833,37 +837,39 @@ const TripDashboardPage: React.FC = () => {
           </div>
 
           {/* Game Card */}
-          <div className="pixel-card bg-gray-900/90 border-2 border-blue-500/20">
+          <div className={`pixel-card bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-blue-500/20 animate-slide-in-right delay-400`}>
             <div className="flex items-center gap-3 mb-4 sm:mb-6">
               <Gamepad2 className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-500" />
-              <h3 className="pixel-text text-sm sm:text-lg">WHERE'D I GO?</h3>
+              <h3 className="pixel-text text-sm sm:text-lg text-yellow-400 glow-text">WHERE'D I GO?</h3>
             </div>
             <p className="outfit-text text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">
               Practice handling travel scenarios specific to {trip?.destination.split(', ')[1] || 'your destination'}!
             </p>
-            <button
-              onClick={() => navigate(`/game?tripId=${tripId}`)}
-              className="pixel-button-primary w-full flex items-center justify-center gap-2"
-            >
-              <Gamepad2 className="w-4 sm:w-5 h-4 sm:h-5" />
-              PLAY GAME
-            </button>
-             <button
-            onClick={() => navigate(`/diary?tripId=${tripId}`)}
-                className="pixel-button-secondary w-full mt-3 flex items-center justify-center gap-2"
-          >
-            <BookOpen className="w-4 sm:w-5 h-4 sm:h-5" />
-            OPEN DIARY
-          </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => navigate(`/game?tripId=${tripId}`)}
+                className="pixel-button-primary w-full flex items-center justify-center gap-2 hover-float"
+              >
+                <Gamepad2 className="w-4 sm:w-5 h-4 sm:h-5" />
+                PLAY GAME
+              </button>
+              <button
+                onClick={() => navigate(`/diary?tripId=${tripId}`)}
+                className="pixel-button-secondary w-full flex items-center justify-center gap-2 hover-glow"
+              >
+                <BookOpen className="w-4 sm:w-5 h-4 sm:h-5" />
+                OPEN DIARY
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Dare Bucket List Section */}
-        <div className="pixel-card bg-gray-900/90 mb-6 sm:mb-8 border-2 border-red-500/20">
+        <div className={`pixel-card bg-gradient-to-br from-gray-900/90 to-gray-800/90 mb-6 sm:mb-8 border-2 border-red-500/20 animate-slide-in-up delay-500`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
               <Target className="h-5 sm:h-6 w-5 sm:w-6 text-red-400" />
-              <h3 className="pixel-text text-sm sm:text-lg">DARE BUCKET LIST</h3>
+              <h3 className="pixel-text text-sm sm:text-lg text-red-400 glow-text">DARE BUCKET LIST</h3>
               {!loadingDares && totalDares > 0 && (
                 <span className="pixel-text text-xs sm:text-sm text-red-400">
                   {completedDares}/{totalDares} conquered
@@ -874,14 +880,14 @@ const TripDashboardPage: React.FC = () => {
               {totalDares > 4 && (
                 <button
                   onClick={() => navigate(`/bucket-list?tripId=${tripId}`)}
-                  className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+                  className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:underline"
                 >
                   VIEW ALL {totalDares}
                 </button>
               )}
               <button
                 onClick={addRandomDare}
-                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1"
+                className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 hover-float"
               >
                 <Zap className="w-3 h-3" />
                 RANDOM DARE
@@ -963,7 +969,7 @@ const TripDashboardPage: React.FC = () => {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <span className="text-sm">{getCategoryIcon(dare.category)}</span>
                                 <span className="pixel-text text-xs text-green-400">{dare.category}</span>
                                 <span className="pixel-text text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
@@ -1001,7 +1007,7 @@ const TripDashboardPage: React.FC = () => {
               <p className="outfit-text text-gray-500 text-sm">Add your first epic dare for {trip?.destination}!</p>
               <button
                 onClick={addRandomDare}
-                className="pixel-button-primary mt-4"
+                className="pixel-button-primary mt-4 hover-float"
               >
                 ADD RANDOM DARE
               </button>
@@ -1010,11 +1016,11 @@ const TripDashboardPage: React.FC = () => {
         </div>
 
         {/* Tips Section */}
-        <div className="pixel-card bg-gray-900/90 border-2 border-blue-500/20">
+        <div className={`pixel-card bg-gradient-to-br from-gray-900/90 to-gray-800/90 border-2 border-blue-500/20 animate-slide-in-up delay-600`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div className="flex items-center gap-3">
               <Lightbulb className="h-5 sm:h-6 w-5 sm:w-6 text-yellow-400" />
-              <h3 className="pixel-text text-sm sm:text-lg">CITY TIPS</h3>
+              <h3 className="pixel-text text-sm sm:text-lg text-yellow-400 glow-text">CITY TIPS</h3>
               {!loadingTips && tips.length > 0 && (
                 <span className="pixel-text text-xs sm:text-sm text-green-400">
                   {tips.length} tips found
@@ -1024,7 +1030,7 @@ const TripDashboardPage: React.FC = () => {
             {tips.length > 3 && (
               <button
                 onClick={() => navigate(`/tips?tripId=${tripId}`)}
-                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300"
+                className="pixel-text text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:underline"
               >
                 VIEW ALL {tips.length}
               </button>
@@ -1039,7 +1045,7 @@ const TripDashboardPage: React.FC = () => {
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {tips.slice(0, 3).map(tip => (
-                <div key={tip.id} className="pixel-card bg-gray-800/90 border border-blue-500/10 hover:border-blue-500/30 transition-all">
+                <div key={tip.id} className="pixel-card bg-gray-800/90 border border-blue-500/10 hover:border-blue-500/30 transition-all hover:scale-[1.02]">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                       <span className="text-base sm:text-lg">{getCategoryIcon(tip.category)}</span>

@@ -514,3 +514,23 @@ button:focus {
     color: black !important;
   }
 }
+
+/* Fix for modals to ensure they're always on top */
+.fixed {
+  z-index: 50;
+}
+
+/* Ensure modals are above everything else */
+.fixed.inset-0.bg-black.bg-opacity-75.flex.items-center.justify-center.z-\[9999\] {
+  z-index: 9999 !important;
+}
+
+/* Ensure edit modals are above the main modal */
+.fixed.inset-0.bg-black.bg-opacity-75.flex.items-center.justify-center.z-\[10000\] {
+  z-index: 10000 !important;
+}
+
+/* Ensure auth modals are above everything */
+.fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50 {
+  z-index: 9999 !important;
+}

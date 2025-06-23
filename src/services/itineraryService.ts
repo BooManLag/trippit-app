@@ -56,7 +56,7 @@ class ItineraryService {
       throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
     }
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = this.buildPrompt(destination, startDate, endDate, preferences);
 

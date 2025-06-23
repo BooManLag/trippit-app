@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import html2canvas from 'html2canvas';
 import { itineraryService, Itinerary, ItineraryActivity, ItineraryPreferences } from '../services/itineraryService';
@@ -26,8 +26,10 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [showAddActivity, setShowAddActivity] = useState<number | null>(null);
   const [showApiKeyInfo, setShowApiKeyInfo] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [currentExportPage, setCurrentExportPage] = useState(0);
+  const [totalExportPages, setTotalExportPages] = useState(1);
   const itineraryRef = useRef<HTMLDivElement>(null);
-  const exportPreviewRef = useRef<HTMLDivElement>(null);
+  const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [preferences, setPreferences] = useState<ItineraryPreferences>({
     budget: 'mid-range',
@@ -61,6 +63,18 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     accommodation: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
     activity: 'bg-red-500/20 border-red-500/30 text-red-400'
   };
+
+  useEffect(() => {
+    if (itinerary) {
+      // Calculate how many export pages we need based on the number of days
+      const daysPerPage = 3;
+      const pages = Math.ceil(itinerary.days.length / daysPerPage);
+      setTotalExportPages(pages);
+      
+      // Initialize the refs array
+      exportPreviewRefs.current = Array(pages).fill(null);
+    }
+  }, [itinerary]);
 
   if (!isOpen) return null;
 
@@ -158,37 +172,59 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   };
 
   const exportAsImage = async () => {
-    if (!exportPreviewRef.current) return;
+    if (!itinerary) return;
     
     try {
       setExportLoading(true);
       
-      // Make sure the export preview is visible during capture
-      const exportPreview = exportPreviewRef.current;
-      const originalDisplay = exportPreview.style.display;
-      exportPreview.style.display = 'block';
+      // Create an array to store all the image data URLs
+      const imageDataUrls: string[] = [];
       
-      // Wait a moment for the DOM to update
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Export each page
+      for (let page = 0; page < totalExportPages; page++) {
+        const exportPreview = exportPreviewRefs.current[page];
+        if (!exportPreview) continue;
+        
+        // Make sure the export preview is visible during capture
+        const originalDisplay = exportPreview.style.display;
+        exportPreview.style.display = 'block';
+        
+        // Wait a moment for the DOM to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const canvas = await html2canvas(exportPreview, {
+          scale: 2,
+          backgroundColor: '#000000',
+          useCORS: true,
+          logging: false,
+          allowTaint: true
+        });
+        
+        // Reset display style
+        exportPreview.style.display = originalDisplay;
+        
+        // Add the image data URL to our array
+        imageDataUrls.push(canvas.toDataURL('image/png'));
+      }
       
-      const canvas = await html2canvas(exportPreview, {
-        scale: 2,
-        backgroundColor: '#000000',
-        useCORS: true,
-        logging: false,
-        allowTaint: true
-      });
-      
-      // Reset display style
-      exportPreview.style.display = originalDisplay;
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.download = `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      // Download each image
+      for (let i = 0; i < imageDataUrls.length; i++) {
+        const link = document.createElement('a');
+        const fileName = imageDataUrls.length > 1 
+          ? `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary_${i+1}.png`
+          : `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary.png`;
+        
+        link.download = fileName;
+        link.href = imageDataUrls[i];
+        link.click();
+        
+        // Add a small delay between downloads to prevent browser issues
+        if (i < imageDataUrls.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
     } catch (error) {
-      console.error('Error exporting image:', error);
+      console.error('Error exporting images:', error);
       alert('Failed to export itinerary. Please try again.');
     } finally {
       setExportLoading(false);
@@ -416,48 +452,62 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
             )}
 
             {/* Export Preview - Hidden but used for export */}
-            <div 
-              ref={exportPreviewRef}
-              className="hidden"
-              style={{ 
-                width: '1080px', 
-                height: '1080px', 
-                padding: '60px', 
-                backgroundColor: '#000000',
-                color: '#ffffff',
-                fontFamily: 'Outfit, sans-serif'
-              }}
-            >
-              <div className="text-center mb-8">
-                <h1 className="text-6xl font-bold text-white mb-4">{itinerary.destination}</h1>
-                <p className="text-3xl text-gray-300">{itinerary.totalDays} Day Itinerary</p>
-                <p className="text-2xl text-purple-400 mt-4">{itinerary.estimatedBudget}</p>
-              </div>
+            {Array.from({ length: totalExportPages }).map((_, pageIndex) => {
+              // Calculate which days to show on this page
+              const daysPerPage = 3;
+              const startDayIndex = pageIndex * daysPerPage;
+              const endDayIndex = Math.min(startDayIndex + daysPerPage, itinerary.days.length);
+              const daysForThisPage = itinerary.days.slice(startDayIndex, endDayIndex);
               
-              <div className="space-y-6">
-                {itinerary.days.slice(0, 3).map((day) => (
-                  <div key={day.day} className="bg-gray-900 p-6 rounded-lg">
-                    <h3 className="text-3xl font-bold text-purple-400 mb-4">Day {day.day}</h3>
-                    <div className="space-y-3">
-                      {day.activities.slice(0, 3).map((activity) => (
-                        <div key={activity.id} className="flex items-center gap-4">
-                          <span className="text-2xl">{categoryIcons[activity.category]}</span>
-                          <div>
-                            <div className="text-xl font-semibold text-white">{activity.name}</div>
-                            <div className="text-lg text-gray-300">{activity.time} • {activity.location}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+              return (
+                <div 
+                  key={`export-preview-${pageIndex}`}
+                  ref={el => exportPreviewRefs.current[pageIndex] = el}
+                  className="hidden"
+                  style={{ 
+                    width: '1080px', 
+                    height: '1080px', 
+                    padding: '60px', 
+                    backgroundColor: '#000000',
+                    color: '#ffffff',
+                    fontFamily: 'Outfit, sans-serif'
+                  }}
+                >
+                  <div className="text-center mb-8">
+                    <h1 className="text-6xl font-bold text-white mb-4">{itinerary.destination}</h1>
+                    <p className="text-3xl text-gray-300">
+                      {itinerary.totalDays} Day Itinerary
+                      {totalExportPages > 1 ? ` (Page ${pageIndex + 1}/${totalExportPages})` : ''}
+                    </p>
+                    <p className="text-2xl text-purple-400 mt-4">{itinerary.estimatedBudget}</p>
                   </div>
-                ))}
-              </div>
-              
-              <div className="text-center mt-8">
-                <p className="text-2xl text-gray-400">#TravelWithTrippit #Adventure</p>
-                <p className="text-xl text-purple-400 mt-2">Created with Trippit</p>
-              </div>
-            </div>
+                  
+                  <div className="space-y-6">
+                    {daysForThisPage.map((day) => (
+                      <div key={day.day} className="bg-gray-900 p-6 rounded-lg">
+                        <h3 className="text-3xl font-bold text-purple-400 mb-4">Day {day.day}</h3>
+                        <div className="space-y-3">
+                          {day.activities.slice(0, 4).map((activity) => (
+                            <div key={activity.id} className="flex items-center gap-4">
+                              <span className="text-2xl">{categoryIcons[activity.category]}</span>
+                              <div>
+                                <div className="text-xl font-semibold text-white">{activity.name}</div>
+                                <div className="text-lg text-gray-300">{activity.time} • {activity.location}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="text-center mt-8">
+                    <p className="text-2xl text-gray-400">#TravelWithTrippit #Adventure</p>
+                    <p className="text-xl text-purple-400 mt-2">Created with Trippit</p>
+                  </div>
+                </div>
+              );
+            })}
 
             {/* Itinerary Editor */}
             <DragDropContext onDragEnd={handleDragEnd}>

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart, ArrowLeft } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart, ArrowLeft, Route } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
 import ShareTripModal from '../components/ShareTripModal';
+import ItineraryModal from '../components/ItineraryModal';
 import BadgeGrid from '../components/BadgeGrid';
 import { useBadgeTracking } from '../hooks/useBadgeTracking';
 import { ChecklistItem } from '../types';
@@ -60,6 +61,7 @@ const TripDashboardPage: React.FC = () => {
   const [diaryEntries, setDiaryEntries] = useState<any[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [isUserOwner, setIsUserOwner] = useState(false);
   const [canAccessTrip, setCanAccessTrip] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -708,16 +710,27 @@ const TripDashboardPage: React.FC = () => {
                 <h3 className="pixel-text text-yellow-400 text-sm sm:text-base">
                   TRIP #{tripNumber}
                 </h3>
-                {/* Share Trip Button - Always visible for trip owners */}
-                {isUserOwner && (
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                  {/* Create Itinerary Button */}
                   <button
-                    onClick={() => setShowShareModal(true)}
-                    className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 hover:scale-105 transition-transform"
+                    onClick={() => setShowItineraryModal(true)}
+                    className="pixel-button-primary text-xs px-3 py-1 flex items-center gap-1 hover:scale-105 transition-transform bg-purple-600 hover:bg-purple-500"
                   >
-                    <Share2 className="w-3 h-3" />
-                    INVITE FRIENDS
+                    <Route className="w-3 h-3" />
+                    CREATE ITINERARY
                   </button>
-                )}
+                  {/* Share Trip Button - Always visible for trip owners */}
+                  {isUserOwner && (
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      className="pixel-button-secondary text-xs px-3 py-1 flex items-center gap-1 hover:scale-105 transition-transform"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      INVITE FRIENDS
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="outfit-text text-gray-400 text-sm sm:text-base">
                 {tripNumber === 1 ? 'Congratulations on starting your first adventure!' : 'Keep exploring, adventurer!'}
@@ -1091,14 +1104,24 @@ const TripDashboardPage: React.FC = () => {
       />
 
       {trip && (
-        <ShareTripModal
-          isOpen={showShareModal}
-          onClose={() => setShowShareModal(false)}
-          tripId={trip.id}
-          tripDestination={trip.destination}
-          maxParticipants={trip.max_participants || 4}
-          currentParticipants={totalAccessibleUsers}
-        />
+        <>
+          <ShareTripModal
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            tripId={trip.id}
+            tripDestination={trip.destination}
+            maxParticipants={trip.max_participants || 4}
+            currentParticipants={totalAccessibleUsers}
+          />
+
+          <ItineraryModal
+            isOpen={showItineraryModal}
+            onClose={() => setShowItineraryModal(false)}
+            tripDestination={trip.destination}
+            tripStartDate={trip.start_date}
+            tripEndDate={trip.end_date}
+          />
+        </>
       )}
     </div>
   );

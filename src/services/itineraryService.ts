@@ -1,6 +1,3 @@
-import { gemini15Flash, googleAI } from '@genkit-ai/googleai';
-import { genkit } from 'genkit';
-
 export interface ItineraryActivity {
   id: string;
   name: string;
@@ -38,102 +35,41 @@ export interface ItineraryPreferences {
 }
 
 class ItineraryService {
-  private ai: any = null;
-
-  constructor() {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (apiKey) {
-      this.ai = genkit({
-        plugins: [googleAI({ apiKey })],
-        model: gemini15Flash,
-      });
-    }
-  }
-
   async generateItinerary(
     destination: string,
     startDate: string,
     endDate: string,
     preferences: ItineraryPreferences
   ): Promise<Itinerary> {
-    if (!this.ai) {
-      throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
-    }
-
-    const prompt = this.buildPrompt(destination, startDate, endDate, preferences);
-
     try {
-      const { text } = await this.ai.generate(prompt);
+      // Try to call the backend edge function first
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          destination,
+          startDate,
+          endDate,
+          preferences
+        })
+      });
 
-      // Extract JSON from the response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No valid JSON found in response');
+      if (response.ok) {
+        const itineraryData = await response.json();
+        return this.formatItinerary(itineraryData, destination, startDate, endDate);
+      } else {
+        console.warn('Backend itinerary generation failed, falling back to client-side generation');
+        throw new Error('Backend generation failed');
       }
-
-      const itineraryData = JSON.parse(jsonMatch[0]);
-      
-      // Validate and format the response
-      return this.formatItinerary(itineraryData, destination, startDate, endDate);
     } catch (error) {
-      console.error('Error generating itinerary:', error);
+      console.error('Error generating itinerary via backend:', error);
       
-      // Fallback to sample itinerary if API fails
+      // Fallback to client-side generation
       return this.generateFallbackItinerary(destination, startDate, endDate, preferences);
     }
-  }
-
-  private buildPrompt(
-    destination: string,
-    startDate: string,
-    endDate: string,
-    preferences: ItineraryPreferences
-  ): string {
-    const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    return `
-Generate a detailed ${days}-day travel itinerary for ${destination} from ${startDate} to ${endDate}.
-
-Preferences:
-- Budget: ${preferences.budget}
-- Interests: ${preferences.interests.join(', ')}
-- Travel Style: ${preferences.travelStyle}
-- Group Size: ${preferences.groupSize}
-${preferences.specialRequests ? `- Special Requests: ${preferences.specialRequests}` : ''}
-
-Please return ONLY a valid JSON object with this exact structure:
-{
-  "destination": "${destination}",
-  "startDate": "${startDate}",
-  "endDate": "${endDate}",
-  "totalDays": ${days},
-  "days": [
-    {
-      "day": 1,
-      "date": "${startDate}",
-      "activities": [
-        {
-          "id": "unique-id",
-          "name": "Activity Name",
-          "time": "9:00 AM",
-          "duration": "2 hours",
-          "location": "Specific location",
-          "description": "Brief description",
-          "category": "sightseeing",
-          "estimatedCost": "$20-30",
-          "tips": "Helpful tip"
-        }
-      ]
-    }
-  ],
-  "estimatedBudget": "Total estimated budget",
-  "travelTips": ["Tip 1", "Tip 2", "Tip 3"]
-}
-
-Categories should be one of: sightseeing, dining, shopping, entertainment, transport, accommodation, activity
-
-Make the itinerary realistic, well-timed, and include a good mix of activities. Include specific locations, realistic time estimates, and practical tips.
-`;
   }
 
   private formatItinerary(data: any, destination: string, startDate: string, endDate: string): Itinerary {

@@ -244,8 +244,8 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="pixel-card max-w-6xl w-full max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4 overflow-hidden">
+      <div className="pixel-card max-w-6xl w-full max-h-[90vh] overflow-y-auto relative bg-gray-900 border-2 border-blue-500/30">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-400 hover:text-white z-10"
@@ -259,7 +259,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
               <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-purple-500/20 mb-4">
                 <Wand2 className="h-8 w-8 text-purple-500 animate-pulse" />
               </div>
-              <h2 className="pixel-text text-2xl text-purple-400 mb-2">CREATE ITINERARY</h2>
+              <h2 className="pixel-text text-xl sm:text-2xl text-purple-400 mb-2">CREATE ITINERARY</h2>
               <p className="outfit-text text-gray-400">
                 Let's create a personalized itinerary for {tripDestination}
               </p>
@@ -271,7 +271,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 <label className="block pixel-text text-sm text-purple-400 mb-3">
                   💰 BUDGET PREFERENCE
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { value: 'budget', label: 'Budget', desc: 'Under $100/day' },
                     { value: 'mid-range', label: 'Mid-Range', desc: '$100-200/day' },
@@ -320,7 +320,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 <label className="block pixel-text text-sm text-purple-400 mb-3">
                   ⚡ TRAVEL STYLE
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { value: 'relaxed', label: 'Relaxed', desc: 'Take it easy' },
                     { value: 'moderate', label: 'Moderate', desc: 'Balanced pace' },
@@ -371,7 +371,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-4 pt-6">
+            <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <button
                 onClick={onClose}
                 className="pixel-button-secondary flex-1"
@@ -401,9 +401,9 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
         {step === 'itinerary' && itinerary && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
               <div>
-                <h2 className="pixel-text text-2xl text-purple-400 mb-2">YOUR ITINERARY</h2>
+                <h2 className="pixel-text text-xl sm:text-2xl text-purple-400 mb-2">YOUR ITINERARY</h2>
                 <p className="outfit-text text-gray-400">
                   {itinerary.destination} • {itinerary.totalDays} days • {itinerary.estimatedBudget}
                 </p>
@@ -522,7 +522,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <Calendar className="w-5 h-5 text-purple-400" />
-                        <h3 className="pixel-text text-lg text-purple-400">
+                        <h3 className="pixel-text text-sm sm:text-lg text-purple-400">
                           DAY {day.day} - {new Date(day.date).toLocaleDateString()}
                         </h3>
                       </div>
@@ -565,8 +565,8 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2 flex-wrap">
+                                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                           <span className="text-lg">{categoryIcons[activity.category]}</span>
                                           <span className={`pixel-text text-xs px-2 py-1 rounded ${categoryColors[activity.category]}`}>
                                             {activity.category}
@@ -603,7 +603,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                                         {activity.description}
                                       </p>
 
-                                      <div className="flex items-center gap-4 text-xs">
+                                      <div className="flex items-center gap-4 text-xs flex-wrap">
                                         <div className="flex items-center gap-1 text-green-400">
                                           <DollarSign className="w-3 h-3" />
                                           <span>{activity.estimatedCost}</span>
@@ -668,11 +668,144 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
         {/* Edit Activity Modal */}
         {editingActivity && itinerary && (
-          <EditActivityModal
-            activity={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex]}
-            onSave={(updates) => handleUpdateActivity(editingActivity.dayIndex, editingActivity.activityIndex, updates)}
-            onCancel={() => setEditingActivity(null)}
-          />
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10000] p-4">
+            <div className="pixel-card max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="pixel-text text-blue-400">EDIT ACTIVITY</h3>
+                <button onClick={() => setEditingActivity(null)} className="text-gray-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdateActivity(
+                  editingActivity.dayIndex, 
+                  editingActivity.activityIndex, 
+                  itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex]
+                );
+              }} className="space-y-4">
+                <input
+                  type="text"
+                  value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].name}
+                  onChange={(e) => {
+                    const updatedItinerary = { ...itinerary };
+                    updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].name = e.target.value;
+                    setItinerary(updatedItinerary);
+                  }}
+                  className="w-full input-pixel text-sm"
+                  placeholder="Activity name"
+                  required
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="time"
+                    value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].time}
+                    onChange={(e) => {
+                      const updatedItinerary = { ...itinerary };
+                      updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].time = e.target.value;
+                      setItinerary(updatedItinerary);
+                    }}
+                    className="input-pixel text-sm"
+                    required
+                  />
+                  <input
+                    type="text"
+                    value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].duration}
+                    onChange={(e) => {
+                      const updatedItinerary = { ...itinerary };
+                      updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].duration = e.target.value;
+                      setItinerary(updatedItinerary);
+                    }}
+                    className="input-pixel text-sm"
+                    placeholder="Duration"
+                  />
+                </div>
+
+                <input
+                  type="text"
+                  value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].location}
+                  onChange={(e) => {
+                    const updatedItinerary = { ...itinerary };
+                    updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].location = e.target.value;
+                    setItinerary(updatedItinerary);
+                  }}
+                  className="w-full input-pixel text-sm"
+                  placeholder="Location"
+                  required
+                />
+
+                <textarea
+                  value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].description}
+                  onChange={(e) => {
+                    const updatedItinerary = { ...itinerary };
+                    updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].description = e.target.value;
+                    setItinerary(updatedItinerary);
+                  }}
+                  className="w-full input-pixel text-sm h-20 resize-none"
+                  placeholder="Description"
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].category}
+                    onChange={(e) => {
+                      const updatedItinerary = { ...itinerary };
+                      updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].category = e.target.value as any;
+                      setItinerary(updatedItinerary);
+                    }}
+                    className="input-pixel text-sm"
+                  >
+                    <option value="activity">Activity</option>
+                    <option value="sightseeing">Sightseeing</option>
+                    <option value="dining">Dining</option>
+                    <option value="shopping">Shopping</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="transport">Transport</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].estimatedCost}
+                    onChange={(e) => {
+                      const updatedItinerary = { ...itinerary };
+                      updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].estimatedCost = e.target.value;
+                      setItinerary(updatedItinerary);
+                    }}
+                    className="input-pixel text-sm"
+                    placeholder="Cost"
+                  />
+                </div>
+
+                <textarea
+                  value={itinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].tips || ''}
+                  onChange={(e) => {
+                    const updatedItinerary = { ...itinerary };
+                    updatedItinerary.days[editingActivity.dayIndex].activities[editingActivity.activityIndex].tips = e.target.value;
+                    setItinerary(updatedItinerary);
+                  }}
+                  className="w-full input-pixel text-sm h-16 resize-none"
+                  placeholder="Tips (optional)"
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingActivity(null)}
+                    className="pixel-button-secondary flex-1"
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    type="submit"
+                    className="pixel-button-primary flex-1"
+                  >
+                    SAVE CHANGES
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -704,7 +837,7 @@ const AddActivityForm: React.FC<{
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input
           type="text"
           placeholder="Activity name"
@@ -722,7 +855,7 @@ const AddActivityForm: React.FC<{
         />
       </div>
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input
           type="text"
           placeholder="Duration (e.g., 2 hours)"
@@ -760,7 +893,7 @@ const AddActivityForm: React.FC<{
         className="w-full input-pixel text-sm h-16 resize-none"
       />
 
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           type="button"
           onClick={onCancel}
@@ -793,7 +926,7 @@ const EditActivityModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10000] p-4">
       <div className="pixel-card max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="pixel-text text-blue-400">EDIT ACTIVITY</h3>

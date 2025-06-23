@@ -127,12 +127,12 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
         </div>
       </div>
 
-      {/* Tab Navigation - IMPROVED FOR MOBILE */}
+      {/* Arrow Navigation Only */}
       <div className="flex items-center justify-between">
         <button
           onClick={goToPrevTab}
           disabled={currentTab === 0}
-          className={`p-1 rounded-full transition-all ${
+          className={`p-2 rounded-full transition-all ${
             currentTab === 0 
               ? 'text-gray-600 cursor-not-allowed' 
               : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10'
@@ -142,26 +142,14 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {/* Simplified dot navigation for mobile */}
-        <div className="flex items-center gap-1">
-          {Array.from({ length: totalTabs }, (_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentTab(index)}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                index === currentTab 
-                  ? 'bg-yellow-400 w-4' 
-                  : 'bg-gray-600 hover:bg-gray-500'
-              }`}
-              aria-label={`Go to page ${index + 1}`}
-            />
-          ))}
-        </div>
+        <span className="pixel-text text-xs text-gray-500">
+          {currentTab + 1} / {totalTabs}
+        </span>
 
         <button
           onClick={goToNextTab}
           disabled={currentTab === totalTabs - 1}
-          className={`p-1 rounded-full transition-all ${
+          className={`p-2 rounded-full transition-all ${
             currentTab === totalTabs - 1 
               ? 'text-gray-600 cursor-not-allowed' 
               : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10'
@@ -258,13 +246,6 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
             <div key={`empty-${index}`} className="w-12 h-12 sm:w-16 sm:h-16" />
           ))
         }
-      </div>
-
-      {/* Tab Indicator */}
-      <div className="text-center">
-        <span className="pixel-text text-xs text-gray-500">
-          {currentTab + 1} / {totalTabs}
-        </span>
       </div>
 
       {/* Badge Modal */}

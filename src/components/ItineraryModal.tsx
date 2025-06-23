@@ -25,7 +25,9 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [editingActivity, setEditingActivity] = useState<{ dayIndex: number; activityIndex: number } | null>(null);
   const [showAddActivity, setShowAddActivity] = useState<number | null>(null);
   const [showApiKeyInfo, setShowApiKeyInfo] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const itineraryRef = useRef<HTMLDivElement>(null);
+  const exportPreviewRef = useRef<HTMLDivElement>(null);
 
   const [preferences, setPreferences] = useState<ItineraryPreferences>({
     budget: 'mid-range',
@@ -103,7 +105,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination || !itinerary) return;
-
+    
     const { source, destination } = result;
     
     // Parse the droppableId to get day information
@@ -156,23 +158,40 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   };
 
   const exportAsImage = async () => {
-    if (!itineraryRef.current) return;
-
+    if (!exportPreviewRef.current) return;
+    
     try {
-      const canvas = await html2canvas(itineraryRef.current, {
-        width: 1080,
-        height: 1080,
+      setExportLoading(true);
+      
+      // Make sure the export preview is visible during capture
+      const exportPreview = exportPreviewRef.current;
+      const originalDisplay = exportPreview.style.display;
+      exportPreview.style.display = 'block';
+      
+      // Wait a moment for the DOM to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(exportPreview, {
         scale: 2,
         backgroundColor: '#000000',
-        useCORS: true
+        useCORS: true,
+        logging: false,
+        allowTaint: true
       });
-
+      
+      // Reset display style
+      exportPreview.style.display = originalDisplay;
+      
+      // Create download link
       const link = document.createElement('a');
       link.download = `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary.png`;
-      link.href = canvas.toDataURL();
+      link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (error) {
       console.error('Error exporting image:', error);
+      alert('Failed to export itinerary. Please try again.');
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -206,30 +225,6 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 Let's create a personalized itinerary for {tripDestination}
               </p>
             </div>
-
-            {/* API Key Info Banner */}
-            {showApiKeyInfo && (
-              <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 mb-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h3 className="pixel-text text-yellow-400 text-sm mb-2">AI ITINERARY GENERATION UNAVAILABLE</h3>
-                    <p className="outfit-text text-sm text-gray-300 mb-3">
-                      The AI-powered itinerary generation requires a Gemini API key to be configured. 
-                      Don't worry - we'll still create a great personalized itinerary for you using our fallback system!
-                    </p>
-                    <details className="outfit-text text-xs text-gray-400">
-                      <summary className="cursor-pointer hover:text-gray-300 mb-2">Setup Instructions (for administrators)</summary>
-                      <ol className="list-decimal list-inside space-y-1 ml-4">
-                        <li>Get a Gemini API key from Google AI Studio</li>
-                        <li>Run: <code className="bg-gray-800 px-1 rounded">supabase secrets set GEMINI_API_KEY=your_api_key_here</code></li>
-                        <li>Redeploy the edge function if needed</li>
-                      </ol>
-                    </details>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="space-y-6">
               {/* Budget Selection */}
@@ -383,19 +378,55 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 </button>
                 <button
                   onClick={exportAsImage}
+                  disabled={exportLoading}
                   className="pixel-button-primary text-sm px-3 py-1 flex items-center gap-1"
                 >
-                  <Download className="w-3 h-3" />
+                  {exportLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Download className="w-3 h-3" />
+                  )}
                   EXPORT
                 </button>
               </div>
             </div>
 
-            {/* Export Preview */}
+            {/* API Key Info Banner */}
+            {showApiKeyInfo && (
+              <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="pixel-text text-yellow-400 text-sm mb-2">AI ITINERARY GENERATION UNAVAILABLE</h3>
+                    <p className="outfit-text text-sm text-gray-300 mb-3">
+                      The AI-powered itinerary generation requires a Gemini API key to be configured. 
+                      Don't worry - we'll still create a great personalized itinerary for you using our fallback system!
+                    </p>
+                    <details className="outfit-text text-xs text-gray-400">
+                      <summary className="cursor-pointer hover:text-gray-300 mb-2">Setup Instructions (for administrators)</summary>
+                      <ol className="list-decimal list-inside space-y-1 ml-4">
+                        <li>Get a Gemini API key from Google AI Studio</li>
+                        <li>Run: <code className="bg-gray-800 px-1 rounded">supabase secrets set GEMINI_API_KEY=your_api_key_here</code></li>
+                        <li>Redeploy the edge function if needed</li>
+                      </ol>
+                    </details>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Export Preview - Hidden but used for export */}
             <div 
-              ref={itineraryRef}
+              ref={exportPreviewRef}
               className="hidden"
-              style={{ width: '1080px', height: '1080px', padding: '60px', backgroundColor: '#000000' }}
+              style={{ 
+                width: '1080px', 
+                height: '1080px', 
+                padding: '60px', 
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                fontFamily: 'Outfit, sans-serif'
+              }}
             >
               <div className="text-center mb-8">
                 <h1 className="text-6xl font-bold text-white mb-4">{itinerary.destination}</h1>

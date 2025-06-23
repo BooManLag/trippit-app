@@ -127,30 +127,33 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - IMPROVED FOR MOBILE */}
       <div className="flex items-center justify-between">
         <button
           onClick={goToPrevTab}
           disabled={currentTab === 0}
-          className={`p-2 rounded-full transition-all ${
+          className={`p-1 rounded-full transition-all ${
             currentTab === 0 
               ? 'text-gray-600 cursor-not-allowed' 
               : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10'
           }`}
+          aria-label="Previous badges"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-2">
+        {/* Simplified dot navigation for mobile */}
+        <div className="flex items-center gap-1">
           {Array.from({ length: totalTabs }, (_, index) => (
             <button
               key={index}
               onClick={() => setCurrentTab(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
+              className={`w-1.5 h-1.5 rounded-full transition-all ${
                 index === currentTab 
-                  ? 'bg-yellow-400 w-6' 
+                  ? 'bg-yellow-400 w-4' 
                   : 'bg-gray-600 hover:bg-gray-500'
               }`}
+              aria-label={`Go to page ${index + 1}`}
             />
           ))}
         </div>
@@ -158,18 +161,19 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
         <button
           onClick={goToNextTab}
           disabled={currentTab === totalTabs - 1}
-          className={`p-2 rounded-full transition-all ${
+          className={`p-1 rounded-full transition-all ${
             currentTab === totalTabs - 1 
               ? 'text-gray-600 cursor-not-allowed' 
               : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10'
           }`}
+          aria-label="Next badges"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       {/* Badge Grid - Current Tab - Only Circles */}
-      <div className="grid grid-cols-5 gap-4 justify-items-center">
+      <div className="grid grid-cols-5 gap-2 sm:gap-4 justify-items-center">
         {currentBadges.map((badge, index) => {
           const status = getBadgeStatus(badge);
           const isEarned = status.type === 'earned';
@@ -184,7 +188,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
               <div className="relative">
                 <div 
                   className={`
-                    w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 border-4
+                    w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-300 border-2
                     ${isEarned 
                       ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-lg shadow-yellow-500/30 border-yellow-300 group-hover:scale-110' 
                       : 'bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 shadow-lg shadow-gray-700/30 border-gray-500 group-hover:scale-105'
@@ -193,7 +197,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
                 >
                   <span 
                     className={`
-                      text-xl sm:text-2xl transition-all duration-300
+                      text-lg sm:text-xl transition-all duration-300
                       ${isEarned ? 'grayscale-0' : 'grayscale opacity-50'}
                       group-hover:scale-110
                     `}
@@ -206,7 +210,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
                 {!isEarned && hasProgress && status.data && (
                   <div className="absolute inset-0">
                     <svg 
-                      className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90"
+                      className="w-12 h-12 sm:w-16 sm:h-16 transform -rotate-90"
                       viewBox="0 0 100 100"
                     >
                       <circle
@@ -232,15 +236,15 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
                   </div>
                 )}
 
-                {/* Glow effect for earned badges */}
+                {/* Earned Badge Glow Effect */}
                 {isEarned && (
-                  <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
+                  <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 opacity-20 animate-pulse blur-sm" />
                 )}
 
                 {/* Small earned indicator */}
                 {isEarned && (
                   <div className="absolute -bottom-1 -right-1">
-                    <Star className="w-4 h-4 text-yellow-400 drop-shadow-lg" />
+                    <Star className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 drop-shadow-lg" />
                   </div>
                 )}
               </div>
@@ -251,7 +255,7 @@ const BadgeGrid: React.FC<BadgeGridProps> = ({
         {/* Fill empty slots if current tab has less than 5 badges */}
         {currentBadges.length < BADGES_PER_TAB && 
           Array.from({ length: BADGES_PER_TAB - currentBadges.length }, (_, index) => (
-            <div key={`empty-${index}`} className="w-16 h-16 sm:w-20 sm:h-20" />
+            <div key={`empty-${index}`} className="w-12 h-12 sm:w-16 sm:h-16" />
           ))
         }
       </div>

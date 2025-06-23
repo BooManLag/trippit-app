@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@genkit-ai/googleai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface ItineraryActivity {
   id: string;

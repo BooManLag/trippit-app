@@ -190,14 +190,17 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         exportPreview.style.display = 'block';
         
         // Wait a moment for the DOM to update
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         const canvas = await html2canvas(exportPreview, {
           scale: 2,
           backgroundColor: '#000000',
           useCORS: true,
           logging: false,
-          allowTaint: true
+          allowTaint: true,
+          // Ensure we capture the full height of the content
+          height: exportPreview.scrollHeight,
+          windowHeight: exportPreview.scrollHeight
         });
         
         // Reset display style
@@ -466,11 +469,13 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                   className="hidden"
                   style={{ 
                     width: '1080px', 
-                    height: '1080px', 
+                    minHeight: '1080px', 
+                    height: 'auto',
                     padding: '60px', 
                     backgroundColor: '#000000',
                     color: '#ffffff',
-                    fontFamily: 'Outfit, sans-serif'
+                    fontFamily: 'Outfit, sans-serif',
+                    overflow: 'hidden'
                   }}
                 >
                   <div className="text-center mb-8">
@@ -486,10 +491,10 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                     {daysForThisPage.map((day) => (
                       <div key={day.day} className="bg-gray-900 p-6 rounded-lg">
                         <h3 className="text-3xl font-bold text-purple-400 mb-4">Day {day.day}</h3>
-                        <div className="space-y-3">
-                          {day.activities.slice(0, 4).map((activity) => (
-                            <div key={activity.id} className="flex items-center gap-4">
-                              <span className="text-2xl">{categoryIcons[activity.category]}</span>
+                        <div className="space-y-4">
+                          {day.activities.map((activity) => (
+                            <div key={activity.id} className="flex items-start gap-4">
+                              <span className="text-2xl mt-1">{categoryIcons[activity.category]}</span>
                               <div>
                                 <div className="text-xl font-semibold text-white">{activity.name}</div>
                                 <div className="text-lg text-gray-300">{activity.time} • {activity.location}</div>

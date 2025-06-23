@@ -67,12 +67,26 @@ Deno.serve(async (req: Request) => {
 
     const { destination, startDate, endDate, preferences } = await req.json();
 
-    // Initialize Genkit with Google AI
+    // Check for API key in environment variables
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable not set");
+      return new Response(
+        JSON.stringify({ 
+          error: "API configuration missing",
+          message: "Gemini API key is not configured. Please contact the administrator to set up the GEMINI_API_KEY secret in Supabase.",
+          setupInstructions: "Run: supabase secrets set GEMINI_API_KEY=your_api_key_here"
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
     }
 
+    // Initialize Genkit with Google AI
     const ai = genkit({
       plugins: [googleAI({ apiKey })],
       model: gemini15Flash,

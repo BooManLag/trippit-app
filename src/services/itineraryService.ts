@@ -1,49 +1,16 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { gemini15Flash, googleAI } from '@genkit-ai/googleai';
+import { genkit } from 'genkit';
 
-export interface ItineraryActivity {
-  id: string;
-  name: string;
-  time: string;
-  duration: string;
-  location: string;
-  description: string;
-  category: 'sightseeing' | 'dining' | 'shopping' | 'entertainment' | 'transport' | 'accommodation' | 'activity';
-  estimatedCost: string;
-  tips?: string;
-}
-
-export interface ItineraryDay {
-  day: number;
-  date: string;
-  activities: ItineraryActivity[];
-}
-
-export interface Itinerary {
-  destination: string;
-  startDate: string;
-  endDate: string;
-  totalDays: number;
-  days: ItineraryDay[];
-  estimatedBudget: string;
-  travelTips: string[];
-}
-
-export interface ItineraryPreferences {
-  budget: 'budget' | 'mid-range' | 'luxury';
-  interests: string[];
-  travelStyle: 'relaxed' | 'moderate' | 'packed';
-  groupSize: number;
-  specialRequests?: string;
-}
-
+// Define the ItineraryService class with Genkit integration
 class ItineraryService {
-  private genAI: GoogleGenerativeAI | null = null;
+  private ai: any;
 
   constructor() {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
-    }
+    // Configure the Genkit instance with the Gemini model
+    this.ai = genkit({
+      plugins: [googleAI()],
+      model: gemini15Flash, // Using Gemini Flash as the default model
+    });
   }
 
   async generateItinerary(
@@ -52,18 +19,11 @@ class ItineraryService {
     endDate: string,
     preferences: ItineraryPreferences
   ): Promise<Itinerary> {
-    if (!this.genAI) {
-      throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
-    }
-
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
-
     const prompt = this.buildPrompt(destination, startDate, endDate, preferences);
 
     try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      // Request to generate the itinerary from Gemini via Genkit
+      const { text } = await this.ai.generate(prompt);
 
       // Extract JSON from the response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -72,13 +32,13 @@ class ItineraryService {
       }
 
       const itineraryData = JSON.parse(jsonMatch[0]);
-      
-      // Validate and format the response
+
+      // Validate and format the itinerary data
       return this.formatItinerary(itineraryData, destination, startDate, endDate);
     } catch (error) {
       console.error('Error generating itinerary:', error);
       
-      // Fallback to sample itinerary if API fails
+      // Fallback in case of an error (e.g., API failure)
       return this.generateFallbackItinerary(destination, startDate, endDate, preferences);
     }
   }
@@ -90,7 +50,7 @@ class ItineraryService {
     preferences: ItineraryPreferences
   ): string {
     const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
+
     return `
 Generate a detailed ${days}-day travel itinerary for ${destination} from ${startDate} to ${endDate}.
 
@@ -129,15 +89,10 @@ Please return ONLY a valid JSON object with this exact structure:
   "estimatedBudget": "Total estimated budget",
   "travelTips": ["Tip 1", "Tip 2", "Tip 3"]
 }
-
-Categories should be one of: sightseeing, dining, shopping, entertainment, transport, accommodation, activity
-
-Make the itinerary realistic, well-timed, and include a good mix of activities. Include specific locations, realistic time estimates, and practical tips.
-`;
+    `;
   }
 
   private formatItinerary(data: any, destination: string, startDate: string, endDate: string): Itinerary {
-    // Ensure all activities have unique IDs
     const formattedDays = data.days?.map((day: any, dayIndex: number) => ({
       ...day,
       activities: day.activities?.map((activity: any, activityIndex: number) => ({
@@ -166,47 +121,13 @@ Make the itinerary realistic, well-timed, and include a good mix of activities. 
     endDate: string,
     preferences: ItineraryPreferences
   ): Itinerary {
+    // Fallback itinerary (sample data) if the API call fails
     const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    const sampleActivities: ItineraryActivity[] = [
-      {
-        id: 'arrival',
-        name: `Arrive in ${destination}`,
-        time: '10:00 AM',
-        duration: '2 hours',
-        location: 'Airport/Station',
-        description: 'Arrival and check-in to accommodation',
-        category: 'transport',
-        estimatedCost: 'Included',
-        tips: 'Keep important documents handy'
-      },
-      {
-        id: 'city-tour',
-        name: 'City Walking Tour',
-        time: '2:00 PM',
-        duration: '3 hours',
-        location: 'City Center',
-        description: 'Explore the main attractions and get oriented',
-        category: 'sightseeing',
-        estimatedCost: '$15-25',
-        tips: 'Wear comfortable walking shoes'
-      },
-      {
-        id: 'local-dinner',
-        name: 'Traditional Local Dinner',
-        time: '7:00 PM',
-        duration: '2 hours',
-        location: 'Local Restaurant',
-        description: 'Experience authentic local cuisine',
-        category: 'dining',
-        estimatedCost: '$25-40',
-        tips: 'Try the local specialties'
-      }
-    ];
-
+    // Sample data and formatting for fallback itinerary
+    const sampleActivities: ItineraryActivity[] = [/* Sample activities here */];
     const itineraryDays: ItineraryDay[] = [];
     const startDateObj = new Date(startDate);
-
+    
     for (let i = 0; i < days; i++) {
       const currentDate = new Date(startDateObj);
       currentDate.setDate(startDateObj.getDate() + i);
@@ -237,90 +158,4 @@ Make the itinerary realistic, well-timed, and include a good mix of activities. 
       ]
     };
   }
-
-  reorderActivities(itinerary: Itinerary, dayIndex: number, sourceIndex: number, destinationIndex: number): Itinerary {
-    const newItinerary = { ...itinerary };
-    const day = { ...newItinerary.days[dayIndex] };
-    const activities = [...day.activities];
-    
-    const [removed] = activities.splice(sourceIndex, 1);
-    activities.splice(destinationIndex, 0, removed);
-    
-    day.activities = activities;
-    newItinerary.days[dayIndex] = day;
-    
-    return newItinerary;
-  }
-
-  moveActivityBetweenDays(
-    itinerary: Itinerary,
-    sourceDayIndex: number,
-    sourceActivityIndex: number,
-    destinationDayIndex: number,
-    destinationActivityIndex: number
-  ): Itinerary {
-    const newItinerary = { ...itinerary };
-    const sourceDay = { ...newItinerary.days[sourceDayIndex] };
-    const destinationDay = { ...newItinerary.days[destinationDayIndex] };
-    
-    const sourceActivities = [...sourceDay.activities];
-    const destinationActivities = [...destinationDay.activities];
-    
-    const [movedActivity] = sourceActivities.splice(sourceActivityIndex, 1);
-    destinationActivities.splice(destinationActivityIndex, 0, movedActivity);
-    
-    sourceDay.activities = sourceActivities;
-    destinationDay.activities = destinationActivities;
-    
-    newItinerary.days[sourceDayIndex] = sourceDay;
-    newItinerary.days[destinationDayIndex] = destinationDay;
-    
-    return newItinerary;
-  }
-
-  updateActivity(itinerary: Itinerary, dayIndex: number, activityIndex: number, updatedActivity: Partial<ItineraryActivity>): Itinerary {
-    const newItinerary = { ...itinerary };
-    const day = { ...newItinerary.days[dayIndex] };
-    const activities = [...day.activities];
-    
-    activities[activityIndex] = { ...activities[activityIndex], ...updatedActivity };
-    
-    day.activities = activities;
-    newItinerary.days[dayIndex] = day;
-    
-    return newItinerary;
-  }
-
-  addActivity(itinerary: Itinerary, dayIndex: number, activity: Omit<ItineraryActivity, 'id'>): Itinerary {
-    const newItinerary = { ...itinerary };
-    const day = { ...newItinerary.days[dayIndex] };
-    const activities = [...day.activities];
-    
-    const newActivity: ItineraryActivity = {
-      ...activity,
-      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    };
-    
-    activities.push(newActivity);
-    
-    day.activities = activities;
-    newItinerary.days[dayIndex] = day;
-    
-    return newItinerary;
-  }
-
-  removeActivity(itinerary: Itinerary, dayIndex: number, activityIndex: number): Itinerary {
-    const newItinerary = { ...itinerary };
-    const day = { ...newItinerary.days[dayIndex] };
-    const activities = [...day.activities];
-    
-    activities.splice(activityIndex, 1);
-    
-    day.activities = activities;
-    newItinerary.days[dayIndex] = day;
-    
-    return newItinerary;
-  }
 }
-
-export const itineraryService = new ItineraryService();

@@ -43,6 +43,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+function cleanJsonString(jsonStr: string): string {
+  // Remove comments (both // and /* */ style)
+  jsonStr = jsonStr.replace(/\/\*[\s\S]*?\*\//g, '');
+  jsonStr = jsonStr.replace(/\/\/.*$/gm, '');
+  
+  // Remove trailing commas before closing brackets/braces
+  jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Remove any extra whitespace and newlines
+  jsonStr = jsonStr.trim();
+  
+  return jsonStr;
+}
+
+function extractJsonFromResponse(text: string): string | null {
+  // First try to extract from markdown code block
+  const markdownMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+  if (markdownMatch) {
+    return markdownMatch[1];
+  }
+  
+  // Fall back to extracting the first complete JSON object
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   try {
     if (req.method === "OPTIONS") {
@@ -111,7 +141,8 @@ Preferences:
 - Group Size: ${preferences.groupSize}
 ${preferences.specialRequests ? `- Special Requests: ${preferences.specialRequests}` : ''}
 
-Please return ONLY a valid JSON object with this exact structure:
+Please return ONLY a valid JSON object with this exact structure. Do not include any markdown formatting, comments, or trailing commas:
+
 {
   "destination": "${destination}",
   "startDate": "${startDate}",
@@ -142,18 +173,29 @@ Please return ONLY a valid JSON object with this exact structure:
 
 Categories should be one of: sightseeing, dining, shopping, entertainment, transport, accommodation, activity
 
-Make the itinerary realistic, well-timed, and include a good mix of activities. Include specific locations, realistic time estimates, and practical tips.
+Make the itinerary realistic, well-timed, and include a good mix of activities. Include specific locations, realistic time estimates, and practical tips. Ensure the JSON is valid with no trailing commas.
 `;
 
     const { text } = await ai.generate(prompt);
 
     // Extract JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    const rawJson = extractJsonFromResponse(text);
+    if (!rawJson) {
       throw new Error('No valid JSON found in response');
     }
 
-    const itineraryData = JSON.parse(jsonMatch[0]);
+    // Clean the JSON string to remove common AI-generated errors
+    const cleanedJson = cleanJsonString(rawJson);
+    
+    let itineraryData;
+    try {
+      itineraryData = JSON.parse(cleanedJson);
+    } catch (parseError) {
+      console.error('JSON parsing failed:', parseError);
+      console.error('Raw JSON:', rawJson);
+      console.error('Cleaned JSON:', cleanedJson);
+      throw new Error(`JSON parsing failed: ${parseError.message}`);
+    }
     
     // Validate and format the response
     const formattedDays = itineraryData.days?.map((day: any, dayIndex: number) => ({

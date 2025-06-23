@@ -61,11 +61,21 @@ class ItineraryService {
         const itineraryData = await response.json();
         return this.formatItinerary(itineraryData, destination, startDate, endDate);
       } else {
-        console.warn('Backend itinerary generation failed, falling back to client-side generation');
-        throw new Error('Backend generation failed');
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Check if it's an API key configuration issue
+        if (errorData.error === 'API_KEY_MISSING' && errorData.requiresSetup) {
+          console.warn('Gemini API key not configured. Using fallback itinerary generation.');
+          console.info('To enable AI-powered itineraries:', errorData.setupInstructions);
+        } else {
+          console.warn('Backend itinerary generation failed:', errorData.message || 'Unknown error');
+        }
+        
+        // Always fall back to client-side generation
+        return this.generateFallbackItinerary(destination, startDate, endDate, preferences);
       }
     } catch (error) {
-      console.error('Error generating itinerary via backend:', error);
+      console.error('Error connecting to itinerary service:', error);
       
       // Fallback to client-side generation
       return this.generateFallbackItinerary(destination, startDate, endDate, preferences);

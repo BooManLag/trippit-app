@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2 } from 'lucide-react';
+import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import html2canvas from 'html2canvas';
 import { itineraryService, Itinerary, ItineraryActivity, ItineraryPreferences } from '../services/itineraryService';
@@ -24,6 +24,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [editingActivity, setEditingActivity] = useState<{ dayIndex: number; activityIndex: number } | null>(null);
   const [showAddActivity, setShowAddActivity] = useState<number | null>(null);
+  const [showApiKeyInfo, setShowApiKeyInfo] = useState(false);
   const itineraryRef = useRef<HTMLDivElement>(null);
 
   const [preferences, setPreferences] = useState<ItineraryPreferences>({
@@ -63,6 +64,8 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
   const handleGenerateItinerary = async () => {
     setLoading(true);
+    setShowApiKeyInfo(false);
+    
     try {
       const generatedItinerary = await itineraryService.generateItinerary(
         tripDestination,
@@ -74,15 +77,25 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
       setStep('itinerary');
     } catch (error) {
       console.error('Error generating itinerary:', error);
-      // Still show the fallback itinerary
-      const fallbackItinerary = await itineraryService.generateItinerary(
-        tripDestination,
-        tripStartDate,
-        tripEndDate,
-        preferences
-      );
-      setItinerary(fallbackItinerary);
-      setStep('itinerary');
+      
+      // Check if this is an API key issue
+      if (error instanceof Error && error.message.includes('API_KEY_MISSING')) {
+        setShowApiKeyInfo(true);
+      }
+      
+      // Still generate a fallback itinerary
+      try {
+        const fallbackItinerary = await itineraryService.generateItinerary(
+          tripDestination,
+          tripStartDate,
+          tripEndDate,
+          preferences
+        );
+        setItinerary(fallbackItinerary);
+        setStep('itinerary');
+      } catch (fallbackError) {
+        console.error('Fallback itinerary generation also failed:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }
@@ -193,6 +206,30 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 Let's create a personalized itinerary for {tripDestination}
               </p>
             </div>
+
+            {/* API Key Info Banner */}
+            {showApiKeyInfo && (
+              <div className="pixel-card bg-yellow-500/10 border-yellow-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="pixel-text text-yellow-400 text-sm mb-2">AI ITINERARY GENERATION UNAVAILABLE</h3>
+                    <p className="outfit-text text-sm text-gray-300 mb-3">
+                      The AI-powered itinerary generation requires a Gemini API key to be configured. 
+                      Don't worry - we'll still create a great personalized itinerary for you using our fallback system!
+                    </p>
+                    <details className="outfit-text text-xs text-gray-400">
+                      <summary className="cursor-pointer hover:text-gray-300 mb-2">Setup Instructions (for administrators)</summary>
+                      <ol className="list-decimal list-inside space-y-1 ml-4">
+                        <li>Get a Gemini API key from Google AI Studio</li>
+                        <li>Run: <code className="bg-gray-800 px-1 rounded">supabase secrets set GEMINI_API_KEY=your_api_key_here</code></li>
+                        <li>Redeploy the edge function if needed</li>
+                      </ol>
+                    </details>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-6">
               {/* Budget Selection */}

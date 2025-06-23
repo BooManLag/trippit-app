@@ -70,11 +70,18 @@ Deno.serve(async (req: Request) => {
     // Check for API key in environment variables
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
+      console.error("GEMINI_API_KEY not found in environment variables");
+      
       return new Response(
         JSON.stringify({ 
-          error: "API configuration missing",
-          message: "Gemini API key is not configured. Please contact the administrator to set up the GEMINI_API_KEY secret in Supabase.",
-          setupInstructions: "Run: supabase secrets set GEMINI_API_KEY=your_api_key_here"
+          error: "API_KEY_MISSING",
+          message: "Gemini API key is not configured. The system will use fallback itinerary generation.",
+          requiresSetup: true,
+          setupInstructions: [
+            "1. Get a Gemini API key from Google AI Studio (https://aistudio.google.com/app/apikey)",
+            "2. Run: supabase secrets set GEMINI_API_KEY=your_api_key_here",
+            "3. Redeploy the edge function if needed"
+          ]
         }),
         {
           status: 503,
@@ -185,8 +192,9 @@ Make the itinerary realistic, well-timed, and include a good mix of activities. 
     
     return new Response(
       JSON.stringify({ 
-        error: "Failed to generate itinerary",
-        message: error.message 
+        error: "GENERATION_FAILED",
+        message: `Failed to generate itinerary: ${error.message}`,
+        fallbackAvailable: true
       }),
       {
         status: 500,

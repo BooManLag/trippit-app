@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { gemini15Flash, googleAI } from '@genkit-ai/googleai';
+import { genkit } from 'genkit';
 
 export interface ItineraryActivity {
   id: string;
@@ -37,12 +38,15 @@ export interface ItineraryPreferences {
 }
 
 class ItineraryService {
-  private genAI: GoogleGenerativeAI | null = null;
+  private ai: any = null;
 
   constructor() {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.ai = genkit({
+        plugins: [googleAI({ apiKey })],
+        model: gemini15Flash,
+      });
     }
   }
 
@@ -52,18 +56,14 @@ class ItineraryService {
     endDate: string,
     preferences: ItineraryPreferences
   ): Promise<Itinerary> {
-    if (!this.genAI) {
+    if (!this.ai) {
       throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
     }
-
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = this.buildPrompt(destination, startDate, endDate, preferences);
 
     try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const { text } = await this.ai.generate(prompt);
 
       // Extract JSON from the response
       const jsonMatch = text.match(/\{[\s\S]*\}/);

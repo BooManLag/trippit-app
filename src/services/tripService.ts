@@ -60,6 +60,28 @@ export const tripService = {
       throw new Error(`Failed to create trip: ${error.message}`);
     }
 
+    // Log the city visit for the pee chart
+    try {
+      const [city, country] = tripData.destination.split(', ');
+      
+      if (city && country) {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log_visit`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            city,
+            country,
+          })
+        });
+      }
+    } catch (logError) {
+      console.error('Failed to log city visit:', logError);
+      // Don't throw here, as the trip was still created successfully
+    }
+
     return trip;
   },
 

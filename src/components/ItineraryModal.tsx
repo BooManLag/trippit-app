@@ -26,9 +26,9 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [showAddActivity, setShowAddActivity] = useState<number | null>(null);
   const [showApiKeyInfo, setShowApiKeyInfo] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [currentExportPage, setCurrentExportPage] = useState(0);
   const [totalExportPages, setTotalExportPages] = useState(1);
-  const [exportError, setExportError] = useState<string | null>(null);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
 

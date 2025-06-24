@@ -14,6 +14,7 @@ import ChecklistPage from './pages/ChecklistPage';
 import BucketListPage from './pages/BucketListPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 import DiaryPage from './pages/DiaryPage';
+import SharedItinerariesPage from './pages/SharedItinerariesPage';
 
 // Components
 import BoltBadge from './components/BoltBadge';
@@ -28,7 +29,7 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       // If user logs out and is on a protected page, redirect to home
-      if (!user && !location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite')) {
+      if (!user && !location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite') && location.pathname !== '/shared-itineraries') {
         navigate('/');
       }
     };
@@ -40,7 +41,7 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         // When user signs out, redirect to home page unless they're on a public page
-        if (!location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite')) {
+        if (!location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite') && location.pathname !== '/shared-itineraries') {
           navigate('/');
         }
       }
@@ -82,6 +83,7 @@ function App() {
           <Route path="/bucket-list" element={<BucketListPage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/diary" element={<DiaryPage />} />
+          <Route path="/shared-itineraries" element={<SharedItinerariesPage />} />
         </Routes>
       </AuthRedirect>
     </div>

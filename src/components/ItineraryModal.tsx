@@ -3,6 +3,7 @@ import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plu
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import html2canvas from 'html2canvas';
 import { itineraryService, Itinerary, ItineraryActivity, ItineraryPreferences } from '../services/itineraryService';
+import PostReactions from './PostReactions';
 
 interface ItineraryModalProps {
   isOpen: boolean;
@@ -26,12 +27,14 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [showAddActivity, setShowAddActivity] = useState<number | null>(null);
   const [showApiKeyInfo, setShowApiKeyInfo] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [currentExportPage, setCurrentExportPage] = useState(0);
   const [totalExportPages, setTotalExportPages] = useState(1);
   const [sharingToReddit, setSharingToReddit] = useState(false);
-  const [shareSuccess, setShareSuccess] = useState<{url: string} | null>(null);
-  const [shareError, setShareError] = useState<string | null>(null);
+  const [redditShareResult, setRedditShareResult] = useState<{
+    success: boolean;
+    postUrl?: string;
+    error?: string;
+  } | null>(null);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -180,20 +183,14 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     
     try {
       setExportLoading(true);
-      setExportError(null);
       
       // Create an array to store all the image data URLs
       const imageDataUrls: string[] = [];
-      
-      // Check if any export previews exist
-      let previewsExist = false;
       
       // Export each page
       for (let page = 0; page < totalExportPages; page++) {
         const exportPreview = exportPreviewRefs.current[page];
         if (!exportPreview) continue;
-        
-        previewsExist = true;
         
         // Make sure the export preview is visible during capture
         const originalDisplay = exportPreview.style.display;
@@ -202,27 +199,15 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         // Wait a moment for the DOM to update
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Mobile-friendly options
         const canvas = await html2canvas(exportPreview, {
-          scale: 2, // Higher scale for better quality
+          scale: 2,
           backgroundColor: '#000000',
           useCORS: true,
           logging: false,
           allowTaint: true,
           // Ensure we capture the full height of the content
           height: exportPreview.scrollHeight,
-          windowHeight: exportPreview.scrollHeight,
-          // Improved mobile support
-          onclone: (clonedDoc) => {
-            const clonedElement = clonedDoc.getElementById(exportPreview.id);
-            if (clonedElement) {
-              clonedElement.style.width = `${exportPreview.offsetWidth}px`;
-              clonedElement.style.height = `${exportPreview.scrollHeight}px`;
-              clonedElement.style.position = 'absolute';
-              clonedElement.style.top = '0';
-              clonedElement.style.left = '0';
-            }
-          }
+          windowHeight: exportPreview.scrollHeight
         });
         
         // Reset display style
@@ -232,55 +217,16 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         imageDataUrls.push(canvas.toDataURL('image/png'));
       }
       
-      // Check if we have any images to download
-      if (imageDataUrls.length === 0) {
-        if (!previewsExist) {
-          setExportError("Export preview not ready. Please try again in a moment.");
-        } else {
-          setExportError("Failed to generate images. Please try again.");
-        }
-        return;
-      }
-      
-      // Mobile-friendly download approach
+      // Download each image
       for (let i = 0; i < imageDataUrls.length; i++) {
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const link = document.createElement('a');
         const fileName = imageDataUrls.length > 1 
           ? `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary_${i+1}.png`
           : `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary.png`;
         
-        if (isMobile) {
-          // For mobile: Open image in new tab (user can save from there)
-          const newTab = window.open();
-          if (newTab) {
-            newTab.document.write(`
-              <html>
-                <head>
-                  <title>Trippit Itinerary - ${tripDestination}</title>
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <style>
-                    body { margin: 0; padding: 10px; background: #000; color: #fff; font-family: sans-serif; }
-                    img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
-                    .instructions { text-align: center; margin: 20px 0; padding: 10px; background: rgba(255,255,255,0.1); }
-                  </style>
-                </head>
-                <body>
-                  <div class="instructions">
-                    <p>Press and hold on the image to save it to your device</p>
-                  </div>
-                  <img src="${imageDataUrls[i]}" alt="Trippit Itinerary">
-                </body>
-              </html>
-            `);
-            newTab.document.close();
-          }
-        } else {
-          // For desktop: Use traditional download approach
-          const link = document.createElement('a');
-          link.download = fileName;
-          link.href = imageDataUrls[i];
-          link.click();
-        }
+        link.download = fileName;
+        link.href = imageDataUrls[i];
+        link.click();
         
         // Add a small delay between downloads to prevent browser issues
         if (i < imageDataUrls.length - 1) {
@@ -289,7 +235,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
       }
     } catch (error) {
       console.error('Error exporting images:', error);
-      setExportError('Failed to export itinerary. Please try again.');
+      alert('Failed to export itinerary. Please try again.');
     } finally {
       setExportLoading(false);
     }
@@ -300,10 +246,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     
     try {
       setSharingToReddit(true);
-      setShareSuccess(null);
-      setShareError(null);
-      
-      const title = `${itinerary.destination} Travel Itinerary - ${itinerary.totalDays} days`;
+      setRedditShareResult(null);
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-to-reddit`, {
         method: 'POST',
@@ -313,20 +256,26 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         },
         body: JSON.stringify({
           itinerary,
-          title
+          title: `${itinerary.destination} Travel Itinerary - ${itinerary.totalDays} days`
         }),
       });
       
       const result = await response.json();
       
-      if (!response.ok || !result.success) {
+      if (!response.ok) {
         throw new Error(result.error || result.details || 'Failed to share to Reddit');
       }
       
-      setShareSuccess({ url: result.postUrl });
+      setRedditShareResult({
+        success: true,
+        postUrl: result.postUrl
+      });
     } catch (error) {
       console.error('Error sharing to Reddit:', error);
-      setShareError(error instanceof Error ? error.message : 'Failed to share to Reddit');
+      setRedditShareResult({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
     } finally {
       setSharingToReddit(false);
     }
@@ -540,50 +489,51 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
               </div>
             </div>
 
-            {/* Share Success Message */}
-            {shareSuccess && (
-              <div className="pixel-card bg-green-500/10 border-green-500/20 mb-6">
+            {/* Reddit Share Result */}
+            {redditShareResult && (
+              <div className={`pixel-card ${
+                redditShareResult.success 
+                  ? 'bg-green-500/10 border-green-500/20' 
+                  : 'bg-red-500/10 border-red-500/20'
+              } mb-6`}>
                 <div className="flex items-start gap-3">
-                  <div className="text-green-400 text-xl flex-shrink-0">✅</div>
-                  <div>
-                    <h3 className="pixel-text text-green-400 text-sm mb-2">SHARED SUCCESSFULLY!</h3>
-                    <p className="outfit-text text-sm text-gray-300 mb-3">
-                      Your itinerary has been shared to r/trippitMemories.
-                    </p>
-                    <a 
-                      href={shareSuccess.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="pixel-button-secondary text-xs px-3 py-1 inline-flex items-center gap-1 bg-green-600 hover:bg-green-500"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      VIEW ON REDDIT
-                    </a>
+                  {redditShareResult.success ? (
+                    <>
+                      <div className="text-green-400 text-xl">✅</div>
+                      <div>
+                        <h3 className="pixel-text text-green-400 text-sm mb-2">SHARED SUCCESSFULLY</h3>
+                        <p className="outfit-text text-sm text-gray-300 mb-3">
+                          Your itinerary has been shared to r/trippitMemories!
+                        </p>
+                        <a 
+                          href={redditShareResult.postUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="pixel-button-secondary text-xs px-3 py-1 inline-flex items-center gap-1"
+                        >
+                          <Share2 className="w-3 h-3" />
+                          VIEW ON REDDIT
+                        </a>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-red-400 text-xl">❌</div>
+                      <div>
+                        <h3 className="pixel-text text-red-400 text-sm mb-2">SHARING FAILED</h3>
+                        <p className="outfit-text text-sm text-gray-300">
+                          {redditShareResult.error || 'An error occurred while sharing to Reddit.'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                {redditShareResult.success && redditShareResult.postUrl && (
+                  <div className="mt-4">
+                    <PostReactions postId={redditShareResult.postUrl} />
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Share Error Message */}
-            {shareError && (
-              <div className="pixel-card bg-red-500/10 border-red-500/20 mb-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h3 className="pixel-text text-red-400 text-sm mb-2">SHARING FAILED</h3>
-                    <p className="outfit-text text-sm text-red-300">{shareError}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Export Error Message */}
-            {exportError && (
-              <div className="pixel-card bg-red-500/10 border-red-500/20 mb-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                  <p className="outfit-text text-sm text-red-300">{exportError}</p>
-                </div>
+                )}
               </div>
             )}
 
@@ -622,7 +572,6 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
               return (
                 <div 
                   key={`export-preview-${pageIndex}`}
-                  id={`export-preview-${pageIndex}`}
                   ref={el => exportPreviewRefs.current[pageIndex] = el}
                   className="hidden"
                   style={{ 
@@ -1067,122 +1016,6 @@ const AddActivityForm: React.FC<{
         </button>
       </div>
     </form>
-  );
-};
-
-// Edit Activity Modal Component
-const EditActivityModal: React.FC<{
-  activity: ItineraryActivity;
-  onSave: (updates: Partial<ItineraryActivity>) => void;
-  onCancel: () => void;
-}> = ({ activity, onSave, onCancel }) => {
-  const [editedActivity, setEditedActivity] = useState(activity);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(editedActivity);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10000] p-4">
-      <div className="pixel-card max-w-md w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="pixel-text text-blue-400">EDIT ACTIVITY</h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            value={editedActivity.name}
-            onChange={(e) => setEditedActivity(prev => ({ ...prev, name: e.target.value }))}
-            className="w-full input-pixel text-sm"
-            placeholder="Activity name"
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="time"
-              value={editedActivity.time}
-              onChange={(e) => setEditedActivity(prev => ({ ...prev, time: e.target.value }))}
-              className="input-pixel text-sm"
-              required
-            />
-            <input
-              type="text"
-              value={editedActivity.duration}
-              onChange={(e) => setEditedActivity(prev => ({ ...prev, duration: e.target.value }))}
-              className="input-pixel text-sm"
-              placeholder="Duration"
-            />
-          </div>
-
-          <input
-            type="text"
-            value={editedActivity.location}
-            onChange={(e) => setEditedActivity(prev => ({ ...prev, location: e.target.value }))}
-            className="w-full input-pixel text-sm"
-            placeholder="Location"
-            required
-          />
-
-          <textarea
-            value={editedActivity.description}
-            onChange={(e) => setEditedActivity(prev => ({ ...prev, description: e.target.value }))}
-            className="w-full input-pixel text-sm h-20 resize-none"
-            placeholder="Description"
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <select
-              value={editedActivity.category}
-              onChange={(e) => setEditedActivity(prev => ({ ...prev, category: e.target.value as any }))}
-              className="input-pixel text-sm"
-            >
-              <option value="activity">Activity</option>
-              <option value="sightseeing">Sightseeing</option>
-              <option value="dining">Dining</option>
-              <option value="shopping">Shopping</option>
-              <option value="entertainment">Entertainment</option>
-              <option value="transport">Transport</option>
-            </select>
-            <input
-              type="text"
-              value={editedActivity.estimatedCost}
-              onChange={(e) => setEditedActivity(prev => ({ ...prev, estimatedCost: e.target.value }))}
-              className="input-pixel text-sm"
-              placeholder="Cost"
-            />
-          </div>
-
-          <textarea
-            value={editedActivity.tips || ''}
-            onChange={(e) => setEditedActivity(prev => ({ ...prev, tips: e.target.value }))}
-            className="w-full input-pixel text-sm h-16 resize-none"
-            placeholder="Tips (optional)"
-          />
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="pixel-button-secondary flex-1"
-            >
-              CANCEL
-            </button>
-            <button
-              type="submit"
-              className="pixel-button-primary flex-1"
-            >
-              SAVE CHANGES
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 };
 

@@ -269,7 +269,7 @@ const TripDashboardPage: React.FC = () => {
       console.log('Participants data:', participants);
 
       // Transform the RPC result to match expected format
-      const enrichedUsers = participants.map((participant: any) => ({
+      const enrichedParticipants = participants.map((participant: any) => ({
         user_id: participant.user_id,
         role: participant.role,
         joined_at: participant.joined_at,
@@ -280,10 +280,10 @@ const TripDashboardPage: React.FC = () => {
         }
       }));
 
-      setAcceptedUsers(enrichedUsers);
+      setAcceptedUsers(enrichedParticipants);
       
       // Find the owner in the participants list
-      const owner = enrichedUsers.find(user => user.role === 'owner');
+      const owner = enrichedParticipants.find(user => user.role === 'owner');
       if (owner) {
         setTripOwner({
           id: owner.user_id,
@@ -341,7 +341,7 @@ const TripDashboardPage: React.FC = () => {
 
   const toggleDare = async (userDare: UserDare) => {
     const isCompleting = !userDare.completed_at;
-
+    
     const { error } = await supabase
       .from('user_bucket_progress')
       .update({ 

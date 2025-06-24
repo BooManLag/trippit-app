@@ -15,6 +15,21 @@ const TravelPopularityChart: React.FC = () => {
 
   useEffect(() => {
     fetchTravelStats();
+    
+    // Set up real-time subscription to update chart when new trips are added
+    const subscription = supabase
+      .channel('public:trips')
+      .on('INSERT', () => {
+        fetchTravelStats();
+      })
+      .on('UPDATE', () => {
+        fetchTravelStats();
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, []);
 
   const fetchTravelStats = async () => {
@@ -44,10 +59,10 @@ const TravelPopularityChart: React.FC = () => {
       const statsArray = Object.entries(destinationCounts)
         .map(([destination, count]) => ({ destination, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10); // Top 10 destinations
+        .slice(0, 8); // Top 8 destinations
       
       // Find the maximum count for scaling
-      const max = Math.max(...statsArray.map(item => item.count));
+      const max = Math.max(...statsArray.map(item => item.count), 1);
       setMaxCount(max);
       
       setStats(statsArray);
@@ -102,10 +117,10 @@ const TravelPopularityChart: React.FC = () => {
   }
 
   return (
-    <div className="pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/20">
+    <div className="pixel-card bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-yellow-500/20">
       <div className="flex items-center gap-3 mb-6">
-        <MapPin className="w-6 h-6 text-blue-400" />
-        <h3 className="pixel-text text-blue-400 text-lg">POPULAR DESTINATIONS</h3>
+        <MapPin className="w-6 h-6 text-yellow-400" />
+        <h3 className="pixel-text text-yellow-400 text-lg">TRAVELER PEE CHART</h3>
       </div>
       
       <div className="relative h-64 mb-6">
@@ -135,34 +150,40 @@ const TravelPopularityChart: React.FC = () => {
                 className="relative flex flex-col items-center group"
                 style={{ width: `${100 / stats.length}%` }}
               >
+                {/* The person icon at the top */}
+                <div className="absolute bottom-full mb-1" style={{ transform: `translateY(-${heightPercent}%)` }}>
+                  <div className="relative">
+                    {/* Person head */}
+                    <div className="w-6 h-6 rounded-full bg-gray-300"></div>
+                    {/* Person body */}
+                    <div className="w-4 h-8 bg-gray-400 mx-auto"></div>
+                    {/* Person legs */}
+                    <div className="flex justify-between">
+                      <div className="w-1.5 h-4 bg-gray-400"></div>
+                      <div className="w-1.5 h-4 bg-gray-400"></div>
+                    </div>
+                  </div>
+                </div>
+                
                 {/* The "pee stream" - animated gradient */}
                 <div 
-                  className="w-1 absolute bottom-full mb-1 rounded-t-sm animate-pulse"
+                  className="w-1.5 absolute bottom-full mb-12 rounded-t-sm animate-pulse"
                   style={{ 
                     height: `${heightPercent}%`, 
                     background: `linear-gradient(to bottom, transparent, ${color})`,
-                    maxHeight: 'calc(100% - 24px)'
+                    maxHeight: 'calc(100% - 24px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)'
                   }}
                 ></div>
                 
-                {/* The "person" icon at the top */}
+                {/* The puddle at the bottom */}
                 <div 
-                  className="absolute bottom-full mb-1"
+                  className="h-2 rounded-full transition-all duration-500 group-hover:opacity-80"
                   style={{ 
-                    transform: `translateY(-${heightPercent}%)`,
-                    color: color
-                  }}
-                >
-                  <Users className="w-4 h-4" />
-                </div>
-                
-                {/* The bar itself */}
-                <div 
-                  className="w-4 rounded-t-sm transition-all duration-500 group-hover:w-6"
-                  style={{ 
-                    height: `${heightPercent}%`, 
+                    width: `${Math.max(20, item.count * 5)}px`, 
                     backgroundColor: color,
-                    maxHeight: 'calc(100% - 24px)'
+                    opacity: 0.6
                   }}
                 ></div>
                 
@@ -174,7 +195,7 @@ const TravelPopularityChart: React.FC = () => {
                 </div>
                 
                 {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                   {item.destination}: {item.count} travelers
                 </div>
               </div>
@@ -185,7 +206,7 @@ const TravelPopularityChart: React.FC = () => {
       
       <div className="text-center">
         <p className="pixel-text text-xs text-gray-500">
-          TOP {stats.length} MOST VISITED DESTINATIONS
+          THE HIGHER THE PEE, THE MORE POPULAR THE DESTINATION!
         </p>
       </div>
     </div>

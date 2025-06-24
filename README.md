@@ -81,3 +81,22 @@ ownership rules, authenticated users may view basic profile details for other
 users if they share a trip or have exchanged a trip invitation. Only the
 `id`, `display_name` and `email` fields are intended to be accessed under this
 policy.
+
+## Pee-Chart Game
+
+This repository includes everything needed to run the community pee-chart on Reddit. The feature counts how many trips start in each city and shows the totals in a custom Devvit post.
+
+1. **Supabase migration** – creates `city_visits` table and an `increment_city_visit` function.
+2. **Edge function** – `log_visit` increments the count whenever a trip is created.
+3. **Reddit bot** – located under `devvit/pee-chart-game` and renders a live bar chart post.
+
+### Deploying the Devvit app
+
+```bash
+# log in once
+npx devvit login
+# push to /r/trippit (or another subreddit)
+cd devvit/pee-chart-game && npx devvit deploy --subreddit trippit
+```
+
+Moderators can then choose **Create / Update Pee Chart** from the subreddit menu to post the chart. A scheduler refreshes the post every five minutes using the latest Supabase counts.

@@ -170,6 +170,22 @@ const CreateTripPage: React.FC = () => {
       await tripService.createTrip(tripData);
       console.log('Trip created successfully');
 
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log_visit`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            city: locationToUse.city,
+            country: locationToUse.country,
+          })
+        });
+      } catch (err) {
+        console.error('Failed to log visit:', err);
+      }
+
       navigate('/my-trips');
     } catch (error: any) {
       console.error('Error creating trip:', error);

@@ -2,6 +2,31 @@ import './createPost.js';
 import { Devvit, useWebView } from '@devvit/public-api';
 import type { DevvitMessage, WebViewMessage } from './message.js';
 
+type WebViewType = ReturnType<typeof useWebView<WebViewMessage, DevvitMessage>>;
+
+async function fetchCityData(webView: WebViewType): Promise<void> {
+  const response = await fetch(
+    'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc',
+    {
+      headers: {
+        apikey: 'your-anon-key-here',
+        Authorization: 'Bearer your-anon-key-here',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Fetch failed: ${response.statusText}`);
+  }
+
+  const cities = await response.json();
+
+  webView.postMessage({
+    type: 'initialCityData',
+    data: cities,
+  });
+}
+
 Devvit.configure({
   redditAPI: true,
   http: {
@@ -13,34 +38,13 @@ Devvit.configure({
 Devvit.addCustomPostType({
   name: 'TrippitPeeChart',
   height: 'tall',
-  render: async (context) => {
+  render: (context) => {
     const webView = useWebView<WebViewMessage, DevvitMessage>({
       url: 'page.html',
 
-      async onMessage(message, webView) {
+      onMessage(message, webView) {
         if (message.type === 'webViewReady') {
-          try {
-            const response = await fetch(
-              'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc',
-              {
-                headers: {
-                  apikey: 'your-anon-key-here',
-                  Authorization: 'Bearer your-anon-key-here',
-                },
-              }
-            );
-
-            if (!response.ok) {
-              throw new Error(`Fetch failed: ${response.statusText}`);
-            }
-
-            const cities = await response.json();
-
-            webView.postMessage({
-              type: 'initialCityData',
-              data: cities,
-            });
-          } catch (err) {
+          fetchCityData(webView).catch((err) => {
             console.error('Failed to fetch data, sending fallback:', err);
             webView.postMessage({
               type: 'initialCityData',
@@ -52,7 +56,7 @@ Devvit.addCustomPostType({
                 { city: 'Rome', country: 'Italy', trip_count: 7 },
               ],
             });
-          }
+          });
         } else {
           throw new Error(`Unknown message type: ${message.type}`);
         }

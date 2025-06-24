@@ -209,10 +209,22 @@ function formatItineraryForReddit(itinerary: any): string {
       markdown += '\n';
     }
     
-    // Add footer
+    // Add footer with Devvit integration
     markdown += `---\n\n`;
     markdown += `*This itinerary was created with [Trippit](https://trippit.me) - a travel planning app for adventurers.*\n\n`;
-    markdown += `*Join us at [r/trippitMemories](https://www.reddit.com/r/trippitMemories/) to share your travel experiences!*`;
+    markdown += `*Join us at [r/trippitMemories](https://www.reddit.com/r/trippitMemories/) to share your travel experiences!*\n\n`;
+    markdown += `<!-- DEVVIT-INTEGRATION-START -->
+\`\`\`json
+{
+  "type": "trippit-itinerary",
+  "destination": "${itinerary.destination}",
+  "totalDays": ${itinerary.totalDays},
+  "startDate": "${itinerary.startDate}",
+  "endDate": "${itinerary.endDate}",
+  "budget": "${itinerary.estimatedBudget}"
+}
+\`\`\`
+<!-- DEVVIT-INTEGRATION-END -->`;
     
     return markdown;
   } catch (error) {

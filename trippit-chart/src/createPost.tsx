@@ -62,7 +62,7 @@ Devvit.addMenuItem({
       console.error('Error creating Pee Chart post:', error);
       context.ui.showToast({ 
         text: 'Failed to create Pee Chart post', 
-        appearance: 'error' 
+        appearance: 'neutral' 
       });
     }
   }

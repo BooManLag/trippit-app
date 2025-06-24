@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import html2canvas from 'html2canvas';
 import { itineraryService, Itinerary, ItineraryActivity, ItineraryPreferences } from '../services/itineraryService';
@@ -29,6 +29,9 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [exportError, setExportError] = useState<string | null>(null);
   const [currentExportPage, setCurrentExportPage] = useState(0);
   const [totalExportPages, setTotalExportPages] = useState(1);
+  const [sharingToReddit, setSharingToReddit] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState<{url: string} | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -292,6 +295,43 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     }
   };
 
+  const shareToReddit = async () => {
+    if (!itinerary) return;
+    
+    try {
+      setSharingToReddit(true);
+      setShareSuccess(null);
+      setShareError(null);
+      
+      const title = `${itinerary.destination} Travel Itinerary - ${itinerary.totalDays} days`;
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-to-reddit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itinerary,
+          title
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.details || 'Failed to share to Reddit');
+      }
+      
+      setShareSuccess({ url: result.postUrl });
+    } catch (error) {
+      console.error('Error sharing to Reddit:', error);
+      setShareError(error instanceof Error ? error.message : 'Failed to share to Reddit');
+    } finally {
+      setSharingToReddit(false);
+    }
+  };
+
   const toggleInterest = (interest: string) => {
     setPreferences(prev => ({
       ...prev,
@@ -485,8 +525,57 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                   )}
                   EXPORT
                 </button>
+                <button
+                  onClick={shareToReddit}
+                  disabled={sharingToReddit}
+                  className="pixel-button-primary bg-red-600 hover:bg-red-500 text-sm px-3 py-1 flex items-center gap-1"
+                >
+                  {sharingToReddit ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Share2 className="w-3 h-3" />
+                  )}
+                  SHARE TO REDDIT
+                </button>
               </div>
             </div>
+
+            {/* Share Success Message */}
+            {shareSuccess && (
+              <div className="pixel-card bg-green-500/10 border-green-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="text-green-400 text-xl flex-shrink-0">✅</div>
+                  <div>
+                    <h3 className="pixel-text text-green-400 text-sm mb-2">SHARED SUCCESSFULLY!</h3>
+                    <p className="outfit-text text-sm text-gray-300 mb-3">
+                      Your itinerary has been shared to r/trippitMemories.
+                    </p>
+                    <a 
+                      href={shareSuccess.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="pixel-button-secondary text-xs px-3 py-1 inline-flex items-center gap-1 bg-green-600 hover:bg-green-500"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      VIEW ON REDDIT
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Share Error Message */}
+            {shareError && (
+              <div className="pixel-card bg-red-500/10 border-red-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="pixel-text text-red-400 text-sm mb-2">SHARING FAILED</h3>
+                    <p className="outfit-text text-sm text-red-300">{shareError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Export Error Message */}
             {exportError && (

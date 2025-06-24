@@ -12,7 +12,6 @@ import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
 import { invitationService } from '../services/invitationService';
-import TravelPopularityChart from '../components/TravelPopularityChart';
 
 interface TripDetails {
   id: string;
@@ -780,11 +779,6 @@ const TripDashboardPage: React.FC = () => {
               {getTripStatus()}
             </div>
           </div>
-        </div>
-
-        {/* Travel Popularity Chart */}
-        <div className="mb-6 sm:mb-8">
-          <TravelPopularityChart />
         </div>
 
         {/* Badge Section - Horizontal Scrollable */}

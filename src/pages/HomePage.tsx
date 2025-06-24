@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthModal from '../components/AuthModal';
 import { supabase } from '../lib/supabase';
-import TravelPopularityChart from '../components/TravelPopularityChart';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +60,7 @@ const HomePage: React.FC = () => {
             </h1>
             
             {/* Sparkle effects */}
-            <div className="absolute -top-2 -right-2 text-yellow-400 animate-spin">✨</div>
+            <div className="absolute -top-2 -right-8 text-yellow-400 animate-spin text-sm">✨</div>
             <div className="absolute -bottom-2 -left-2 text-blue-400 animate-pulse">🌟</div>
           </div>
         </div>
@@ -105,11 +104,6 @@ const HomePage: React.FC = () => {
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
           </button>
-        </div>
-
-        {/* Travel Popularity Chart */}
-        <div className={`mb-16 sm:mb-20 lg:mb-24 transform transition-all duration-1000 delay-900 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <TravelPopularityChart />
         </div>
 
         {/* Animated feature cards with PROPER SPACING */}

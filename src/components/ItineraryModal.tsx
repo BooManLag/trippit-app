@@ -192,15 +192,27 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         // Wait a moment for the DOM to update
         await new Promise(resolve => setTimeout(resolve, 300));
         
+        // Mobile-friendly options
         const canvas = await html2canvas(exportPreview, {
-          scale: 2,
+          scale: 2, // Higher scale for better quality
           backgroundColor: '#000000',
           useCORS: true,
           logging: false,
           allowTaint: true,
           // Ensure we capture the full height of the content
           height: exportPreview.scrollHeight,
-          windowHeight: exportPreview.scrollHeight
+          windowHeight: exportPreview.scrollHeight,
+          // Improved mobile support
+          onclone: (clonedDoc) => {
+            const clonedElement = clonedDoc.getElementById(exportPreview.id);
+            if (clonedElement) {
+              clonedElement.style.width = `${exportPreview.offsetWidth}px`;
+              clonedElement.style.height = `${exportPreview.scrollHeight}px`;
+              clonedElement.style.position = 'absolute';
+              clonedElement.style.top = '0';
+              clonedElement.style.left = '0';
+            }
+          }
         });
         
         // Reset display style
@@ -210,16 +222,45 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         imageDataUrls.push(canvas.toDataURL('image/png'));
       }
       
-      // Download each image
+      // Mobile-friendly download approach
       for (let i = 0; i < imageDataUrls.length; i++) {
-        const link = document.createElement('a');
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const fileName = imageDataUrls.length > 1 
           ? `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary_${i+1}.png`
           : `${tripDestination.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_itinerary.png`;
         
-        link.download = fileName;
-        link.href = imageDataUrls[i];
-        link.click();
+        if (isMobile) {
+          // For mobile: Open image in new tab (user can save from there)
+          const newTab = window.open();
+          if (newTab) {
+            newTab.document.write(`
+              <html>
+                <head>
+                  <title>Trippit Itinerary - ${tripDestination}</title>
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <style>
+                    body { margin: 0; padding: 10px; background: #000; color: #fff; font-family: sans-serif; }
+                    img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+                    .instructions { text-align: center; margin: 20px 0; padding: 10px; background: rgba(255,255,255,0.1); }
+                  </style>
+                </head>
+                <body>
+                  <div class="instructions">
+                    <p>Press and hold on the image to save it to your device</p>
+                  </div>
+                  <img src="${imageDataUrls[i]}" alt="Trippit Itinerary">
+                </body>
+              </html>
+            `);
+            newTab.document.close();
+          }
+        } else {
+          // For desktop: Use traditional download approach
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = imageDataUrls[i];
+          link.click();
+        }
         
         // Add a small delay between downloads to prevent browser issues
         if (i < imageDataUrls.length - 1) {
@@ -465,6 +506,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
               return (
                 <div 
                   key={`export-preview-${pageIndex}`}
+                  id={`export-preview-${pageIndex}`}
                   ref={el => exportPreviewRefs.current[pageIndex] = el}
                   className="hidden"
                   style={{ 

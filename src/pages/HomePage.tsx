@@ -104,18 +104,6 @@ const HomePage: React.FC = () => {
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
           </button>
-          
-          <button
-            onClick={() => navigate('/shared-itineraries')}
-            className="pixel-button-secondary w-full group relative overflow-hidden bg-gradient-to-r from-red-600/80 to-amber-600/80 hover:from-red-500 hover:to-amber-500"
-          >
-            <span className="relative z-10 flex items-center justify-center mobile-gap">
-              <span>⭐</span>
-              <span>COMMUNITY ITINERARIES</span>
-              <span className="group-hover:animate-bounce">💩</span>
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-amber-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-          </button>
         </div>
 
         {/* Animated feature cards with PROPER SPACING */}
@@ -203,7 +191,7 @@ const HomePage: React.FC = () => {
             </p>
             <button
               onClick={handlePlanTrip}
-              className="pixel-button-primary bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transform hover:scale-105 transition-all duration-300 w-full sm:w-auto"
+              className="pixel-button-primary bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transform hover:scale-105 transition-all duration-300 w-full sm:w-auto"
             >
               START YOUR JOURNEY 🌟
             </button>

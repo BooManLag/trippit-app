@@ -5,7 +5,7 @@ import type { DevvitMessage, WebViewMessage } from './message.js';
 Devvit.configure({
   redditAPI: true,
   http: {
-    domains: ['your-project-id.supabase.co'], // replace with your actual Supabase domain
+    domains: [import.meta.env.VITE_SUPABASE_URL.replace('https://', '')], // Extract domain from full URL
   },
 });
 
@@ -22,11 +22,11 @@ Devvit.addCustomPostType({
           // Use a non-async function here and handle the promise inside
           const fetchData = () => {
             fetch(
-              'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc',
+              `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
               {
                 headers: {
-                  apikey: 'your-anon-key-here',
-                  Authorization: 'Bearer your-anon-key-here',
+                  apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
                 },
               }
             )
@@ -94,11 +94,11 @@ Devvit.addSchedulerJob({
       ctx.reddit.getCurrentSubreddit()
         .then(subreddit => {
           return fetch(
-            'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc',
+            `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
             {
               headers: {
-                apikey: 'your-anon-key-here',
-                Authorization: 'Bearer your-anon-key-here',
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
               },
             }
           )

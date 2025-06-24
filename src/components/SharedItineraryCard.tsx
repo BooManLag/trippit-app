@@ -109,3 +109,5 @@ const SharedItineraryCard: React.FC<SharedItineraryCardProps> = ({
     </div>
   );
 }
+
+export default SharedItineraryCard;

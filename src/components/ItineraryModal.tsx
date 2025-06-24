@@ -28,6 +28,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [exportLoading, setExportLoading] = useState(false);
   const [currentExportPage, setCurrentExportPage] = useState(0);
   const [totalExportPages, setTotalExportPages] = useState(1);
+  const [exportError, setExportError] = useState<string | null>(null);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -176,14 +177,20 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     
     try {
       setExportLoading(true);
+      setExportError(null);
       
       // Create an array to store all the image data URLs
       const imageDataUrls: string[] = [];
+      
+      // Check if any export previews exist
+      let previewsExist = false;
       
       // Export each page
       for (let page = 0; page < totalExportPages; page++) {
         const exportPreview = exportPreviewRefs.current[page];
         if (!exportPreview) continue;
+        
+        previewsExist = true;
         
         // Make sure the export preview is visible during capture
         const originalDisplay = exportPreview.style.display;
@@ -220,6 +227,16 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         
         // Add the image data URL to our array
         imageDataUrls.push(canvas.toDataURL('image/png'));
+      }
+      
+      // Check if we have any images to download
+      if (imageDataUrls.length === 0) {
+        if (!previewsExist) {
+          setExportError("Export preview not ready. Please try again in a moment.");
+        } else {
+          setExportError("Failed to generate images. Please try again.");
+        }
+        return;
       }
       
       // Mobile-friendly download approach
@@ -269,7 +286,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
       }
     } catch (error) {
       console.error('Error exporting images:', error);
-      alert('Failed to export itinerary. Please try again.');
+      setExportError('Failed to export itinerary. Please try again.');
     } finally {
       setExportLoading(false);
     }
@@ -470,6 +487,16 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Export Error Message */}
+            {exportError && (
+              <div className="pixel-card bg-red-500/10 border-red-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                  <p className="outfit-text text-sm text-red-300">{exportError}</p>
+                </div>
+              </div>
+            )}
 
             {/* API Key Info Banner */}
             {showApiKeyInfo && (

@@ -1,9 +1,0 @@
-{
-  "name": "pee-chart-game",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@devvit/public-api": "^1.0.0"
-  }
-}

@@ -42,7 +42,7 @@ class App {
     this.chartContainer.innerHTML = '';
     
     // Create chart
-    sortedData.forEach(({ city, country, trip_count }) => {
+    sortedData.forEach(({ city, country, trip_count }, index) => {
       // Create container for this city
       const cityContainer = document.createElement('div');
       cityContainer.className = 'city-container';
@@ -61,6 +61,10 @@ class App {
       const maxHeight = 200;
       const barHeight = Math.max(20, (heightPercentage / 100) * maxHeight);
       
+      // Generate a consistent color based on index
+      const hue = (index * 30) % 360;
+      const color = `hsl(${hue}, 70%, 60%)`;
+      
       // Create person icon
       const personContainer = document.createElement('div');
       personContainer.className = 'person-container';
@@ -74,11 +78,13 @@ class App {
       const peeStream = document.createElement('div');
       peeStream.className = 'pee-stream';
       peeStream.style.height = `${barHeight}px`;
+      peeStream.style.background = `linear-gradient(to bottom, transparent, ${color})`;
       
       // Create puddle
       const puddle = document.createElement('div');
       puddle.className = 'puddle';
       puddle.style.width = `${Math.max(30, trip_count * 5)}px`;
+      puddle.style.backgroundColor = color;
       
       // Create count label
       const countLabel = document.createElement('div');

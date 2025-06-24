@@ -18,7 +18,7 @@ Devvit.addCustomPostType({
           try {
             // Fetch city visit data from Supabase
             const response = await context.http.request({
-              url: 'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count',
+              url: 'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc',
               method: 'GET',
               headers: { 
                 apikey: 'your-anon-key-here',
@@ -74,6 +74,73 @@ Devvit.addCustomPostType({
       </vstack>
     );
   },
+});
+
+// Add scheduler to refresh the chart periodically
+Devvit.addSchedulerJob({
+  name: 'refresh_peechart',
+  cron: '*/5 * * * *', // Every 5 minutes
+  onRun: async (_data, ctx) => {
+    try {
+      const postId = await ctx.kvStore.get<string>('peePost');
+      if (!postId) return;
+      
+      // Fetch the latest data
+      const response = await ctx.http.request({
+        url: 'https://your-project-id.supabase.co/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc',
+        method: 'GET',
+        headers: { 
+          apikey: 'your-anon-key-here',
+          Authorization: 'Bearer your-anon-key-here'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+      }
+      
+      const cities = await response.json();
+      
+      // Update the post with the latest data
+      await ctx.reddit.updateCustomPost(postId, () => {
+        return (
+          <vstack grow padding="small">
+            <vstack grow alignment="middle center">
+              <text size="xlarge" weight="bold">
+                🌍 Trippit Pee Chart
+              </text>
+              <text size="medium" color="secondary">
+                Who's peeing where? Live travel tracker
+              </text>
+              <spacer size="medium" />
+              <text>
+                {cities.length > 0 
+                  ? `Tracking ${cities.length} destinations` 
+                  : 'No travel data available yet'}
+              </text>
+              <button onPress={() => webView.mount()}>View Chart</button>
+            </vstack>
+          </vstack>
+        );
+      });
+      
+      console.log('Pee Chart refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing Pee Chart:', error);
+    }
+  }
+});
+
+// Set up the scheduler when the app is installed
+Devvit.addTrigger({
+  event: 'AppInstall',
+  onEvent: async (_event, ctx) => {
+    await ctx.scheduler.runJob({ 
+      name: 'refresh_peechart', 
+      cron: '*/5 * * * *', 
+      data: {} 
+    });
+  }
 });
 
 export default Devvit;

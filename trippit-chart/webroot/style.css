@@ -38,6 +38,13 @@ h1 {
   margin-bottom: 2rem;
 }
 
+.footer {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-top: 2rem;
+}
+
 #loading, #error {
   text-align: center;
   padding: 2rem;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Poop, Loader2 } from 'lucide-react';
+import { Star, Popcorn as Poop, Loader2 } from 'lucide-react';
 import { reactionService, ReactionCounts } from '../services/reactionService';
 import { useAuth } from '../hooks/useAuth';
 import AuthModal from './AuthModal';

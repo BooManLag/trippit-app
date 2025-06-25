@@ -2,14 +2,10 @@ import './createPost.js';
 import { Devvit, useState } from '@devvit/public-api';
 import type { DevvitMessage, WebViewMessage } from './message.js';
 
-// Hardcode the Supabase URL and key since environment variables aren't working
-const SUPABASE_URL = "https://your-project-id.supabase.co";
-const SUPABASE_ANON_KEY = "your-anon-key-here";
-
 Devvit.configure({
   redditAPI: true,
   http: {
-    domains: [SUPABASE_URL.replace('https://', '')], // Extract domain from full URL
+    domains: ['your-project-id.supabase.co'], // Replace with your Supabase domain
   },
 });
 
@@ -25,12 +21,32 @@ Devvit.addCustomPostType({
         if (message.type === 'webViewReady') {
           // Use a non-async function here and handle the promise inside
           const fetchData = () => {
+            // Get Supabase URL and key from secrets
+            const supabaseUrl = Deno.env.get('SUPABASE_URL');
+            const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
+            
+            if (!supabaseUrl || !supabaseKey) {
+              console.error('Supabase credentials not found in environment');
+              // Send fallback data if credentials are missing
+              webView.postMessage({
+                type: 'initialCityData',
+                data: [
+                  { city: 'Paris', country: 'France', trip_count: 12 },
+                  { city: 'Tokyo', country: 'Japan', trip_count: 8 },
+                  { city: 'New York', country: 'USA', trip_count: 15 },
+                  { city: 'London', country: 'UK', trip_count: 10 },
+                  { city: 'Rome', country: 'Italy', trip_count: 7 },
+                ],
+              });
+              return;
+            }
+
             fetch(
-              `${SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
+              `${supabaseUrl}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
               {
                 headers: {
-                  apikey: SUPABASE_ANON_KEY,
-                  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                  apikey: supabaseKey,
+                  Authorization: `Bearer ${supabaseKey}`,
                 },
               }
             )
@@ -95,14 +111,23 @@ Devvit.addSchedulerJob({
   onRun: (data, ctx) => {
     // Use a non-async function and handle promises inside
     try {
+      // Get Supabase URL and key from secrets
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
+      
+      if (!supabaseUrl || !supabaseKey) {
+        console.error('Supabase credentials not found in environment');
+        return;
+      }
+      
       ctx.reddit.getCurrentSubreddit()
         .then(subreddit => {
           return fetch(
-            `${SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
+            `${supabaseUrl}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
             {
               headers: {
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                apikey: supabaseKey,
+                Authorization: `Bearer ${supabaseKey}`,
               },
             }
           )

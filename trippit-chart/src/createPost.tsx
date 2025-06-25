@@ -1,9 +1,5 @@
 import { Devvit } from '@devvit/public-api';
 
-// Hardcode the Supabase URL and key since environment variables aren't working
-const SUPABASE_URL = "https://your-project-id.supabase.co";
-const SUPABASE_ANON_KEY = "your-anon-key-here";
-
 Devvit.addMenuItem({
   label: 'Create Trippit Pee Chart Post',
   location: 'subreddit',

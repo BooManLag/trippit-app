@@ -11,16 +11,15 @@ class App {
   }
 
   #onMessage = (ev) => {
-    if (ev.data.type !== 'devvit-message') return;
-    const { message } = ev.data.data;
-
-    switch (message.type) {
-      case 'initialCityData':
+    // Check for Devvit message format
+    if (ev.data && ev.data.type === 'devvit-message') {
+      const message = ev.data.data;
+      
+      if (message.type === 'initialCityData') {
         this.renderPeeChart(message.data);
-        break;
-      default:
+      } else {
         console.warn(`Unknown message type: ${message.type}`);
-        break;
+      }
     }
   };
 

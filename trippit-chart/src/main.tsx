@@ -2,10 +2,14 @@ import './createPost.js';
 import { Devvit, useState } from '@devvit/public-api';
 import type { DevvitMessage, WebViewMessage } from './message.js';
 
+// Hardcode the Supabase URL and key since environment variables aren't working
+const SUPABASE_URL = "https://your-project-id.supabase.co";
+const SUPABASE_ANON_KEY = "your-anon-key-here";
+
 Devvit.configure({
   redditAPI: true,
   http: {
-    domains: [import.meta.env.VITE_SUPABASE_URL.replace('https://', '')], // Extract domain from full URL
+    domains: [SUPABASE_URL.replace('https://', '')], // Extract domain from full URL
   },
 });
 
@@ -22,11 +26,11 @@ Devvit.addCustomPostType({
           // Use a non-async function here and handle the promise inside
           const fetchData = () => {
             fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
+              `${SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
               {
                 headers: {
-                  apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-                  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                  apikey: SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
                 },
               }
             )
@@ -94,11 +98,11 @@ Devvit.addSchedulerJob({
       ctx.reddit.getCurrentSubreddit()
         .then(subreddit => {
           return fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
+            `${SUPABASE_URL}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
             {
               headers: {
-                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
               },
             }
           )

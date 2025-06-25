@@ -1,6 +1,5 @@
 import './createPost.js';
 import { Devvit } from '@devvit/public-api';
-import type { DevvitMessage, WebViewMessage } from './message.js';
 
 Devvit.configure({
   redditAPI: true,
@@ -14,12 +13,9 @@ Devvit.addCustomPostType({
   name: 'TrippitPeeChart',
   height: 'tall',
   render: (context) => {
-    // Instead of using showWebView, use the button to navigate to a separate page
+    // Use a simple button that opens a URL instead of a WebView
     const handleViewChart = () => {
-      // Navigate to a URL that shows the chart
       context.ui.showToast('Opening chart view...');
-      
-      // Use Reddit's native browser to open the chart
       context.reddit.openUrl('https://trippit.me/chart');
     };
 
@@ -74,7 +70,7 @@ Devvit.addSchedulerJob({
       const cities = await response.json();
       
       // Get existing post ID
-      const existingPostId = await ctx.kvStore.get<string>('peePost');
+      const existingPostId = await ctx.kvStore.get('peePost');
       
       if (existingPostId) {
         try {
@@ -88,11 +84,15 @@ Devvit.addSchedulerJob({
                 </text>
                 <text size="medium">Tracking {cities.length} active cities</text>
                 <spacer />
-                {cities.slice(0, 5).map((c: { city: string; country: string; trip_count: number }) => (
+                {cities.slice(0, 5).map((c) => (
                   <text key={`${c.city}-${c.country}`}>
                     🚻 {c.city}, {c.country}: {c.trip_count} trips
                   </text>
                 ))}
+                <spacer />
+                <text size="small" color="secondary">
+                  Last updated: {new Date().toLocaleString()}
+                </text>
               </vstack>
             ),
           });
@@ -114,11 +114,15 @@ Devvit.addSchedulerJob({
             </text>
             <text size="medium">Tracking {cities.length} active cities</text>
             <spacer />
-            {cities.slice(0, 5).map((c: { city: string; country: string; trip_count: number }) => (
+            {cities.slice(0, 5).map((c) => (
               <text key={`${c.city}-${c.country}`}>
                 🚻 {c.city}, {c.country}: {c.trip_count} trips
               </text>
             ))}
+            <spacer />
+            <text size="small" color="secondary">
+              Created: {new Date().toLocaleString()}
+            </text>
           </vstack>
         ),
       });

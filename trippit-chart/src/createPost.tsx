@@ -7,7 +7,7 @@ Devvit.addMenuItem({
   onPress: async (_event, context) => {
     try {
       // Check if we already have a post ID stored
-      const existingPostId = await context.kvStore.get<string>('peePost');
+      const existingPostId = await context.kvStore.get('peePost');
       
       if (existingPostId) {
         // Check if the post still exists

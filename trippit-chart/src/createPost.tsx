@@ -20,7 +20,7 @@ Devvit.addMenuItem({
           
           // Trigger a refresh
           await context.scheduler.runJob({ 
-            name: 'refresh_peechart', 
+            name: 'refresh_peechart',
             data: {} 
           });
           
@@ -53,7 +53,7 @@ Devvit.addMenuItem({
       
       // Trigger an immediate refresh
       await context.scheduler.runJob({ 
-        name: 'refresh_peechart', 
+        name: 'refresh_peechart',
         data: {} 
       });
     } catch (error) {

@@ -14,79 +14,13 @@ Devvit.addCustomPostType({
   name: 'TrippitPeeChart',
   height: 'tall',
   render: (context) => {
-    // Use context.ui.showWebView method
+    // Instead of using showWebView, use the button to navigate to a separate page
     const handleViewChart = () => {
-      context.ui.showWebView({
-        url: 'page.html',
-        onMessage: (message: WebViewMessage) => {
-          if (message.type === 'webViewReady') {
-            // Fetch data from Supabase
-            const fetchData = () => {
-              // Get Supabase URL and key from environment
-              const supabaseUrl = Deno.env.get('SUPABASE_URL');
-              const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
-              
-              if (!supabaseUrl || !supabaseKey) {
-                console.error('Supabase credentials not found in environment');
-                // Send fallback data if credentials are missing
-                context.ui.postMessage({
-                  type: 'initialCityData',
-                  data: [
-                    { city: 'Paris', country: 'France', trip_count: 12 },
-                    { city: 'Tokyo', country: 'Japan', trip_count: 8 },
-                    { city: 'New York', country: 'USA', trip_count: 15 },
-                    { city: 'London', country: 'UK', trip_count: 10 },
-                    { city: 'Rome', country: 'Italy', trip_count: 7 },
-                  ],
-                });
-                return;
-              }
-
-              fetch(
-                `${supabaseUrl}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
-                {
-                  headers: {
-                    apikey: supabaseKey,
-                    Authorization: `Bearer ${supabaseKey}`,
-                  },
-                }
-              )
-                .then(response => {
-                  if (!response.ok) {
-                    throw new Error(`Fetch failed: ${response.statusText}`);
-                  }
-                  return response.json();
-                })
-                .then(cities => {
-                  context.ui.postMessage({
-                    type: 'initialCityData',
-                    data: cities,
-                  });
-                })
-                .catch(err => {
-                  console.error('Failed to fetch data, sending fallback:', err);
-                  context.ui.postMessage({
-                    type: 'initialCityData',
-                    data: [
-                      { city: 'Paris', country: 'France', trip_count: 12 },
-                      { city: 'Tokyo', country: 'Japan', trip_count: 8 },
-                      { city: 'New York', country: 'USA', trip_count: 15 },
-                      { city: 'London', country: 'UK', trip_count: 10 },
-                      { city: 'Rome', country: 'Italy', trip_count: 7 },
-                    ],
-                  });
-                });
-            };
-
-            fetchData();
-          } else {
-            console.error(`Unknown message type: ${message.type}`);
-          }
-        },
-        onClose: () => {
-          context.ui.showToast('Chart closed');
-        },
-      });
+      // Navigate to a URL that shows the chart
+      context.ui.showToast('Opening chart view...');
+      
+      // Use Reddit's native browser to open the chart
+      context.reddit.openUrl('https://trippit.me/chart');
     };
 
     return (
@@ -109,7 +43,7 @@ Devvit.addCustomPostType({
 // Schedule auto-posts every 5 minutes
 Devvit.addSchedulerJob({
   name: 'refresh_peechart',
-  onRun: (data, ctx) => {
+  onRun: async (data, ctx) => {
     try {
       // Get Supabase URL and key from environment
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -120,50 +54,79 @@ Devvit.addSchedulerJob({
         return;
       }
       
-      ctx.reddit.getCurrentSubreddit()
-        .then(subreddit => {
-          return fetch(
-            `${supabaseUrl}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
-            {
-              headers: {
-                apikey: supabaseKey,
-                Authorization: `Bearer ${supabaseKey}`,
-              },
-            }
-          )
-            .then(response => {
-              if (!response.ok) {
-                throw new Error(`Failed to fetch: ${response.statusText}`);
-              }
-              return response.json();
-            })
-            .then(cities => {
-              return ctx.reddit.submitPost({
-                title: `🌍 Trippit Pee Chart Update`,
-                subredditName: subreddit.name,
-                preview: (
-                  <vstack padding="medium" alignment="start">
-                    <text size="large" weight="bold">
-                      🌍 Trippit Pee Chart
-                    </text>
-                    <text size="medium">Tracking {cities.length} active cities</text>
-                    <spacer />
-                    {cities.slice(0, 5).map((c: { city: string; country: string; trip_count: number }) => (
-                      <text key={`${c.city}-${c.country}`}>
-                        🚻 {c.city}, {c.country}: {c.trip_count} trips
-                      </text>
-                    ))}
-                  </vstack>
-                ),
-              });
-            });
-        })
-        .then(() => {
-          console.log('Posted pee chart update to subreddit');
-        })
-        .catch(err => {
-          console.error('Error during scheduled update:', err);
-        });
+      const subreddit = await ctx.reddit.getCurrentSubreddit();
+      
+      // Fetch city data
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/city_visits?select=city,country,trip_count&order=trip_count.desc`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.statusText}`);
+      }
+      
+      const cities = await response.json();
+      
+      // Get existing post ID
+      const existingPostId = await ctx.kvStore.get<string>('peePost');
+      
+      if (existingPostId) {
+        try {
+          // Try to update existing post
+          await ctx.reddit.editPost({
+            id: existingPostId,
+            content: (
+              <vstack padding="medium" alignment="start">
+                <text size="large" weight="bold">
+                  🌍 Trippit Pee Chart
+                </text>
+                <text size="medium">Tracking {cities.length} active cities</text>
+                <spacer />
+                {cities.slice(0, 5).map((c: { city: string; country: string; trip_count: number }) => (
+                  <text key={`${c.city}-${c.country}`}>
+                    🚻 {c.city}, {c.country}: {c.trip_count} trips
+                  </text>
+                ))}
+              </vstack>
+            ),
+          });
+          console.log('Updated existing pee chart post');
+          return;
+        } catch (error) {
+          console.error('Failed to update existing post, creating new one:', error);
+        }
+      }
+      
+      // Create new post if update failed or no existing post
+      const post = await ctx.reddit.submitPost({
+        title: `🌍 Trippit Pee Chart Update`,
+        subredditName: subreddit.name,
+        preview: (
+          <vstack padding="medium" alignment="start">
+            <text size="large" weight="bold">
+              🌍 Trippit Pee Chart
+            </text>
+            <text size="medium">Tracking {cities.length} active cities</text>
+            <spacer />
+            {cities.slice(0, 5).map((c: { city: string; country: string; trip_count: number }) => (
+              <text key={`${c.city}-${c.country}`}>
+                🚻 {c.city}, {c.country}: {c.trip_count} trips
+              </text>
+            ))}
+          </vstack>
+        ),
+      });
+      
+      // Store the new post ID
+      await ctx.kvStore.put('peePost', post.id);
+      console.log('Created new pee chart post');
+      
     } catch (err) {
       console.error('Error during scheduled update:', err);
     }
@@ -173,15 +136,17 @@ Devvit.addSchedulerJob({
 // Register initial trigger for scheduler
 Devvit.addTrigger({
   event: 'AppInstall',
-  onEvent: (event, ctx) => {
-    ctx.scheduler.runJob({
-      name: 'refresh_peechart',
-      cron: '*/5 * * * *',
-      data: {},
-    })
-      .catch(err => {
-        console.error('Failed to schedule job:', err);
+  onEvent: async (event, ctx) => {
+    try {
+      await ctx.scheduler.scheduleJob({
+        name: 'refresh_peechart',
+        cron: '*/5 * * * *',
+        data: {},
       });
+      console.log('Scheduled pee chart refresh job');
+    } catch (err) {
+      console.error('Failed to schedule job:', err);
+    }
   },
 });
 

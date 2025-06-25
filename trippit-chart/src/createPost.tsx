@@ -1,7 +1,7 @@
 import { Devvit } from '@devvit/public-api';
 
 Devvit.addMenuItem({
-  label: 'Create Trippit Pee Chart Post',
+  label: 'Create / Update Pee Chart',
   location: 'subreddit',
   forUserType: 'moderator',
   onPress: async (_event, context) => {
@@ -21,7 +21,6 @@ Devvit.addMenuItem({
           // Trigger a refresh
           await context.scheduler.runJob({ 
             name: 'refresh_peechart', 
-            cron: '*/5 * * * *', 
             data: {} 
           });
           
@@ -55,7 +54,6 @@ Devvit.addMenuItem({
       // Trigger an immediate refresh
       await context.scheduler.runJob({ 
         name: 'refresh_peechart', 
-        cron: '*/5 * * * *', 
         data: {} 
       });
     } catch (error) {

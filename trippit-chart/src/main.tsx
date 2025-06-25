@@ -14,15 +14,15 @@ Devvit.addCustomPostType({
   name: 'TrippitPeeChart',
   height: 'tall',
   render: (context) => {
-    // Instead of using useWebView directly, we'll use the context.ui.showWebView method
+    // Use context.ui.showWebView method
     const handleViewChart = () => {
       context.ui.showWebView({
         url: 'page.html',
         onMessage: (message: WebViewMessage) => {
           if (message.type === 'webViewReady') {
-            // Use a non-async function here and handle the promise inside
+            // Fetch data from Supabase
             const fetchData = () => {
-              // Get Supabase URL and key from secrets
+              // Get Supabase URL and key from environment
               const supabaseUrl = Deno.env.get('SUPABASE_URL');
               const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
               
@@ -110,9 +110,8 @@ Devvit.addCustomPostType({
 Devvit.addSchedulerJob({
   name: 'refresh_peechart',
   onRun: (data, ctx) => {
-    // Use a non-async function and handle promises inside
     try {
-      // Get Supabase URL and key from secrets
+      // Get Supabase URL and key from environment
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
       

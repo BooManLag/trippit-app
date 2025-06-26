@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { X, Mail, MapPin, Calendar, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { X, Mail, MapPin, Calendar, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import { invitationService, type TripInvitation } from '../services/invitationService';
-import LoadingBar from './LoadingBar';
 
 interface InvitationModalProps {
   invitation: TripInvitation;
@@ -115,12 +114,9 @@ const InvitationModal: React.FC<InvitationModalProps> = ({
 
         {/* Loading State */}
         {loading && (
-          <div className="mb-6">
-            <LoadingBar 
-              text="PROCESSING INVITATION..." 
-              color="blue" 
-              duration={2000}
-            />
+          <div className="text-center py-4">
+            <Loader2 className="w-6 h-6 text-blue-500 animate-spin mx-auto mb-2" />
+            <p className="pixel-text text-blue-400 text-xs">PROCESSING...</p>
           </div>
         )}
 

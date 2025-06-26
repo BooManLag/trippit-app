@@ -1,7 +1,6 @@
 import React from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { User, LogOut, AlertCircle, Wifi, WifiOff } from 'lucide-react'
-import LoadingBar from './LoadingBar'
 
 interface AuthStatusProps {
   className?: string;
@@ -14,15 +13,8 @@ export function AuthStatus({ className = '', showSignOut = true }: AuthStatusPro
   if (loading) {
     return (
       <div className={`flex items-center space-x-2 text-gray-600 ${className}`}>
-        <div className="w-32">
-          <LoadingBar 
-            text="Connecting..." 
-            color="blue" 
-            height={4}
-            width="100%"
-            duration={1000}
-          />
-        </div>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+        <span className="text-xs sm:text-sm">Connecting...</span>
       </div>
     )
   }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { X, Mail, CheckCircle2 } from 'lucide-react';
+import { X, Loader2, Mail, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import LoadingBar from './LoadingBar';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -181,22 +180,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
             </div>
           )}
 
-          {loading ? (
-            <div className="w-full">
-              <LoadingBar 
-                text={isSignUp ? "CREATING ACCOUNT..." : "SIGNING IN..."} 
-                color="blue" 
-                duration={1500}
-              />
-            </div>
-          ) : (
-            <button
-              type="submit"
-              className="pixel-button-primary w-full flex items-center justify-center mobile-gap"
-            >
+          <button
+            type="submit"
+            disabled={loading}
+            className="pixel-button-primary w-full flex items-center justify-center mobile-gap"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
+                <span>PROCESSING...</span>
+              </>
+            ) : (
               <span>{isSignUp ? 'SIGN UP' : 'SIGN IN'}</span>
-            </button>
-          )}
+            )}
+          </button>
 
           <div className="text-center outfit-text">
             <button

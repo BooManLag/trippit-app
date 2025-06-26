@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Filter, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 'lucide-react';
+import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
-import LoadingBar from '../components/LoadingBar';
 
 interface RedditTip {
   id: string;
@@ -246,13 +245,9 @@ const TipsPage: React.FC = () => {
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-12 sm:py-16">
-            <div className="w-full max-w-md px-4">
-              <LoadingBar 
-                text="GATHERING WISDOM..." 
-                color="yellow" 
-                duration={3000}
-              />
-              <p className="pixel-text text-yellow-400 mt-4 text-center">COLLECTING TRAVEL INSIGHTS</p>
+            <div className="animate-bounce-in">
+              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-yellow-500 animate-spin mr-3" />
+              <span className="pixel-text text-yellow-400 text-sm sm:text-base">GATHERING WISDOM...</span>
             </div>
           </div>
         )}

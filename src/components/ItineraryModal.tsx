@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, AlertCircle, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
+import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import html2canvas from 'html2canvas';
 import { itineraryService, Itinerary, ItineraryActivity, ItineraryPreferences } from '../services/itineraryService';
 import PostReactions from './PostReactions';
-import LoadingBar from './LoadingBar';
 
 interface ItineraryModalProps {
   isOpen: boolean;
@@ -429,22 +428,18 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
               <button
                 onClick={handleGenerateItinerary}
                 disabled={loading || preferences.interests.length === 0}
-                className="pixel-button-primary flex-1 disabled:opacity-50"
+                className="pixel-button-primary flex-1 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
-                  <div className="w-full">
-                    <LoadingBar 
-                      text="GENERATING ITINERARY..." 
-                      color="purple" 
-                      height={6}
-                      duration={2000}
-                    />
-                  </div>
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    GENERATING...
+                  </>
                 ) : (
-                  <div className="flex items-center justify-center gap-2">
+                  <>
                     <Wand2 className="w-4 h-4" />
                     GENERATE ITINERARY
-                  </div>
+                  </>
                 )}
               </button>
             </div>
@@ -473,21 +468,11 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                   className="pixel-button-primary text-sm px-3 py-1 flex items-center gap-1"
                 >
                   {exportLoading ? (
-                    <div className="w-full">
-                      <LoadingBar 
-                        text="EXPORTING..." 
-                        color="blue" 
-                        height={4}
-                        width="100%"
-                        duration={1000}
-                      />
-                    </div>
+                    <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
-                    <>
-                      <Download className="w-3 h-3" />
-                      EXPORT
-                    </>
+                    <Download className="w-3 h-3" />
                   )}
+                  EXPORT
                 </button>
                 <button
                   onClick={shareToReddit}
@@ -495,21 +480,11 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                   className="pixel-button-primary bg-red-600 hover:bg-red-500 text-sm px-3 py-1 flex items-center gap-1"
                 >
                   {sharingToReddit ? (
-                    <div className="w-full">
-                      <LoadingBar 
-                        text="SHARING..." 
-                        color="red" 
-                        height={4}
-                        width="100%"
-                        duration={1000}
-                      />
-                    </div>
+                    <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
-                    <>
-                      <Share2 className="w-3 h-3" />
-                      SHARE TO REDDIT
-                    </>
+                    <Share2 className="w-3 h-3" />
                   )}
+                  SHARE TO REDDIT
                 </button>
               </div>
             </div>

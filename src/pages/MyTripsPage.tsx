@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw, Mail, ArrowLeft } from 'lucide-react';
+import { MapPin, Loader2, PlusCircle, Trash2, Play, Calendar, Star, AlertCircle, RefreshCw, Mail, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
 import DeleteModal from '../components/DeleteModal';
 import AuthModal from '../components/AuthModal';
 import InvitationModal from '../components/InvitationModal';
 import { useAuth } from '../hooks/useAuth';
-import LoadingBar from '../components/LoadingBar';
 
 interface Trip {
   id: string;
@@ -229,13 +228,9 @@ const MyTripsPage: React.FC = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-full max-w-md px-4">
-          <LoadingBar 
-            text="LOADING ADVENTURES..." 
-            color="blue" 
-            duration={3000}
-          />
-          <p className="pixel-text text-blue-400 mt-4 text-center">PREPARING YOUR JOURNEYS</p>
+        <div className="animate-bounce-in">
+          <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-blue-500 animate-spin" />
+          <p className="pixel-text text-blue-400 mt-4 text-sm sm:text-base">LOADING ADVENTURES...</p>
         </div>
       </div>
     );
@@ -336,7 +331,7 @@ const MyTripsPage: React.FC = () => {
                       <p className="outfit-text text-gray-300 text-sm">
                         From{' '}
                         <span className="text-purple-400 font-semibold">
-                          {invitation.inviter?.display_name || invitation.inviter?.email?.split('@')[0]}
+                          {invitation.inviter.display_name || invitation.inviter.email.split('@')[0]}
                         </span>
                       </p>
                     </div>

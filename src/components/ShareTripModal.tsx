@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, MapPin, Calendar, UserPlus, CheckCircle2, XCircle, Clock, Users } from 'lucide-react';
+import { X, Users, Mail, Send, Loader2, CheckCircle2, UserCheck, UserX, Clock } from 'lucide-react';
 import { invitationService } from '../services/invitationService';
-import LoadingBar from './LoadingBar';
 
 interface ShareTripModalProps {
   isOpen: boolean;
@@ -182,21 +181,9 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
   const pendingInvitations = sentInvitations.filter(inv => inv.status === 'pending');
 
   const getUserStatusIcon = () => {
-    if (searchingUser) {
-      return (
-        <div className="w-20">
-          <LoadingBar 
-            text="" 
-            color="blue" 
-            height={3}
-            width="100%"
-            duration={800}
-          />
-        </div>
-      );
-    }
-    if (userFound === true) return <CheckCircle2 className="w-4 h-4 text-green-400" />;
-    if (userFound === false) return <XCircle className="w-4 h-4 text-red-400" />;
+    if (searchingUser) return <Loader2 className="w-4 h-4 animate-spin text-blue-400" />;
+    if (userFound === true) return <UserCheck className="w-4 h-4 text-green-400" />;
+    if (userFound === false) return <UserX className="w-4 h-4 text-red-400" />;
     return null;
   };
 
@@ -230,13 +217,13 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
         </div>
 
         {/* Trip Capacity Info */}
-        <div className="pixel-card bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-purple-500/30 mb-6">
+        <div className="pixel-card bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30 mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-purple-400" />
               <span className="outfit-text text-gray-300 text-sm">Trip Capacity</span>
             </div>
-            <span className="pixel-text text-xs text-purple-400">
+            <span className="pixel-text text-purple-400 text-sm">
               {currentParticipants} / {maxParticipants}
             </span>
           </div>
@@ -292,24 +279,23 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
                 </div>
               )}
 
-              {loading ? (
-                <div className="w-full">
-                  <LoadingBar 
-                    text="SENDING INVITATION..." 
-                    color="purple" 
-                    duration={1500}
-                  />
-                </div>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={loading || !email.trim() || userFound !== true}
-                  className="pixel-button-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>SEND INVITATION</span>
-                </button>
-              )}
+              <button
+                type="submit"
+                disabled={loading || !email.trim() || userFound !== true}
+                className="pixel-button-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>SENDING...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>SEND INVITATION</span>
+                  </>
+                )}
+              </button>
             </div>
           </form>
         )}

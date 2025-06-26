@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ChecklistItem } from '../types';
-import { PlusCircle, Trash2, CheckCircle2, Sparkles, Target, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, PlusCircle, Trash2, CheckCircle2, Sparkles, Target } from 'lucide-react';
 import { defaultChecklist } from '../data/defaultChecklist';
-import LoadingBar from '../components/LoadingBar';
 
 interface GroupedItems {
   [category: string]: ChecklistItem[];
@@ -231,13 +230,9 @@ const ChecklistPage: React.FC = () => {
 
         {loading ? (
           <div className="flex justify-center items-center h-[60vh]">
-            <div className="w-full max-w-md px-4">
-              <LoadingBar 
-                text="LOADING CHECKLIST..." 
-                color="green" 
-                duration={2500}
-              />
-              <p className="pixel-text text-green-400 mt-4 text-center">PREPARING YOUR CHECKLIST</p>
+            <div className="animate-bounce-in">
+              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-green-500 animate-spin" />
+              <p className="pixel-text text-green-400 mt-4 text-sm sm:text-base">LOADING CHECKLIST...</p>
             </div>
           </div>
         ) : (

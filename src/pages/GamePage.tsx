@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trophy, Star, RotateCcw, Zap, Heart, Laugh, Gamepad2, Target } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Star, RotateCcw, Zap, Heart, Laugh, Gamepad2, Target } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
 import scenariosData from '../data/scenarios.json';
-import LoadingBar from '../components/LoadingBar';
 
 interface GameScenario {
   id: string;
@@ -297,13 +296,9 @@ const GamePage: React.FC = () => {
 
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="flex items-center justify-center h-[60vh]">
-            <div className="w-full max-w-md px-4">
-              <LoadingBar 
-                text="GENERATING CHAOS..." 
-                color="red" 
-                duration={3000}
-              />
-              <p className="pixel-text text-red-400 mt-4 text-center">PREPARING YOUR ADVENTURE</p>
+            <div className="animate-bounce-in">
+              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-red-500 animate-spin mr-3" />
+              <span className="pixel-text text-red-400 text-sm sm:text-base">GENERATING CHAOS...</span>
             </div>
           </div>
         </div>

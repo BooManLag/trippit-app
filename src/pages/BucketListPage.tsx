@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle, Zap, Star, Filter, Users, UserPlus, Crown, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Trophy, Target, CheckCircle2, Circle, Plus, Trash2, ChevronDown, Shuffle, Zap, Star, Filter, Users, UserPlus, Crown, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
 import daresData from '../data/dares.json';
-import LoadingBar from '../components/LoadingBar';
 
 interface DareItem {
   id: string;
@@ -501,14 +500,8 @@ const BucketListPage: React.FC = () => {
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="w-full max-w-md px-4">
-              <LoadingBar 
-                text="LOADING EPIC DARES..." 
-                color="red" 
-                duration={2500}
-              />
-              <p className="pixel-text text-red-400 mt-4 text-center">PREPARING YOUR CHALLENGES</p>
-            </div>
+            <Loader2 className="w-8 h-8 text-red-500 animate-spin mr-3" />
+            <span className="pixel-text text-red-400">LOADING EPIC DARES...</span>
           </div>
         )}
 

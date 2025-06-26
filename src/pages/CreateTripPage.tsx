@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
-import { MapPin, Calendar, Search, Globe, Sparkles } from 'lucide-react';
+import { MapPin, Calendar, Search, Loader2, Sparkles, Globe } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { tripService } from '../services/tripService';
 import countries from '../data/countries.min.json';
-import LoadingBar from '../components/LoadingBar';
 
 interface Location {
   city: string;
@@ -183,13 +182,9 @@ const CreateTripPage: React.FC = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="w-full max-w-md px-4">
-          <LoadingBar 
-            text="LOADING..." 
-            color="blue" 
-            duration={2000}
-          />
-          <p className="pixel-text text-blue-400 mt-4 text-center">PREPARING YOUR JOURNEY</p>
+        <div className="animate-bounce-in">
+          <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-blue-500 animate-spin" />
+          <p className="pixel-text text-blue-400 mt-4 text-sm sm:text-base">LOADING...</p>
         </div>
       </div>
     );
@@ -385,14 +380,10 @@ const CreateTripPage: React.FC = () => {
                 className="pixel-button-primary w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 py-4 sm:py-6 animate-pulse-glow"
               >
                 {loading ? (
-                  <div className="w-full">
-                    <LoadingBar 
-                      text="CREATING ADVENTURE..." 
-                      color="blue" 
-                      height={6}
-                      duration={1500}
-                    />
-                  </div>
+                  <>
+                    <Loader2 className="w-5 sm:w-6 h-5 sm:h-6 animate-spin" />
+                    <span>CREATING ADVENTURE...</span>
+                  </>
                 ) : (
                   <>
                     <Sparkles className="w-5 sm:w-6 h-5 sm:h-6" />

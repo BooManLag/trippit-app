@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
+import { X, Calendar, MapPin, Clock, DollarSign, Lightbulb, Download, Edit3, Plus, Trash2, GripVertical, Wand2, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import html2canvas from 'html2canvas';
 import { itineraryService, Itinerary, ItineraryActivity, ItineraryPreferences } from '../services/itineraryService';
@@ -29,12 +29,6 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [exportLoading, setExportLoading] = useState(false);
   const [currentExportPage, setCurrentExportPage] = useState(0);
   const [totalExportPages, setTotalExportPages] = useState(1);
-  const [sharingToReddit, setSharingToReddit] = useState(false);
-  const [redditShareResult, setRedditShareResult] = useState<{
-    success: boolean;
-    postUrl?: string;
-    error?: string;
-  } | null>(null);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -241,46 +235,6 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     }
   };
 
-  const shareToReddit = async () => {
-    if (!itinerary) return;
-    
-    try {
-      setSharingToReddit(true);
-      setRedditShareResult(null);
-      
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-to-reddit`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          itinerary,
-          title: `${itinerary.destination} Travel Itinerary - ${itinerary.totalDays} days`
-        }),
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || result.details || 'Failed to share to Reddit');
-      }
-      
-      setRedditShareResult({
-        success: true,
-        postUrl: result.postUrl
-      });
-    } catch (error) {
-      console.error('Error sharing to Reddit:', error);
-      setRedditShareResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-    } finally {
-      setSharingToReddit(false);
-    }
-  };
-
   const toggleInterest = (interest: string) => {
     setPreferences(prev => ({
       ...prev,
@@ -455,7 +409,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                   {itinerary.destination} • {itinerary.totalDays} days • {itinerary.estimatedBudget}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setStep('preferences')}
                   className="pixel-button-secondary text-sm px-3 py-1"
@@ -474,68 +428,8 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                   )}
                   EXPORT
                 </button>
-                <button
-                  onClick={shareToReddit}
-                  disabled={sharingToReddit}
-                  className="pixel-button-primary bg-red-600 hover:bg-red-500 text-sm px-3 py-1 flex items-center gap-1"
-                >
-                  {sharingToReddit ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <Share2 className="w-3 h-3" />
-                  )}
-                  SHARE TO REDDIT
-                </button>
               </div>
             </div>
-
-            {/* Reddit Share Result */}
-            {redditShareResult && (
-              <div className={`pixel-card ${
-                redditShareResult.success 
-                  ? 'bg-green-500/10 border-green-500/20' 
-                  : 'bg-red-500/10 border-red-500/20'
-              } mb-6`}>
-                <div className="flex items-start gap-3">
-                  {redditShareResult.success ? (
-                    <>
-                      <div className="text-green-400 text-xl">✅</div>
-                      <div>
-                        <h3 className="pixel-text text-green-400 text-sm mb-2">SHARED SUCCESSFULLY</h3>
-                        <p className="outfit-text text-sm text-gray-300 mb-3">
-                          Your itinerary has been shared to r/trippitMemories!
-                        </p>
-                        <a 
-                          href={redditShareResult.postUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="pixel-button-secondary text-xs px-3 py-1 inline-flex items-center gap-1"
-                        >
-                          <Share2 className="w-3 h-3" />
-                          VIEW ON REDDIT
-                        </a>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-red-400 text-xl">❌</div>
-                      <div>
-                        <h3 className="pixel-text text-red-400 text-sm mb-2">SHARING FAILED</h3>
-                        <p className="outfit-text text-sm text-gray-300">
-                          {redditShareResult.error || 'An error occurred while sharing to Reddit.'}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {redditShareResult.success && redditShareResult.postUrl && (
-                  <div className="mt-4">
-                    <PostReactions postId={redditShareResult.postUrl} />
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* API Key Info Banner */}
             {showApiKeyInfo && (

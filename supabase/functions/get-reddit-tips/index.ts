@@ -3,7 +3,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import { generateFallbackTips, generateRegionalFallbackTips, type FallbackTip } from './fallback-tips.ts';
 
 interface RedditPost {
@@ -46,7 +46,7 @@ const REDDIT_PASSWORD = Deno.env.get('REDDIT_PASSWORD');
 const REDDIT_CLIENT_ID = Deno.env.get('REDDIT_CLIENT_ID');
 const REDDIT_CLIENT_SECRET = Deno.env.get('REDDIT_CLIENT_SECRET');
 
-async function ensureValidTokenDirect(): Promise<string | null> {
+async function getValidToken(): Promise<string | null> {
   try {
     // Check database for valid token
     const { data, error } = await supabase
@@ -56,8 +56,8 @@ async function ensureValidTokenDirect(): Promise<string | null> {
       .single();
 
     if (error) {
-      console.log('📭 No stored Reddit token, creating new one...');
-      return await createNewRedditToken();
+      console.log('📭 No stored Reddit token found');
+      return null;
     }
 
     const now = new Date();
@@ -69,121 +69,10 @@ async function ensureValidTokenDirect(): Promise<string | null> {
       return data.access_token;
     }
     
-    // Token is expired, create new one (password grant doesn't provide refresh tokens)
-    console.log('🔄 Token expired, creating new one...');
-    return await createNewRedditToken();
-  } catch (error) {
-    console.error('❌ Error ensuring valid token:', error);
+    console.log('🔄 Token expired, need to refresh');
     return null;
-  }
-}
-
-async function createNewRedditToken(): Promise<string | null> {
-  try {
-    console.log('🆕 Creating new Reddit token with password grant...');
-    
-    // Validate that we have all required credentials
-    if (!REDDIT_USERNAME || !REDDIT_PASSWORD || !REDDIT_CLIENT_ID || !REDDIT_CLIENT_SECRET) {
-      console.error('❌ Missing Reddit credentials in environment variables');
-      return null;
-    }
-    
-    const auth = btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`);
-    const params = new URLSearchParams();
-    params.append('grant_type', 'password');
-    params.append('username', REDDIT_USERNAME);
-    params.append('password', REDDIT_PASSWORD);
-    params.append('scope', 'read');
-    // Note: Removed 'duration=permanent' as it's not valid for password grant
-
-    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'web:Trippit:v1.0 (by /u/BooManLagg)',
-      },
-      body: params.toString(),
-    });
-
-    console.log(`📡 Reddit API response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Password grant failed: ${response.status} - ${errorText}`);
-      return null;
-    }
-
-    const data = await response.json();
-    console.log(`📋 Reddit API response:`, {
-      hasAccessToken: !!data.access_token,
-      expiresIn: data.expires_in,
-      tokenType: data.token_type,
-      scope: data.scope,
-      error: data.error,
-      errorDescription: data.error_description
-    });
-
-    // Check for API errors
-    if (data.error) {
-      console.error(`❌ Reddit API error: ${data.error} - ${data.error_description}`);
-      return null;
-    }
-
-    // Validate that we actually got an access token
-    if (!data.access_token) {
-      console.error('❌ No access_token in Reddit API response:', data);
-      return null;
-    }
-    
-    // Validate expires_in and provide fallback
-    let expiresIn = data.expires_in;
-    if (!expiresIn || typeof expiresIn !== 'number' || expiresIn <= 0) {
-      console.warn('⚠️ Invalid expires_in value, using default 1 hour');
-      expiresIn = 3600; // Default to 1 hour
-    }
-    
-    // Calculate expiration time with validation
-    const expirationTime = Date.now() + (expiresIn * 1000);
-    const expiresAt = new Date(expirationTime);
-    
-    // Validate the date before converting to ISO string
-    if (isNaN(expiresAt.getTime())) {
-      console.error('❌ Invalid expiration date calculated');
-      return null;
-    }
-    
-    const expiresAtISO = expiresAt.toISOString();
-    console.log(`📅 Token will expire at: ${expiresAtISO}`);
-    
-    // Store the token (no refresh_token for password grant)
-    const tokenData = {
-      service: 'reddit',
-      access_token: data.access_token,
-      refresh_token: null, // Password grant doesn't provide refresh tokens
-      expires_at: expiresAtISO,
-      updated_at: new Date().toISOString()
-    };
-
-    console.log('💾 Storing token data:', {
-      service: tokenData.service,
-      hasAccessToken: !!tokenData.access_token,
-      expiresAt: tokenData.expires_at
-    });
-
-    const { error } = await supabase
-      .from('tokens')
-      .upsert(tokenData);
-
-    if (error) {
-      console.error('❌ Error storing token:', error);
-      return data.access_token; // Still return the token even if storage failed
-    }
-
-    console.log(`✅ Token stored successfully`);
-    return data.access_token;
   } catch (error) {
-    console.error('💥 Error creating new token:', error);
+    console.error('❌ Error checking token validity:', error);
     return null;
   }
 }
@@ -226,8 +115,7 @@ async function fetchTopPostsWithAuth(
   subredditName: string,
   searchQuery: string = '',
   limit: number = 10,
-  timeframe: string = 'year',
-  bearerToken: string | null = null // Accept token as parameter
+  timeframe: string = 'year'
 ): Promise<RedditPost[]> {
   const cacheKey = `${subredditName}_${searchQuery}_${limit}_${timeframe}`;
   const cached = cache.get(cacheKey);
@@ -238,6 +126,9 @@ async function fetchTopPostsWithAuth(
 
   // Wait for rate limit before making request
   await waitForRateLimit();
+  
+  // Get a valid token from the database
+  const bearerToken = await getValidToken();
   
   // Use OAuth endpoints if we have a token, otherwise fall back to public API
   const baseUrl = bearerToken ? 'https://oauth.reddit.com' : 'https://api.reddit.com';
@@ -262,7 +153,7 @@ async function fetchTopPostsWithAuth(
 
     if (bearerToken) {
       headers['Authorization'] = `Bearer ${bearerToken}`;
-      console.log('🔑 Using provided bearer token');
+      console.log('🔑 Using bearer token for authenticated request');
     } else {
       console.log('ℹ️ No bearer token available, using public API');
     }
@@ -624,10 +515,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // OPTIMIZATION: Get bearer token once at the beginning
-    console.log('🔑 Acquiring Reddit bearer token once...');
-    const bearerToken = await ensureValidTokenDirect();
-    console.log(`🔑 Token acquired: ${bearerToken ? 'Yes' : 'No'}`);
+    // Get a valid token from the database
+    console.log('🔑 Getting valid Reddit token from database...');
+    const bearerToken = await getValidToken();
+    console.log(`🔑 Token retrieved: ${bearerToken ? 'Yes' : 'No'}`);
 
     // Generate enhanced search strategy
     const subreddits = await generateOptimizedSubreddits(city, country);
@@ -649,8 +540,7 @@ Deno.serve(async (req) => {
       for (const query of searchQueries.slice(0, 1)) {
         try {
           console.log(`🔍 Searching r/${subreddit} for "${query}"`);
-          // Pass the token to avoid re-acquiring it
-          const posts = await fetchTopPostsWithAuth(subreddit, query, 6, 'year', bearerToken);
+          const posts = await fetchTopPostsWithAuth(subreddit, query, 6, 'year');
           
           if (posts.length > 0) {
             successfulFetches++;

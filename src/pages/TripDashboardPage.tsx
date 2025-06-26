@@ -13,6 +13,7 @@ import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
 import { invitationService } from '../services/invitationService';
 import LoadingBar from '../components/LoadingBar';
+import { tipsService, RedditTip } from '../services/tipsService';
 
 interface TripDetails {
   id: string;
@@ -33,17 +34,6 @@ interface UserDare {
   bucket_item_id: string;
   completed_at: string | null;
   notes: string | null;
-  created_at: string;
-}
-
-interface RedditTip {
-  id: string;
-  category: string;
-  title: string;
-  content: string;
-  source: string;
-  reddit_url: string;
-  score: number;
   created_at: string;
 }
 
@@ -85,116 +75,16 @@ const TripDashboardPage: React.FC = () => {
       setLoadingTips(true);
       setTipsError(null);
 
-      // Validate environment variables first
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.warn('Missing Supabase environment variables - tips feature disabled');
-        setTipsError('Configuration missing');
-        setTips([]);
-        return;
-      }
-
-      // Check if the URL is a placeholder
-      if (supabaseUrl.includes('your-project') || supabaseUrl === 'https://your-project-id.supabase.co') {
-        console.warn('Supabase URL appears to be a placeholder value - tips feature disabled');
-        setTipsError('Configuration incomplete');
-        setTips([]);
-        return;
-      }
-
-      const functionUrl = `${supabaseUrl}/functions/v1/get-reddit-tips`;
+      // Use the tipsService to fetch tips
+      const tipsData = await tipsService.getTipsForDestination(city, country);
+      setTips(tipsData);
       
-      console.log('Attempting to fetch Reddit tips from:', functionUrl);
-
-      // Add timeout and better error handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout to 15 seconds
-
-      try {
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ city, country }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => 'Unable to read error response');
-          console.warn('Edge function response error:', {
-            status: response.status,
-            statusText: response.statusText,
-            body: errorText
-          });
-          
-          // If it's a 404, the function doesn't exist
-          if (response.status === 404) {
-            console.warn('get-reddit-tips Edge Function not found. Tips feature disabled.');
-            setTipsError('Function not deployed');
-            setTips([]);
-            return;
-          }
-          
-          setTipsError(`Service error (${response.status})`);
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const redditTips = await response.json();
-        console.log('Successfully fetched Reddit tips:', redditTips);
-        setTips(Array.isArray(redditTips) ? redditTips : []);
-        setTipsError(null);
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
-        // More detailed error logging and handling
-        console.warn('Detailed fetch error:', {
-          name: fetchError?.name,
-          message: fetchError?.message,
-          stack: fetchError?.stack,
-          cause: fetchError?.cause
-        });
-        
-        if (fetchError.name === 'AbortError') {
-          console.warn('Reddit tips request timed out - tips feature disabled for this session');
-          setTipsError('Request timeout');
-        } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-          console.warn('Network error connecting to Edge Function - this could be due to:');
-          console.warn('- Edge Function not deployed to Supabase');
-          console.warn('- Network connectivity issues');
-          console.warn('- CORS configuration problems');
-          console.warn('- Supabase project configuration issues');
-          console.warn('- Local development environment issues');
-          
-          // Check if we're in development mode
-          const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('webcontainer');
-          if (isDevelopment) {
-            setTipsError('Development mode - function unavailable');
-          } else {
-            setTipsError('Connection failed');
-          }
-        } else if (fetchError.message?.includes('NetworkError') || fetchError.message?.includes('ERR_NETWORK')) {
-          console.warn('Network connectivity issue detected');
-          setTipsError('Network error');
-        } else {
-          console.warn('Unexpected error fetching Reddit tips:', fetchError);
-          setTipsError('Service unavailable');
-        }
-        
-        setTips([]);
+      if (tipsData.length === 0) {
+        setTipsError('No tips found for this destination');
       }
     } catch (error: any) {
-      console.warn('Error in fetchRedditTips wrapper:', {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack
-      });
-      setTipsError('Unexpected error');
+      console.error('Error fetching tips:', error);
+      setTipsError(error.message || 'Failed to load tips');
       setTips([]);
     } finally {
       setLoadingTips(false);
@@ -269,14 +159,14 @@ const TripDashboardPage: React.FC = () => {
       console.log('Participants data:', participants);
 
       // Transform the RPC result to match expected format
-      const enrichedParticipants = participants.map((participant: any) => ({
-        user_id: participant.user_id,
-        role: participant.role,
-        joined_at: participant.joined_at,
+      const enrichedParticipants = participants.map((p: any) => ({
+        user_id: p.user_id,
+        role: p.role,
+        joined_at: p.joined_at,
         user: {
-          id: participant.user_id,
-          display_name: participant.user_display_name || participant.user_email?.split('@')[0] || 'Unknown',
-          email: participant.user_email || 'Unknown'
+          id: p.user_id,
+          display_name: p.user_display_name || p.user_email?.split('@')[0] || 'Unknown',
+          email: p.user_email || 'Unknown'
         }
       }));
 
@@ -637,6 +527,8 @@ const TripDashboardPage: React.FC = () => {
         return 'Tips service request timed out';
       case 'Service unavailable':
         return 'Tips service is temporarily unavailable';
+      case 'No tips found for this destination':
+        return `No tips found for ${trip?.destination}`;
       default:
         return 'Tips service is currently unavailable';
     }

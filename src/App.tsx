@@ -70,16 +70,22 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
 // Page transition wrapper
 const PageTransition: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [prevLocation, setPrevLocation] = useState('');
   
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
+    // Only show loading when actually changing pages, not on initial load
+    if (prevLocation && prevLocation !== location.pathname) {
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
     
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
+    setPrevLocation(location.pathname);
+  }, [location.pathname, prevLocation]);
   
   if (isLoading) {
     return (

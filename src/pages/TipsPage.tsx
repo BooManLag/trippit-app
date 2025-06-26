@@ -28,6 +28,7 @@ const TipsPage: React.FC = () => {
   const [trip, setTrip] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [tipsError, setTipsError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsVisible(true);
@@ -62,27 +63,93 @@ const TipsPage: React.FC = () => {
           }
           
           // Fetch Reddit tips
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
-            {
+          try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            if (!supabaseUrl || !supabaseAnonKey) {
+              console.warn('Missing Supabase environment variables - tips feature disabled');
+              setTipsError('Configuration missing');
+              setRedditTips([]);
+              setLoading(false);
+              return;
+            }
+
+            // Check if the URL is a placeholder
+            if (supabaseUrl.includes('your-project') || supabaseUrl === 'https://your-project-id.supabase.co') {
+              console.warn('Supabase URL appears to be a placeholder value - tips feature disabled');
+              setTipsError('Configuration incomplete');
+              setRedditTips([]);
+              setLoading(false);
+              return;
+            }
+
+            const functionUrl = `${supabaseUrl}/functions/v1/get-reddit-tips`;
+            
+            console.log('Attempting to fetch Reddit tips from:', functionUrl);
+
+            // Add timeout and better error handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const response = await fetch(functionUrl, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Authorization': `Bearer ${supabaseAnonKey}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ city, country }),
-            }
-          );
+              signal: controller.signal,
+            });
 
-          if (response.ok) {
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              const errorText = await response.text().catch(() => 'Unable to read error response');
+              console.warn('Edge function response error:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+              });
+              
+              // If it's a 404, the function doesn't exist
+              if (response.status === 404) {
+                console.warn('get-reddit-tips Edge Function not found. Tips feature disabled.');
+                setTipsError('Function not deployed');
+                setRedditTips([]);
+                setLoading(false);
+                return;
+              }
+              
+              setTipsError(`Service error (${response.status})`);
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const tips = await response.json();
             setRedditTips(tips);
-          } else {
-            console.error('Failed to fetch tips:', response.status);
+            setTipsError(null);
+          } catch (fetchError: any) {
+            console.error('Error fetching tips from edge function:', fetchError);
+            
+            if (fetchError.name === 'AbortError') {
+              setTipsError('Request timeout');
+            } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+              const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('webcontainer');
+              if (isDevelopment) {
+                setTipsError('Development mode - function unavailable');
+              } else {
+                setTipsError('Connection failed');
+              }
+            } else {
+              setTipsError('Service unavailable');
+            }
+            
+            setRedditTips([]);
           }
         }
       } catch (error) {
-        console.error('Error fetching tips:', error);
+        console.error('Error fetching trip:', error);
+        setTipsError('Failed to load trip data');
       } finally {
         setLoading(false);
       }
@@ -143,6 +210,29 @@ const TipsPage: React.FC = () => {
       'Weather': 'text-sky-400'
     };
     return colors[category] || 'text-blue-400';
+  };
+
+  const getTipsErrorMessage = () => {
+    switch (tipsError) {
+      case 'Configuration missing':
+        return 'Supabase configuration is missing';
+      case 'Configuration incomplete':
+        return 'Supabase configuration is incomplete';
+      case 'Function not deployed':
+        return 'Tips service is not deployed';
+      case 'Connection failed':
+        return 'Unable to connect to tips service';
+      case 'Network error':
+        return 'Network connectivity issue detected';
+      case 'Development mode - function unavailable':
+        return 'Tips service unavailable in development mode';
+      case 'Request timeout':
+        return 'Tips service request timed out';
+      case 'Service unavailable':
+        return 'Tips service is temporarily unavailable';
+      default:
+        return 'Tips service is currently unavailable';
+    }
   };
 
   if (pageLoading) {
@@ -271,8 +361,28 @@ const TipsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Error State */}
+        {!loading && tipsError && (
+          <div className="text-center py-12 sm:py-16 animate-bounce-in">
+            <div className="text-4xl sm:text-6xl mb-6 animate-float">💡</div>
+            <h3 className="pixel-text text-lg sm:text-xl text-yellow-400 mb-4 glow-text">TIPS UNAVAILABLE</h3>
+            <p className="outfit-text text-gray-500 text-sm sm:text-base max-w-md mx-auto">
+              {getTipsErrorMessage()} for {trip?.destination}. Please check back later!
+            </p>
+            
+            {(tipsError === 'Function not deployed' || tipsError === 'Development mode - function unavailable') && (
+              <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded max-w-md mx-auto">
+                <p className="outfit-text text-yellow-400 text-xs">
+                  💡 <strong>Developer Note:</strong> The tips feature requires the get-reddit-tips Edge Function to be deployed to Supabase.
+                  {tipsError === 'Development mode - function unavailable' && ' This feature is not available in the current development environment.'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tips Grid */}
-        {!loading && (
+        {!loading && !tipsError && (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
             {filteredTips.map((tip, index) => (
               <div 
@@ -328,7 +438,7 @@ const TipsPage: React.FC = () => {
           </div>
         )}
 
-        {filteredTips.length === 0 && !loading && (
+        {filteredTips.length === 0 && !loading && !tipsError && (
           <div className={`text-center py-12 sm:py-16 animate-bounce-in delay-500`}>
             <div className="text-4xl sm:text-6xl mb-6 animate-float">🔍</div>
             <h3 className="pixel-text text-lg sm:text-xl text-gray-400 mb-4 glow-text">NO WISDOM FOUND</h3>

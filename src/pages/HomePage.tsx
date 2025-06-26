@@ -9,6 +9,7 @@ const HomePage: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Set isVisible to true only once when component mounts
     setIsVisible(true);
   }, []);
 
@@ -31,43 +32,43 @@ const HomePage: React.FC = () => {
       {/* Background overlay for better text readability */}
       <div className="absolute inset-0 bg-black/40 z-0"></div>
       
-      {/* Animated floating elements */}
+      {/* Animated floating elements - reduced glow/animation */}
       <div className="fixed inset-0 pointer-events-none z-10">
-        <div className="absolute top-10 left-10 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-60"></div>
-        <div className="absolute top-32 right-20 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-40"></div>
-        <div className="absolute bottom-40 left-1/4 w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce opacity-50"></div>
-        <div className="absolute top-1/2 right-10 w-1 h-1 bg-green-400 rounded-full animate-pulse opacity-30"></div>
-        <div className="absolute bottom-20 right-1/3 w-2 h-2 bg-pink-500 rounded-full animate-ping opacity-40"></div>
+        <div className="absolute top-10 left-10 w-1 h-1 bg-blue-500 rounded-full animate-pulse opacity-30"></div>
+        <div className="absolute top-32 right-20 w-0.5 h-0.5 bg-yellow-400 rounded-full animate-ping opacity-20"></div>
+        <div className="absolute bottom-40 left-1/4 w-1 h-1 bg-purple-500 rounded-full animate-bounce opacity-25"></div>
+        <div className="absolute top-1/2 right-10 w-0.5 h-0.5 bg-green-400 rounded-full animate-pulse opacity-15"></div>
+        <div className="absolute bottom-20 right-1/3 w-1 h-1 bg-pink-500 rounded-full animate-ping opacity-20"></div>
       </div>
 
       <main className="container mx-auto mobile-padding py-8 sm:py-12 lg:py-16 max-w-6xl text-center relative z-20">
-        {/* Animated Logo/Title */}
+        {/* Animated Logo/Title - with stable animation */}
         <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="relative inline-block mb-6 sm:mb-8 lg:mb-10">
-            {/* Glowing background effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg blur-xl opacity-30 animate-pulse"></div>
+            {/* Reduced glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg blur-xl opacity-20"></div>
             
-            {/* Main title with bouncy animation */}
+            {/* Main title with more subtle animation */}
             <h1 className="relative pixel-text text-3xl sm:text-4xl lg:text-6xl xl:text-7xl leading-relaxed transform hover:scale-105 transition-transform duration-300 cursor-default text-white">
-              <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>T</span>
-              <span className="inline-block animate-bounce" style={{ animationDelay: '100ms' }}>r</span>
-              <span className="inline-block animate-bounce" style={{ animationDelay: '200ms' }}>i</span>
-              <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>p</span>
-              <span className="inline-block animate-bounce" style={{ animationDelay: '400ms' }}>p</span>
-              <span className="inline-block animate-bounce text-yellow-400" style={{ animationDelay: '500ms' }}>'</span>
-              <span className="inline-block animate-bounce" style={{ animationDelay: '600ms' }}>i</span>
-              <span className="inline-block animate-bounce" style={{ animationDelay: '700ms' }}>t</span>
+              <span className="inline-block">T</span>
+              <span className="inline-block">r</span>
+              <span className="inline-block">i</span>
+              <span className="inline-block">p</span>
+              <span className="inline-block">p</span>
+              <span className="inline-block text-yellow-400">'</span>
+              <span className="inline-block">i</span>
+              <span className="inline-block">t</span>
             </h1>
             
-            {/* Sparkle effects */}
-            <div className="absolute -top-2 -right-8 text-yellow-400 animate-spin text-sm">✨</div>
-            <div className="absolute -bottom-2 -left-2 text-blue-400 animate-pulse">🌟</div>
+            {/* Reduced sparkle effects */}
+            <div className="absolute -top-2 -right-8 text-yellow-400 text-sm opacity-50">✨</div>
+            <div className="absolute -bottom-2 -left-2 text-blue-400 opacity-50">🌟</div>
           </div>
         </div>
 
         {/* Animated subtitle */}
         <div className={`transform transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          <h2 className="pixel-text text-sm sm:text-lg lg:text-xl mb-6 sm:mb-8 lg:mb-10 text-yellow-400 animate-pulse glow-text">
+          <h2 className="pixel-text text-sm sm:text-lg lg:text-xl mb-6 sm:mb-8 lg:mb-10 text-yellow-400 glow-text">
             Fun. Memorable. Helpful.
           </h2>
         </div>
@@ -156,7 +157,7 @@ const HomePage: React.FC = () => {
         <section className={`mb-16 sm:mb-20 lg:mb-24 transform transition-all duration-1000 delay-1100 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <h2 className="pixel-text text-base sm:text-xl lg:text-2xl mb-8 sm:mb-12 lg:mb-16 relative text-white">
             HOW IT WORKS
-            <span className="absolute -top-2 -right-8 text-yellow-400 animate-spin text-sm">⚡</span>
+            <span className="absolute -top-2 -right-8 text-yellow-400 text-sm opacity-50">⚡</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-left">
             {[
@@ -170,7 +171,7 @@ const HomePage: React.FC = () => {
                 className="flex items-start pixel-card group hover:scale-105 transition-all duration-300 hover:border-green-500/40"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm group-hover:animate-pulse flex-shrink-0">
+                <span className="pixel-text text-yellow-400 mr-3 sm:mr-4 text-xs sm:text-sm flex-shrink-0">
                   {index + 1}.
                 </span>
                 <p className="outfit-text text-gray-300 text-sm sm:text-base group-hover:text-white transition-colors leading-relaxed">
@@ -184,7 +185,7 @@ const HomePage: React.FC = () => {
         {/* Floating call-to-action with PROPER SPACING */}
         <div className={`mb-16 sm:mb-20 lg:mb-24 transform transition-all duration-1000 delay-1300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           <div className="pixel-card bg-gradient-to-r from-purple-900/70 to-blue-900/70 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
-            <div className="text-2xl mb-4 animate-bounce">🚀</div>
+            <div className="text-2xl mb-4">🚀</div>
             <h3 className="pixel-text text-base sm:text-lg lg:text-xl mb-6 sm:mb-8 text-purple-400 glow-text">READY FOR ADVENTURE?</h3>
             <p className="outfit-text text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base lg:text-lg leading-relaxed">
               Join thousands of travelers who've survived their trips with style!
@@ -214,7 +215,7 @@ const HomePage: React.FC = () => {
         </nav>
         <p className="outfit-text text-gray-600 text-xs sm:text-sm">
           © Tripp'it 2025 – Travel with a twist.
-          <span className="inline-block ml-2 animate-pulse">✨</span>
+          <span className="inline-block ml-2 opacity-50">✨</span>
         </p>
       </footer>
 

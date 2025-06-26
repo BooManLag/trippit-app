@@ -53,6 +53,7 @@ const TripDashboardPage: React.FC = () => {
   const [tripNumber, setTripNumber] = useState(1);
   const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
   const [loadingTips, setLoadingTips] = useState(true);
   const [loadingDares, setLoadingDares] = useState(true);
   const [tips, setTips] = useState<RedditTip[]>([]);
@@ -77,6 +78,13 @@ const TripDashboardPage: React.FC = () => {
 
   useEffect(() => {
     setIsVisible(true);
+    setPageLoading(true);
+    
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchRedditTips = async (city: string, country: string) => {
@@ -101,6 +109,21 @@ const TripDashboardPage: React.FC = () => {
         setTipsError('Configuration incomplete');
         setTips([]);
         return;
+      }
+
+      // First, try to refresh the Reddit token to ensure we have a valid one
+      try {
+        console.log('Refreshing Reddit token...');
+        await fetch(`${supabaseUrl}/functions/v1/refresh-reddit-token`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          }
+        });
+        console.log('Token refresh request sent');
+      } catch (tokenError) {
+        console.warn('Token refresh failed, but continuing with tips request:', tokenError);
       }
 
       const functionUrl = `${supabaseUrl}/functions/v1/get-reddit-tips`;
@@ -641,7 +664,7 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (pageLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,27 +94,43 @@ async function storeToken(accessToken: string, expiresIn: number): Promise<boole
     const expiresAtISO = expiresAt.toISOString();
     console.log(`📅 Token will expire at: ${expiresAtISO}`);
     
-    const tokenData = {
-      service: 'reddit',
-      access_token: accessToken,
-      refresh_token: null, // Password grant doesn't provide refresh tokens
-      expires_at: expiresAtISO,
-      updated_at: new Date().toISOString()
-    };
-
-    console.log('💾 Storing token data:', {
-      service: tokenData.service,
-      hasAccessToken: !!tokenData.access_token,
-      accessTokenLength: tokenData.access_token?.length,
-      expiresAt: tokenData.expires_at
-    });
-    
-    const { error } = await supabase
+    // First, check if a token already exists
+    const { data: existingToken } = await supabase
       .from('tokens')
-      .upsert(tokenData);
+      .select('id')
+      .eq('service', 'reddit')
+      .single();
+      
+    let result;
+    
+    if (existingToken) {
+      // Update existing token
+      console.log('🔄 Updating existing token record');
+      result = await supabase
+        .from('tokens')
+        .update({
+          access_token: accessToken,
+          refresh_token: null, // Password grant doesn't provide refresh tokens
+          expires_at: expiresAtISO,
+          updated_at: new Date().toISOString()
+        })
+        .eq('service', 'reddit');
+    } else {
+      // Insert new token
+      console.log('🆕 Creating new token record');
+      result = await supabase
+        .from('tokens')
+        .insert({
+          service: 'reddit',
+          access_token: accessToken,
+          refresh_token: null, // Password grant doesn't provide refresh tokens
+          expires_at: expiresAtISO,
+          updated_at: new Date().toISOString()
+        });
+    }
 
-    if (error) {
-      console.error('❌ Error storing token:', error);
+    if (result.error) {
+      console.error('❌ Error storing token:', result.error);
       return false;
     }
 

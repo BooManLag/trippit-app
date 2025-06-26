@@ -84,6 +84,21 @@ const TipsPage: React.FC = () => {
               return;
             }
 
+            // First, try to refresh the Reddit token to ensure we have a valid one
+            try {
+              console.log('Refreshing Reddit token...');
+              await fetch(`${supabaseUrl}/functions/v1/refresh-reddit-token`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseAnonKey}`,
+                  'Content-Type': 'application/json',
+                }
+              });
+              console.log('Token refresh request sent');
+            } catch (tokenError) {
+              console.warn('Token refresh failed, but continuing with tips request:', tokenError);
+            }
+
             const functionUrl = `${supabaseUrl}/functions/v1/get-reddit-tips`;
             
             console.log('Attempting to fetch Reddit tips from:', functionUrl);
@@ -126,7 +141,8 @@ const TipsPage: React.FC = () => {
             }
 
             const tips = await response.json();
-            setRedditTips(tips);
+            console.log('Successfully fetched Reddit tips:', tips);
+            setRedditTips(Array.isArray(tips) ? tips : []);
             setTipsError(null);
           } catch (fetchError: any) {
             console.error('Error fetching tips from edge function:', fetchError);

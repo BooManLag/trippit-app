@@ -9,6 +9,7 @@ export interface RedditTip {
   reddit_url: string;
   score: number;
   created_at: string;
+  relevance_score?: number;
 }
 
 export const tipsService = {
@@ -25,38 +26,92 @@ export const tipsService = {
         return this.getFallbackTips(city, country);
       }
       
-      // Attempt to fetch from edge function
-      const response = await fetch(`${supabaseUrl}/functions/v1/get-reddit-tips`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ city, country }),
-        // Add timeout to prevent hanging requests
-        signal: AbortSignal.timeout(10000)
-      });
-      
-      if (!response.ok) {
-        console.error(`Error fetching tips: ${response.status} ${response.statusText}`);
-        return this.getFallbackTips(city, country);
+      // Attempt to fetch from edge function with longer timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+        
+        const response = await fetch(`${supabaseUrl}/functions/v1/get-reddit-tips`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ city, country }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unable to read error response');
+          console.error(`Error fetching tips: ${response.status} ${response.statusText}`, errorText);
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        const tips = await response.json();
+        
+        if (!Array.isArray(tips)) {
+          console.warn('Response is not an array:', tips);
+          throw new Error('Invalid response format');
+        }
+        
+        console.log(`Successfully fetched ${tips.length} tips from Reddit`);
+        return tips;
+      } catch (fetchError: any) {
+        console.error('Edge function error:', fetchError);
+        
+        // Check if we need to refresh the Reddit token
+        if (fetchError.message?.includes('401') || fetchError.message?.includes('403')) {
+          console.log('Attempting to refresh Reddit token...');
+          
+          try {
+            // Call the refresh token endpoint
+            const refreshResponse = await fetch(`${supabaseUrl}/functions/v1/refresh-reddit-token`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'Content-Type': 'application/json',
+              }
+            });
+            
+            if (refreshResponse.ok) {
+              console.log('Token refreshed successfully, retrying tips fetch...');
+              
+              // Try the original request again
+              const retryResponse = await fetch(`${supabaseUrl}/functions/v1/get-reddit-tips`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseAnonKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ city, country }),
+              });
+              
+              if (retryResponse.ok) {
+                const retryTips = await retryResponse.json();
+                if (Array.isArray(retryTips)) {
+                  console.log(`Successfully fetched ${retryTips.length} tips after token refresh`);
+                  return retryTips;
+                }
+              }
+            }
+          } catch (refreshError) {
+            console.error('Error refreshing token:', refreshError);
+          }
+        }
+        
+        // If we get here, all attempts failed
+        throw new Error(fetchError.message || 'Failed to fetch tips');
       }
-      
-      const tips = await response.json();
-      
-      if (!Array.isArray(tips) || tips.length === 0) {
-        console.warn('No tips returned from edge function');
-        return this.getFallbackTips(city, country);
-      }
-      
-      return tips;
-    } catch (error) {
-      console.error('Error fetching tips:', error);
+    } catch (error: any) {
+      console.error('Error in getTipsForDestination:', error);
       return this.getFallbackTips(city, country);
     }
   },
   
   getFallbackTips(city: string, country: string): RedditTip[] {
+    console.log(`Using fallback tips for ${city}, ${country}`);
     // Generate some fallback tips when the edge function fails
     return [
       {
@@ -107,6 +162,36 @@ export const tipsService = {
         source: 'Trippit',
         reddit_url: '#',
         score: 10,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: `fallback_${city}_6`,
+        category: 'Weather',
+        title: `Weather in ${city}`,
+        content: `${city} weather can be unpredictable, so pack layers and check the forecast before heading out each day. Always have a light rain jacket or umbrella handy.`,
+        source: 'Trippit',
+        reddit_url: '#',
+        score: 9,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: `fallback_${city}_7`,
+        category: 'Things to Do',
+        title: `Hidden gems in ${city}`,
+        content: `While the main attractions in ${city} are worth visiting, don't miss the lesser-known spots. Explore local neighborhoods and parks for a more authentic experience.`,
+        source: 'Trippit',
+        reddit_url: '#',
+        score: 16,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: `fallback_${city}_8`,
+        category: 'Accommodation',
+        title: `Where to stay in ${city}`,
+        content: `For the best experience in ${city}, stay in a central neighborhood with good public transport connections. This will save you time and money on commuting.`,
+        source: 'Trippit',
+        reddit_url: '#',
+        score: 11,
         created_at: new Date().toISOString()
       }
     ];

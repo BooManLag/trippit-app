@@ -4,7 +4,6 @@ import { Filter, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
 import LoadingBar from '../components/LoadingBar';
-import { tipsService } from '../services/tipsService';
 
 interface RedditTip {
   id: string;
@@ -24,7 +23,6 @@ const TipsPage: React.FC = () => {
   
   const [redditTips, setRedditTips] = useState<RedditTip[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tipsError, setTipsError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -56,21 +54,28 @@ const TipsPage: React.FC = () => {
             setLoading(true);
           }
           
-          try {
-            // Use tipsService instead of direct fetch
-            const tips = await tipsService.getTipsForDestination(city, country);
-            setRedditTips(Array.isArray(tips) ? tips : []);
-            setTipsError(null);
-          } catch (error) {
-            console.error('Error fetching tips:', error);
-            setTipsError('Failed to load tips. Please try again later.');
-            setRedditTips([]); // Ensure it's always an array
+          // Fetch Reddit tips
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-reddit-tips`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ city, country }),
+            }
+          );
+
+          if (response.ok) {
+            const tips = await response.json();
+            setRedditTips(tips);
+          } else {
+            console.error('Failed to fetch tips:', response.status);
           }
         }
       } catch (error) {
-        console.error('Error fetching trip data:', error);
-        setTipsError('Failed to load trip data. Please try again later.');
-        setRedditTips([]); // Ensure it's always an array
+        console.error('Error fetching tips:', error);
       } finally {
         setLoading(false);
       }
@@ -169,19 +174,6 @@ const TipsPage: React.FC = () => {
           </div>
           <AuthStatus className="flex-shrink-0" />
         </div>
-
-        {/* Error Display */}
-        {tipsError && (
-          <div className="pixel-card bg-gradient-to-br from-red-900/50 to-red-800/50 mb-6 sm:mb-8 border-2 border-red-500/30">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <h3 className="pixel-text text-red-400 mb-1">ERROR LOADING TIPS</h3>
-                <p className="outfit-text text-red-300 text-sm">{tipsError}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Search and Filter Controls */}
         <div className={`pixel-card bg-gradient-to-br from-gray-900 to-gray-800 mb-6 sm:mb-8 border-2 border-yellow-500/30 animate-slide-in-up delay-200`}>
@@ -322,7 +314,7 @@ const TipsPage: React.FC = () => {
           </div>
         )}
 
-        {filteredTips.length === 0 && !loading && !tipsError && (
+        {filteredTips.length === 0 && !loading && (
           <div className={`text-center py-12 sm:py-16 animate-bounce-in delay-500`}>
             <div className="text-4xl sm:text-6xl mb-6 animate-float">🔍</div>
             <h3 className="pixel-text text-lg sm:text-xl text-gray-400 mb-4 glow-text">NO WISDOM FOUND</h3>

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Popcorn as Poop } from 'lucide-react';
+import { Star, Popcorn as Poop, Loader2 } from 'lucide-react';
 import { reactionService, ReactionCounts } from '../services/reactionService';
 import { useAuth } from '../hooks/useAuth';
 import AuthModal from './AuthModal';
-import LoadingBar from './LoadingBar';
 
 interface PostReactionsProps {
   postId: string;
@@ -119,7 +118,11 @@ const PostReactions: React.FC<PostReactionsProps> = ({
               : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-yellow-500/30 hover:text-yellow-400'
           }`}
         >
-          <Star className={`${sizeClasses[size].icon} ${counts.userReaction === 'star' ? 'fill-yellow-400' : ''}`} />
+          {loading ? (
+            <Loader2 className={`${sizeClasses[size].icon} animate-spin`} />
+          ) : (
+            <Star className={`${sizeClasses[size].icon} ${counts.userReaction === 'star' ? 'fill-yellow-400' : ''}`} />
+          )}
           <span className={sizeClasses[size].text}>{counts.starsCount}</span>
         </button>
 
@@ -132,23 +135,16 @@ const PostReactions: React.FC<PostReactionsProps> = ({
               : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-amber-500/30 hover:text-amber-400'
           }`}
         >
-          <Poop className={`${sizeClasses[size].icon} ${counts.userReaction === 'shit' ? 'fill-amber-400' : ''}`} />
+          {loading ? (
+            <Loader2 className={`${sizeClasses[size].icon} animate-spin`} />
+          ) : (
+            <Poop className={`${sizeClasses[size].icon} ${counts.userReaction === 'shit' ? 'fill-amber-400' : ''}`} />
+          )}
           <span className={sizeClasses[size].text}>{counts.shitsCount}</span>
         </button>
       </div>
 
-      {loading && (
-        <div className="mt-2 w-full">
-          <LoadingBar 
-            text="" 
-            color="blue" 
-            height={3}
-            duration={800}
-          />
-        </div>
-      )}
-
-      {counts.totalCount > 0 && !loading && (
+      {counts.totalCount > 0 && (
         <div className="mt-2">
           <div className="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
             <div

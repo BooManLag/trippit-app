@@ -49,11 +49,12 @@ export const tipsService = {
           throw new Error(`API error: ${response.status}`);
         }
         
-        const tips = await response.json();
+        let tips = await response.json();
         
+        // Handle non-array responses gracefully
         if (!Array.isArray(tips)) {
           console.warn('Response is not an array:', tips);
-          throw new Error('Invalid response format');
+          tips = []; // Convert to empty array instead of throwing error
         }
         
         console.log(`Successfully fetched ${tips.length} tips from Reddit`);
@@ -89,11 +90,14 @@ export const tipsService = {
               });
               
               if (retryResponse.ok) {
-                const retryTips = await retryResponse.json();
-                if (Array.isArray(retryTips)) {
-                  console.log(`Successfully fetched ${retryTips.length} tips after token refresh`);
-                  return retryTips;
+                let retryTips = await retryResponse.json();
+                // Handle non-array responses gracefully in retry as well
+                if (!Array.isArray(retryTips)) {
+                  console.warn('Retry response is not an array:', retryTips);
+                  retryTips = []; // Convert to empty array
                 }
+                console.log(`Successfully fetched ${retryTips.length} tips after token refresh`);
+                return retryTips;
               }
             }
           } catch (refreshError) {

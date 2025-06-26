@@ -15,6 +15,9 @@ import BucketListPage from './pages/BucketListPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 import DiaryPage from './pages/DiaryPage';
 import SharedItinerariesPage from './pages/SharedItinerariesPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
 
 // Components
 import BoltBadge from './components/BoltBadge';
@@ -31,7 +34,13 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       // If user logs out and is on a protected page, redirect to home
-      if (!user && !location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite') && location.pathname !== '/shared-itineraries') {
+      if (!user && !location.pathname.startsWith('/game') && 
+          location.pathname !== '/' && 
+          !location.pathname.startsWith('/accept-invite') && 
+          location.pathname !== '/shared-itineraries' &&
+          location.pathname !== '/about' &&
+          location.pathname !== '/contact' &&
+          location.pathname !== '/terms') {
         navigate('/');
       }
       setLoading(false);
@@ -44,7 +53,13 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         // When user signs out, redirect to home page unless they're on a public page
-        if (!location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite') && location.pathname !== '/shared-itineraries') {
+        if (!location.pathname.startsWith('/game') && 
+            location.pathname !== '/' && 
+            !location.pathname.startsWith('/accept-invite') && 
+            location.pathname !== '/shared-itineraries' &&
+            location.pathname !== '/about' &&
+            location.pathname !== '/contact' &&
+            location.pathname !== '/terms') {
           navigate('/');
         }
       }
@@ -127,6 +142,9 @@ function App() {
             <Route path="/accept-invite" element={<AcceptInvitePage />} />
             <Route path="/diary" element={<DiaryPage />} />
             <Route path="/shared-itineraries" element={<SharedItinerariesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/terms" element={<TermsPage />} />
           </Routes>
         </PageTransition>
       </AuthRedirect>

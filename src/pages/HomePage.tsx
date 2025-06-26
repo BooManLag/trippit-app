@@ -202,15 +202,24 @@ const HomePage: React.FC = () => {
       {/* Animated footer */}
       <footer className={`border-t border-gray-800 py-6 sm:py-8 text-center mobile-padding transform transition-all duration-1000 delay-1500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'} relative z-20`}>
         <nav className="mb-4">
-          {["About", "Contact", "Terms"].map((link, index) => (
-            <a
-              key={index}
-              href={`/${link.toLowerCase()}`}
-              className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs transition-all duration-300 hover:scale-110 inline-block"
-            >
-              {link}
-            </a>
-          ))}
+          <a
+            href="/about"
+            className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs transition-all duration-300 hover:scale-110 inline-block"
+          >
+            About
+          </a>
+          <a
+            href="/contact"
+            className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs transition-all duration-300 hover:scale-110 inline-block"
+          >
+            Contact
+          </a>
+          <a
+            href="/terms"
+            className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs transition-all duration-300 hover:scale-110 inline-block"
+          >
+            Terms
+          </a>
         </nav>
         <p className="outfit-text text-gray-600 text-xs sm:text-sm">
           © Tripp'it 2025 – Travel with a twist.

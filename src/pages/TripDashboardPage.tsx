@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, Loader2, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart, ArrowLeft, Route } from 'lucide-react';
+import { Gamepad2, MapPin, CheckSquare, Calendar, Trophy, Lightbulb, Target, ExternalLink, CheckCircle2, Circle, Star, Zap, Share2, Users, Award, Crown, BookOpen, Heart, ArrowLeft, Route } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
 import AuthModal from '../components/AuthModal';
@@ -12,6 +12,7 @@ import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
 import { invitationService } from '../services/invitationService';
+import LoadingBar from '../components/LoadingBar';
 
 interface TripDetails {
   id: string;
@@ -643,10 +644,14 @@ const TripDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="pixel-text text-blue-400">LOADING...</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <LoadingBar 
+            text="LOADING ADVENTURE DATA..." 
+            color="blue" 
+            duration={3000}
+          />
+          <p className="pixel-text text-blue-400 mt-4 text-center">PREPARING YOUR JOURNEY</p>
         </div>
       </div>
     );
@@ -896,9 +901,12 @@ const TripDashboardPage: React.FC = () => {
           </div>
 
           {loadingDares ? (
-            <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-spin mr-3" />
-              <span className="pixel-text text-red-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
+            <div className="p-4">
+              <LoadingBar 
+                text="LOADING EPIC DARES..." 
+                color="red" 
+                duration={2500}
+              />
             </div>
           ) : totalDares > 0 ? (
             <div>
@@ -1038,9 +1046,12 @@ const TripDashboardPage: React.FC = () => {
           </div>
 
           {loadingTips ? (
-            <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
-              <span className="pixel-text text-blue-400 text-sm sm:text-base">GATHERING WISDOM...</span>
+            <div className="p-4">
+              <LoadingBar 
+                text="GATHERING WISDOM..." 
+                color="yellow" 
+                duration={2500}
+              />
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">

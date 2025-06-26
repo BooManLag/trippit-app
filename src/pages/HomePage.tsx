@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthModal from '../components/AuthModal';
 import { supabase } from '../lib/supabase';
+import LoadingBar from '../components/LoadingBar';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -18,7 +20,10 @@ const HomePage: React.FC = () => {
   };
 
   const handlePlanTrip = async () => {
+    setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    setIsLoading(false);
+    
     if (!user) {
       setShowAuthModal(true);
     } else {
@@ -93,17 +98,27 @@ const HomePage: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
           </button>
 
-          <button
-            onClick={handlePlanTrip}
-            className="pixel-button-secondary w-full group relative overflow-hidden"
-          >
-            <span className="relative z-10 flex items-center justify-center mobile-gap">
-              <span>✈️</span>
-              <span>PLAN MY TRIP</span>
-              <span className="group-hover:animate-bounce">🗺️</span>
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-          </button>
+          {isLoading ? (
+            <div className="w-full">
+              <LoadingBar 
+                text="PREPARING YOUR JOURNEY..." 
+                color="blue" 
+                duration={1500}
+              />
+            </div>
+          ) : (
+            <button
+              onClick={handlePlanTrip}
+              className="pixel-button-secondary w-full group relative overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center justify-center mobile-gap">
+                <span>✈️</span>
+                <span>PLAN MY TRIP</span>
+                <span className="group-hover:animate-bounce">🗺️</span>
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+            </button>
+          )}
         </div>
 
         {/* Animated feature cards with PROPER SPACING */}
@@ -189,12 +204,22 @@ const HomePage: React.FC = () => {
             <p className="outfit-text text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base lg:text-lg leading-relaxed">
               Join thousands of travelers who've survived their trips with style!
             </p>
-            <button
-              onClick={handlePlanTrip}
-              className="pixel-button-primary bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transform hover:scale-105 transition-all duration-300 w-full sm:w-auto"
-            >
-              START YOUR JOURNEY 🌟
-            </button>
+            {isLoading ? (
+              <div className="w-full max-w-md mx-auto">
+                <LoadingBar 
+                  text="PREPARING YOUR JOURNEY..." 
+                  color="purple" 
+                  duration={1500}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={handlePlanTrip}
+                className="pixel-button-primary bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transform hover:scale-105 transition-all duration-300 w-full sm:w-auto"
+              >
+                START YOUR JOURNEY 🌟
+              </button>
+            )}
           </div>
         </div>
       </main>

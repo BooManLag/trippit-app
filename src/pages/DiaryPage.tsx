@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Calendar, MapPin, Cloud, Heart, Share2, Lock, Unlock, Plus, Edit3, Save, X, Users, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
+import LoadingBar from '../components/LoadingBar';
 
 interface DiaryEntry {
   id: string;
@@ -328,9 +329,13 @@ const DiaryPage: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12 sm:py-16">
-            <div className="animate-bounce-in">
-              <BookOpen className="w-8 sm:w-12 h-8 sm:h-12 text-purple-500 animate-spin mr-3" />
-              <span className="pixel-text text-purple-400 text-sm sm:text-base">LOADING DIARY...</span>
+            <div className="w-full max-w-md px-4">
+              <LoadingBar 
+                text="LOADING DIARY..." 
+                color="purple" 
+                duration={2500}
+              />
+              <p className="pixel-text text-purple-400 mt-4 text-center">RETRIEVING YOUR MEMORIES</p>
             </div>
           </div>
         ) : (

@@ -1,79 +1,82 @@
 import React, { useEffect, useState } from 'react';
 
 interface LoadingBarProps {
-  isLoading: boolean;
+  text?: string;
   color?: string;
   height?: number;
+  width?: string;
   duration?: number;
+  className?: string;
 }
 
 const LoadingBar: React.FC<LoadingBarProps> = ({
-  isLoading,
-  color = '#3B82F6', // Default blue color
-  height = 3,
-  duration = 800
+  text = 'LOADING...',
+  color = 'blue',
+  height = 8,
+  width = '100%',
+  duration = 2000,
+  className = '',
 }) => {
   const [progress, setProgress] = useState(0);
-  const [visible, setVisible] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    let progressInterval: NodeJS.Timeout;
-    let completeTimeout: NodeJS.Timeout;
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        // Slow down as we approach 100%
+        const increment = prev < 70 ? 5 : prev < 90 ? 2 : 0.5;
+        const newProgress = Math.min(prev + increment, 100);
+        
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          setIsComplete(true);
+        }
+        
+        return newProgress;
+      });
+    }, duration / 40);
 
-    if (isLoading) {
-      setVisible(true);
-      setProgress(0);
+    return () => clearInterval(interval);
+  }, [duration]);
 
-      // Quickly move to 30%
-      setTimeout(() => {
-        setProgress(30);
-      }, 100);
+  const colorClasses = {
+    blue: 'from-blue-500 to-blue-600',
+    red: 'from-red-500 to-red-600',
+    green: 'from-green-500 to-green-600',
+    yellow: 'from-yellow-500 to-yellow-600',
+    purple: 'from-purple-500 to-purple-600',
+  };
 
-      // Gradually move to 90% (simulating loading)
-      progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + Math.random() * 10;
-        });
-      }, 300);
-    } else if (visible) {
-      // Complete the progress bar
-      setProgress(100);
-      
-      // Hide the bar after animation completes
-      completeTimeout = setTimeout(() => {
-        setVisible(false);
-        setProgress(0);
-      }, duration);
-    }
-
-    return () => {
-      clearInterval(progressInterval);
-      clearTimeout(completeTimeout);
-    };
-  }, [isLoading, duration]);
-
-  if (!visible) return null;
+  const colorClass = colorClasses[color as keyof typeof colorClasses] || colorClasses.blue;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[9999]">
-      <div 
-        className="h-[3px] bg-gray-200 dark:bg-gray-800"
-        style={{ height: `${height}px` }}
-      >
-        <div 
-          className="h-full transition-all ease-out duration-300"
-          style={{ 
-            width: `${progress}%`, 
-            backgroundColor: color,
-            boxShadow: `0 0 8px ${color}`,
-            transition: `width ${progress === 100 ? duration / 2 : duration}ms ease-out`
-          }}
-        />
+    <div className={`flex flex-col items-center ${className}`}>
+      <div className="w-full mb-2">
+        <div className="relative w-full bg-gray-800 rounded-none overflow-hidden" style={{ height: `${height}px` }}>
+          <div 
+            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${colorClass} transition-all duration-300`}
+            style={{ width: `${progress}%` }}
+          >
+            {/* Pixel-style loading blocks */}
+            <div className="absolute inset-0 flex">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div 
+                  key={i}
+                  className="h-full border-r border-r-white/20"
+                  style={{ width: `${100/10}%` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
+      <div className="flex items-center justify-between w-full">
+        <span className="pixel-text text-xs text-gray-400">{Math.round(progress)}%</span>
+        <span className="pixel-text text-xs text-gray-400">{text}</span>
+      </div>
+      {isComplete && (Add commentMore actions
+        <div className="pixel-text text-xs text-green-400 mt-1 animate-pulse">COMPLETE</div>
+      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Filter, Loader2, ExternalLink, ArrowLeft, Search, Lightbulb, Star, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AuthStatus } from '../components/AuthStatus';
+import LoadingBar from '../components/LoadingBar';
 
 interface RedditTip {
   id: string;
@@ -253,11 +254,8 @@ const TipsPage: React.FC = () => {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="pixel-text text-blue-400">LOADING...</p>
-        </div>
+      <div className="min-h-screen">
+        <LoadingBar isLoading={true} />
       </div>
     );
   }
@@ -369,11 +367,11 @@ const TipsPage: React.FC = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex items-center justify-center py-12 sm:py-16">
-            <div className="animate-bounce-in">
-              <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-yellow-500 animate-spin mr-3" />
-              <span className="pixel-text text-yellow-400 text-sm sm:text-base">GATHERING WISDOM...</span>
+          <div className="flex flex-col items-center justify-center py-12 sm:py-16 space-y-4">
+            <div className="w-full max-w-md h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="bg-yellow-500 h-full animate-pulse" style={{ width: '70%' }}></div>
             </div>
+            <span className="pixel-text text-yellow-400 text-sm">GATHERING WISDOM...</span>
           </div>
         )}
 

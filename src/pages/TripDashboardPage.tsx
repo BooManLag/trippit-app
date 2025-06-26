@@ -12,6 +12,7 @@ import { ChecklistItem } from '../types';
 import { defaultChecklist } from '../data/defaultChecklist';
 import daresData from '../data/dares.json';
 import { invitationService } from '../services/invitationService';
+import LoadingBar from '../components/LoadingBar';
 
 interface TripDetails {
   id: string;
@@ -96,11 +97,12 @@ const TripDashboardPage: React.FC = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.warn('Missing Supabase environment variables - tips feature disabled');
-        setTipsError('Configuration missing');
-        setTips([]);
-        return;
+      if (!supabaseUrl) {
+        throw new Error('Missing VITE_SUPABASE_URL environment variable');
+      }
+
+      if (!supabaseAnonKey) {
+        throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
       }
 
       // Check if the URL is a placeholder
@@ -291,14 +293,14 @@ const TripDashboardPage: React.FC = () => {
       console.log('Participants data:', participants);
 
       // Transform the RPC result to match expected format
-      const enrichedParticipants = participants.map((participant: any) => ({
-        user_id: participant.user_id,
-        role: participant.role,
-        joined_at: participant.joined_at,
+      const enrichedParticipants = participants.map((p: any) => ({
+        user_id: p.user_id,
+        role: p.role,
+        joined_at: p.joined_at,
         user: {
-          id: participant.user_id,
-          display_name: participant.user_display_name || participant.user_email?.split('@')[0] || 'Unknown',
-          email: participant.user_email || 'Unknown'
+          id: p.user_id,
+          display_name: p.user_display_name || p.user_email?.split('@')[0] || 'Unknown',
+          email: p.user_email || 'Unknown'
         }
       }));
 
@@ -666,11 +668,8 @@ const TripDashboardPage: React.FC = () => {
 
   if (pageLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="pixel-text text-blue-400">LOADING...</p>
-        </div>
+      <div className="min-h-screen">
+        <LoadingBar isLoading={true} />
       </div>
     );
   }
@@ -920,8 +919,9 @@ const TripDashboardPage: React.FC = () => {
 
           {loadingDares ? (
             <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-red-500 animate-spin mr-3" />
-              <span className="pixel-text text-red-400 text-sm sm:text-base">LOADING EPIC DARES...</span>
+              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div className="bg-red-500 h-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
             </div>
           ) : totalDares > 0 ? (
             <div>
@@ -1061,9 +1061,11 @@ const TripDashboardPage: React.FC = () => {
           </div>
 
           {loadingTips ? (
-            <div className="flex items-center justify-center py-8 sm:py-12">
-              <Loader2 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 animate-spin mr-3" />
-              <span className="pixel-text text-blue-400 text-sm sm:text-base">GATHERING WISDOM...</span>
+            <div className="flex flex-col items-center justify-center py-8 sm:py-12 space-y-4">
+              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div className="bg-yellow-500 h-full animate-pulse" style={{ width: '70%' }}></div>
+              </div>
+              <span className="pixel-text text-yellow-400 text-xs">GATHERING WISDOM...</span>
             </div>
           ) : tips.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">

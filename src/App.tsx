@@ -18,7 +18,7 @@ import SharedItinerariesPage from './pages/SharedItinerariesPage';
 
 // Components
 import BoltBadge from './components/BoltBadge';
-import { Loader2 } from 'lucide-react';
+import LoadingBar from './components/LoadingBar';
 
 // Auth redirect component
 const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
@@ -57,7 +57,7 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="pixel-text text-blue-400">LOADING...</p>
         </div>
       </div>
@@ -79,7 +79,7 @@ const PageTransition: React.FC<{children: React.ReactNode}> = ({ children }) => 
       setIsLoading(true);
       const timer = setTimeout(() => {
         setIsLoading(false);
-      }, 500);
+      }, 800); // Match this with the LoadingBar duration
       
       return () => clearTimeout(timer);
     }
@@ -87,18 +87,12 @@ const PageTransition: React.FC<{children: React.ReactNode}> = ({ children }) => 
     setPrevLocation(location.pathname);
   }, [location.pathname, prevLocation]);
   
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="pixel-text text-blue-400">LOADING...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  return <>{children}</>;
+  return (
+    <>
+      <LoadingBar isLoading={isLoading} />
+      {children}
+    </>
+  );
 };
 
 function App() {

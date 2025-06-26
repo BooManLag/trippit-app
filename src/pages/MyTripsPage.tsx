@@ -7,6 +7,7 @@ import DeleteModal from '../components/DeleteModal';
 import AuthModal from '../components/AuthModal';
 import InvitationModal from '../components/InvitationModal';
 import { useAuth } from '../hooks/useAuth';
+import LoadingBar from '../components/LoadingBar';
 
 interface Trip {
   id: string;
@@ -27,6 +28,7 @@ const MyTripsPage: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -39,6 +41,13 @@ const MyTripsPage: React.FC = () => {
 
   useEffect(() => {
     setIsVisible(true);
+    setPageLoading(true);
+    
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchTrips = async () => {
@@ -225,12 +234,22 @@ const MyTripsPage: React.FC = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || pageLoading) {
+    return (
+      <div className="min-h-screen">
+        <LoadingBar isLoading={true} />
+      </div>
+    );
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-bounce-in">
-          <Loader2 className="w-8 sm:w-12 h-8 sm:h-12 text-blue-500 animate-spin" />
-          <p className="pixel-text text-blue-400 mt-4 text-sm sm:text-base">LOADING ADVENTURES...</p>
+        <div className="w-full max-w-md">
+          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-4">
+            <div className="bg-blue-500 h-full animate-pulse" style={{ width: '70%' }}></div>
+          </div>
+          <p className="pixel-text text-blue-400 text-center">LOADING ADVENTURES...</p>
         </div>
       </div>
     );

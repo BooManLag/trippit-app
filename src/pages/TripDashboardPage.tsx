@@ -68,7 +68,6 @@ const TripDashboardPage: React.FC = () => {
   const [tipsError, setTipsError] = useState<string | null>(null);
   const [tripOwner, setTripOwner] = useState<{id: string, display_name?: string, email?: string} | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
 
   // Badge tracking hook
   const { checkAllBadges, trackDareCompletion, trackChecklistCompletion } = useBadgeTracking(
@@ -102,21 +101,6 @@ const TripDashboardPage: React.FC = () => {
         setTipsError('Configuration incomplete');
         setTips([]);
         return;
-      }
-
-      // First, try to refresh the Reddit token to ensure we have a valid one
-      try {
-        console.log('Refreshing Reddit token...');
-        await fetch(`${supabaseUrl}/functions/v1/refresh-reddit-token`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Content-Type': 'application/json',
-          }
-        });
-        console.log('Token refresh request sent');
-      } catch (tokenError) {
-        console.warn('Token refresh failed, but continuing with tips request:', tokenError);
       }
 
       const functionUrl = `${supabaseUrl}/functions/v1/get-reddit-tips`;
@@ -428,7 +412,6 @@ const TripDashboardPage: React.FC = () => {
 
   const fetchTripDetails = async () => {
     try {
-      setPageLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
 
@@ -544,7 +527,6 @@ const TripDashboardPage: React.FC = () => {
       navigate('/my-trips');
     } finally {
       setLoading(false);
-      setPageLoading(false);
     }
   };
 
@@ -659,7 +641,7 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  if (pageLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

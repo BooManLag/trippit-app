@@ -74,7 +74,7 @@ const LoadingBar: React.FC<LoadingBarProps> = ({
         <span className="pixel-text text-xs text-gray-400">{Math.round(progress)}%</span>
         <span className="pixel-text text-xs text-gray-400">{text}</span>
       </div>
-      {isComplete && (Add commentMore actions
+      {isComplete && (
         <div className="pixel-text text-xs text-green-400 mt-1 animate-pulse">COMPLETE</div>
       )}
     </div>

@@ -11,6 +11,7 @@ interface Location {
   city: string;
   country: string;
   population?: number;
+  isCountry?: boolean;
 }
 
 const CreateTripPage: React.FC = () => {
@@ -29,9 +30,6 @@ const CreateTripPage: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
-  const [countrySearchTerm, setCountrySearchTerm] = useState('');
-  const [filteredCountries, setFilteredCountries] = useState<string[]>([]);
-  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -60,30 +58,35 @@ const CreateTripPage: React.FC = () => {
       const results: Location[] = [];
       const searchLower = debouncedSearch.toLowerCase();
 
-      // First try to match cities
+      // First check if search matches any country names
+      const matchedCountries = Object.keys(countries).filter(country => 
+        country.toLowerCase().includes(searchLower)
+      );
+
+      // Add countries to results with a flag to identify them
+      matchedCountries.forEach(country => {
+        results.push({ 
+          city: '', 
+          country, 
+          isCountry: true 
+        });
+        
+        // Add top cities from this country (limit to 2 per country)
+        const topCities = countries[country].slice(0, 2);
+        topCities.forEach(city => {
+          results.push({ city, country });
+        });
+      });
+
+      // Then check for city matches
       for (const country in countries) {
         countries[country].forEach((city: string) => {
-          if (city.toLowerCase().includes(searchLower)) {
+          if (city.toLowerCase().includes(searchLower) && 
+              !results.some(loc => loc.city === city && loc.country === country)) {
             results.push({ city, country });
           }
         });
       }
-
-      // If we're searching for a country, add its major cities
-      const countryMatches = Object.keys(countries).filter(country => 
-        country.toLowerCase().includes(searchLower)
-      );
-
-      countryMatches.forEach(country => {
-        // Add top cities from this country (limit to 3 per country)
-        const topCities = countries[country].slice(0, 3);
-        topCities.forEach(city => {
-          // Avoid duplicates
-          if (!results.some(loc => loc.city === city && loc.country === country)) {
-            results.push({ city, country });
-          }
-        });
-      });
 
       setLocations(results.slice(0, 10));
       setShowDropdown(true);
@@ -93,34 +96,18 @@ const CreateTripPage: React.FC = () => {
     }
   }, [debouncedSearch]);
 
-  // Filter countries based on search term
-  useEffect(() => {
-    if (countrySearchTerm.length < 1) {
-      setFilteredCountries([]);
-      return;
-    }
-
-    const searchLower = countrySearchTerm.toLowerCase();
-    const matches = Object.keys(countries).filter(country => 
-      country.toLowerCase().includes(searchLower)
-    );
-
-    setFilteredCountries(matches.slice(0, 10));
-    setShowCountryDropdown(true);
-  }, [countrySearchTerm]);
-
   const handleLocationSelect = (location: Location) => {
-    setSelectedLocation(location);
-    setSearchTerm(`${location.city}, ${location.country}`);
+    // If it's a country, use the first city from that country
+    if (location.isCountry) {
+      const firstCity = countries[location.country][0];
+      setSelectedLocation({ city: firstCity, country: location.country });
+      setSearchTerm(`${firstCity}, ${location.country}`);
+    } else {
+      setSelectedLocation(location);
+      setSearchTerm(`${location.city}, ${location.country}`);
+    }
     setShowDropdown(false);
     setError(null);
-  };
-
-  const handleCountrySelect = (country: string) => {
-    // Get the first major city from this country
-    const city = countries[country][0];
-    handleLocationSelect({ city, country });
-    setShowCountryDropdown(false);
   };
 
   const validateManualLocation = (input: string): Location | null => {
@@ -138,6 +125,16 @@ const CreateTripPage: React.FC = () => {
     if (parts.length === 1 && parts[0]) {
       const cityName = parts[0].toLowerCase();
       
+      // Check if it's a country name
+      if (countries[parts[0]]) {
+        const firstCity = countries[parts[0]][0];
+        return {
+          city: firstCity,
+          country: parts[0]
+        };
+      }
+      
+      // Check if it's a city name
       for (const country in countries) {
         const cities = countries[country];
         const matchingCity = cities.find((city: string) => 
@@ -301,7 +298,7 @@ const CreateTripPage: React.FC = () => {
                     setTimeout(() => setShowDropdown(false), 200);
                   }}
                   className="w-full input-pixel pr-12"
-                  placeholder="Enter destination (e.g., Paris, France) or search..."
+                  placeholder="Enter city or country (e.g., Paris, France)"
                   required
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -320,14 +317,26 @@ const CreateTripPage: React.FC = () => {
                       onClick={() => handleLocationSelect(location)}
                     >
                       <div className="flex items-center gap-3">
-                        <MapPin className="w-4 h-4 text-blue-400 group-hover:text-blue-300" />
+                        {location.isCountry ? (
+                          <Globe className="w-4 h-4 text-purple-400 group-hover:text-purple-300" />
+                        ) : (
+                          <MapPin className="w-4 h-4 text-blue-400 group-hover:text-blue-300" />
+                        )}
                         <div>
-                          <div className="font-medium text-white text-sm sm:text-base group-hover:text-blue-300 transition-colors">
-                            {location.city}
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                            {location.country}
-                          </div>
+                          {location.isCountry ? (
+                            <div className="font-medium text-white text-sm sm:text-base group-hover:text-purple-300 transition-colors">
+                              {location.country} (Country)
+                            </div>
+                          ) : (
+                            <>
+                              <div className="font-medium text-white text-sm sm:text-base group-hover:text-blue-300 transition-colors">
+                                {location.city}
+                              </div>
+                              <div className="text-xs sm:text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
+                                {location.country}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -335,56 +344,9 @@ const CreateTripPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Country Search */}
-              <div className="mt-4">
-                <label className="block pixel-text text-xs sm:text-sm mb-3 text-blue-400 glow-text">
-                  🌎 OR SEARCH BY COUNTRY
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={countrySearchTerm}
-                    onChange={(e) => {
-                      setCountrySearchTerm(e.target.value);
-                      setError(null);
-                    }}
-                    onFocus={() => setShowCountryDropdown(true)}
-                    onBlur={() => {
-                      setTimeout(() => setShowCountryDropdown(false), 200);
-                    }}
-                    className="w-full input-pixel pr-12"
-                    placeholder="Search for a country..."
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Search className="w-4 sm:w-5 h-4 sm:h-5 text-blue-500 animate-pulse" />
-                  </div>
-                </div>
-
-                {/* Country Dropdown */}
-                {showCountryDropdown && filteredCountries.length > 0 && (
-                  <div className="absolute z-10 w-full mt-2 bg-gray-800 border-2 border-blue-500/30 max-h-60 overflow-auto animate-slide-in-up">
-                    {filteredCountries.map((country, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-all duration-300 border-b border-gray-700 last:border-b-0 group"
-                        onClick={() => handleCountrySelect(country)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Globe className="w-4 h-4 text-blue-400 group-hover:text-blue-300" />
-                          <div className="font-medium text-white text-sm sm:text-base group-hover:text-blue-300 transition-colors">
-                            {country}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* Helper text */}
               <div className="mt-2 text-xs text-gray-500">
-                💡 Type to search our database or enter manually in format "City, Country"
+                💡 Search by city or country name - you can select countries to see their major cities
               </div>
             </div>
 

@@ -27,12 +27,12 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [showAddActivity, setShowAddActivity] = useState<number | null>(null);
   const [showApiKeyInfo, setShowApiKeyInfo] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [currentExportPage, setCurrentExportPage] = useState(0);
   const [totalExportPages, setTotalExportPages] = useState(1);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [exportError, setExportError] = useState<string | null>(null);
 
   const [preferences, setPreferences] = useState<ItineraryPreferences>({
     budget: 'mid-range',
@@ -218,6 +218,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         } catch (canvasError) {
           console.error(`Error capturing page ${page + 1}:`, canvasError);
           setExportError(`Failed to capture page ${page + 1}. Please try again.`);
+          throw canvasError;
         } finally {
           // Reset display style
           exportPreview.style.display = 'none';
@@ -250,7 +251,7 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
       }, 1000);
     } catch (error) {
       console.error('Error exporting images:', error);
-      setExportError('Failed to export itinerary. Please try again.');
+      setExportError('Failed to export itinerary. Please try again or take screenshots manually.');
       setExportLoading(false);
     }
   };

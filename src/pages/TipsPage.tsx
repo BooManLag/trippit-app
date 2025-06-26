@@ -21,15 +21,23 @@ const TipsPage: React.FC = () => {
   const tripId = searchParams.get('tripId');
   
   const [redditTips, setRedditTips] = useState<RedditTip[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [trip, setTrip] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     setIsVisible(true);
+    setPageLoading(true);
+    
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -136,6 +144,17 @@ const TipsPage: React.FC = () => {
     };
     return colors[category] || 'text-blue-400';
   };
+
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="pixel-text text-blue-400">LOADING...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white mobile-padding py-6 sm:py-8 lg:py-12 relative overflow-hidden">

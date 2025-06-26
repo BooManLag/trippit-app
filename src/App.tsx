@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 
@@ -18,11 +18,13 @@ import SharedItinerariesPage from './pages/SharedItinerariesPage';
 
 // Components
 import BoltBadge from './components/BoltBadge';
+import { Loader2 } from 'lucide-react';
 
 // Auth redirect component
 const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -32,6 +34,7 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
       if (!user && !location.pathname.startsWith('/game') && location.pathname !== '/' && !location.pathname.startsWith('/accept-invite') && location.pathname !== '/shared-itineraries') {
         navigate('/');
       }
+      setLoading(false);
     };
     
     // Check auth on mount
@@ -49,6 +52,45 @@ const AuthRedirect: React.FC<{children: React.ReactNode}> = ({ children }) => {
     
     return () => subscription.unsubscribe();
   }, [navigate, location.pathname]);
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="pixel-text text-blue-400">LOADING...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
+};
+
+// Page transition wrapper
+const PageTransition: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="pixel-text text-blue-400">LOADING...</p>
+        </div>
+      </div>
+    );
+  }
   
   return <>{children}</>;
 };
@@ -71,20 +113,22 @@ function App() {
       <AuthRedirect>
         {/* Only show BoltBadge on the home page */}
         {isHomePage && <BoltBadge />}
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/create-trip" element={<CreateTripPage />} />
-          <Route path="/trip-created" element={<TripCreatedPage />} />
-          <Route path="/my-trips" element={<MyTripsPage />} />
-          <Route path="/trip/:tripId" element={<TripDashboardPage />} />
-          <Route path="/game" element={<GamePage />} />
-          <Route path="/tips" element={<TipsPage />} />
-          <Route path="/checklist" element={<ChecklistPage />} />
-          <Route path="/bucket-list" element={<BucketListPage />} />
-          <Route path="/accept-invite" element={<AcceptInvitePage />} />
-          <Route path="/diary" element={<DiaryPage />} />
-          <Route path="/shared-itineraries" element={<SharedItinerariesPage />} />
-        </Routes>
+        <PageTransition>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/create-trip" element={<CreateTripPage />} />
+            <Route path="/trip-created" element={<TripCreatedPage />} />
+            <Route path="/my-trips" element={<MyTripsPage />} />
+            <Route path="/trip/:tripId" element={<TripDashboardPage />} />
+            <Route path="/game" element={<GamePage />} />
+            <Route path="/tips" element={<TipsPage />} />
+            <Route path="/checklist" element={<ChecklistPage />} />
+            <Route path="/bucket-list" element={<BucketListPage />} />
+            <Route path="/accept-invite" element={<AcceptInvitePage />} />
+            <Route path="/diary" element={<DiaryPage />} />
+            <Route path="/shared-itineraries" element={<SharedItinerariesPage />} />
+          </Routes>
+        </PageTransition>
       </AuthRedirect>
     </div>
   );

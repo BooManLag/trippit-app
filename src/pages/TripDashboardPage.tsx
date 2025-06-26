@@ -68,6 +68,7 @@ const TripDashboardPage: React.FC = () => {
   const [tipsError, setTipsError] = useState<string | null>(null);
   const [tripOwner, setTripOwner] = useState<{id: string, display_name?: string, email?: string} | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   // Badge tracking hook
   const { checkAllBadges, trackDareCompletion, trackChecklistCompletion } = useBadgeTracking(
@@ -412,6 +413,7 @@ const TripDashboardPage: React.FC = () => {
 
   const fetchTripDetails = async () => {
     try {
+      setPageLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
 
@@ -527,6 +529,7 @@ const TripDashboardPage: React.FC = () => {
       navigate('/my-trips');
     } finally {
       setLoading(false);
+      setPageLoading(false);
     }
   };
 
@@ -641,7 +644,7 @@ const TripDashboardPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -287,12 +287,12 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    SENDING...
+                    <span>SENDING...</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    SEND INVITATION
+                    <span>SEND INVITATION</span>
                   </>
                 )}
               </button>

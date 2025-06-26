@@ -31,6 +31,8 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [totalExportPages, setTotalExportPages] = useState(1);
   const itineraryRef = useRef<HTMLDivElement>(null);
   const exportPreviewRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const [preferences, setPreferences] = useState<ItineraryPreferences>({
     budget: 'mid-range',
@@ -177,38 +179,49 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
     
     try {
       setExportLoading(true);
+      setExportProgress(0);
+      setExportError(null);
       
       // Create an array to store all the image data URLs
       const imageDataUrls: string[] = [];
       
       // Export each page
       for (let page = 0; page < totalExportPages; page++) {
+        setExportProgress(Math.round((page / totalExportPages) * 50)); // First half of progress is rendering
+        
         const exportPreview = exportPreviewRefs.current[page];
         if (!exportPreview) continue;
         
         // Make sure the export preview is visible during capture
-        const originalDisplay = exportPreview.style.display;
         exportPreview.style.display = 'block';
         
         // Wait a moment for the DOM to update
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        const canvas = await html2canvas(exportPreview, {
-          scale: 2,
-          backgroundColor: '#000000',
-          useCORS: true,
-          logging: false,
-          allowTaint: true,
-          // Ensure we capture the full height of the content
-          height: exportPreview.scrollHeight,
-          windowHeight: exportPreview.scrollHeight
-        });
-        
-        // Reset display style
-        exportPreview.style.display = originalDisplay;
-        
-        // Add the image data URL to our array
-        imageDataUrls.push(canvas.toDataURL('image/png'));
+        try {
+          const canvas = await html2canvas(exportPreview, {
+            scale: 2,
+            backgroundColor: '#000000',
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            // Ensure we capture the full height of the content
+            height: exportPreview.scrollHeight,
+            windowHeight: exportPreview.scrollHeight
+          });
+          
+          // Add the image data URL to our array
+          imageDataUrls.push(canvas.toDataURL('image/png'));
+          
+          // Update progress
+          setExportProgress(50 + Math.round((page + 1) / totalExportPages * 50)); // Second half is saving
+        } catch (canvasError) {
+          console.error(`Error capturing page ${page + 1}:`, canvasError);
+          setExportError(`Failed to capture page ${page + 1}. Please try again.`);
+        } finally {
+          // Reset display style
+          exportPreview.style.display = 'none';
+        }
       }
       
       // Download each image
@@ -220,17 +233,24 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
         
         link.download = fileName;
         link.href = imageDataUrls[i];
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         
         // Add a small delay between downloads to prevent browser issues
         if (i < imageDataUrls.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
+      
+      setExportProgress(100);
+      setTimeout(() => {
+        setExportLoading(false);
+        setExportProgress(0);
+      }, 1000);
     } catch (error) {
       console.error('Error exporting images:', error);
-      alert('Failed to export itinerary. Please try again.');
-    } finally {
+      setExportError('Failed to export itinerary. Please try again.');
       setExportLoading(false);
     }
   };
@@ -430,6 +450,47 @@ const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Export Progress */}
+            {exportLoading && (
+              <div className="pixel-card bg-blue-500/10 border-blue-500/20 mb-6">
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="pixel-text text-xs text-blue-400">EXPORTING ITINERARY</span>
+                    <span className="pixel-text text-xs text-blue-400">{exportProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-blue-500 h-full transition-all duration-300"
+                      style={{ width: `${exportProgress}%` }}
+                    />
+                  </div>
+                  <p className="outfit-text text-xs text-gray-400 mt-1">
+                    {exportProgress < 50 
+                      ? "Preparing images..." 
+                      : exportProgress < 100 
+                        ? "Generating download..." 
+                        : "Download complete!"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Export Error */}
+            {exportError && (
+              <div className="pixel-card bg-red-500/10 border-red-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="pixel-text text-red-400 text-sm mb-2">EXPORT FAILED</h3>
+                    <p className="outfit-text text-sm text-gray-300">{exportError}</p>
+                    <p className="outfit-text text-xs text-gray-400 mt-2">
+                      Try again or take screenshots manually if the problem persists.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* API Key Info Banner */}
             {showApiKeyInfo && (

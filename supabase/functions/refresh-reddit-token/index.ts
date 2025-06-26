@@ -32,6 +32,20 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || (
 // Initialize Supabase client with service role key
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function validateRedditCredentials(): { valid: boolean; missing: string[] } {
+  const missing = [];
+  
+  if (!REDDIT_USERNAME) missing.push('REDDIT_USERNAME');
+  if (!REDDIT_PASSWORD) missing.push('REDDIT_PASSWORD');
+  if (!REDDIT_CLIENT_ID) missing.push('REDDIT_CLIENT_ID');
+  if (!REDDIT_CLIENT_SECRET) missing.push('REDDIT_CLIENT_SECRET');
+  
+  return {
+    valid: missing.length === 0,
+    missing
+  };
+}
+
 async function getStoredToken(): Promise<{ access_token: string; expires_at: string } | null> {
   try {
     const { data, error } = await supabase
@@ -116,21 +130,29 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
   try {
     console.log('🔑 Getting new Reddit token with password grant...');
     
-    // Validate that we have all required credentials
-    if (!REDDIT_USERNAME || !REDDIT_PASSWORD || !REDDIT_CLIENT_ID || !REDDIT_CLIENT_SECRET) {
-      console.error('❌ Missing Reddit credentials in environment variables');
-      return null;
+    // Validate credentials first
+    const credentialCheck = validateRedditCredentials();
+    if (!credentialCheck.valid) {
+      console.error('❌ Missing Reddit credentials:', credentialCheck.missing);
+      return {
+        error: 'missing_credentials',
+        error_description: `Missing required environment variables: ${credentialCheck.missing.join(', ')}`
+      };
     }
     
     const auth = btoa(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`);
     const params = new URLSearchParams();
     params.append('grant_type', 'password');
-    params.append('username', REDDIT_USERNAME);
-    params.append('password', REDDIT_PASSWORD);
-    params.append('scope', 'read');
-    // Note: Removed 'duration=permanent' as it's not valid for password grant
+    params.append('username', REDDIT_USERNAME!);
+    params.append('password', REDDIT_PASSWORD!);
+    params.append('scope', 'read submit');
 
     console.log('📡 Making password grant request to Reddit API...');
+    console.log('🔍 Request details:', {
+      username: REDDIT_USERNAME,
+      clientId: REDDIT_CLIENT_ID?.substring(0, 8) + '...',
+      scope: 'read submit'
+    });
 
     const response = await fetch('https://www.reddit.com/api/v1/access_token', {
       method: 'POST',
@@ -147,7 +169,25 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Password grant failed: ${response.status} - ${errorText}`);
-      return null;
+      
+      // Parse common Reddit API errors
+      let errorType = 'unknown_error';
+      let errorDescription = `HTTP ${response.status}: ${errorText}`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error) {
+          errorType = errorData.error;
+          errorDescription = errorData.error_description || errorData.message || errorDescription;
+        }
+      } catch (e) {
+        // Keep default error description if JSON parsing fails
+      }
+      
+      return {
+        error: errorType,
+        error_description: errorDescription
+      };
     }
 
     const data: RedditTokenResponse = await response.json();
@@ -164,24 +204,30 @@ async function getNewTokenWithPassword(): Promise<RedditTokenResponse | null> {
     // Check for API errors
     if (data.error) {
       console.error(`❌ Reddit API error during password grant: ${data.error} - ${data.error_description}`);
-      return null;
+      return data;
     }
 
     // Validate that we got an access token
     if (!data.access_token) {
       console.error('❌ No access_token in password grant response');
-      return null;
+      return {
+        error: 'no_access_token',
+        error_description: 'Reddit API did not return an access token'
+      };
     }
 
     console.log(`✅ Successfully obtained new token with password grant`);
     return data;
   } catch (error) {
     console.error('💥 Error getting new token:', error);
-    return null;
+    return {
+      error: 'network_error',
+      error_description: `Network error: ${error.message}`
+    };
   }
 }
 
-async function ensureValidToken(): Promise<string | null> {
+async function ensureValidToken(): Promise<{ token: string | null; error?: string; details?: string }> {
   try {
     // First, check if we have a stored token
     const storedToken = await getStoredToken();
@@ -193,30 +239,60 @@ async function ensureValidToken(): Promise<string | null> {
       // If token is still valid (with 5 minute buffer), use it
       if (expiresAt.getTime() > now.getTime() + (5 * 60 * 1000)) {
         console.log('✅ Using valid stored token');
-        return storedToken.access_token;
+        return { token: storedToken.access_token };
       }
     }
     
     // No valid token or token expired, get new token with password
-    // (Password grant doesn't provide refresh tokens, so we always get a new one)
     console.log('🆕 Getting new token with password grant...');
     const newToken = await getNewTokenWithPassword();
     
-    if (newToken && newToken.access_token) {
+    if (!newToken) {
+      return {
+        token: null,
+        error: 'Failed to get new token',
+        details: 'Reddit API request failed'
+      };
+    }
+    
+    if (newToken.error) {
+      return {
+        token: null,
+        error: newToken.error,
+        details: newToken.error_description
+      };
+    }
+    
+    if (newToken.access_token) {
       const stored = await storeToken(
         newToken.access_token,
         newToken.expires_in || 3600
       );
       
       if (stored) {
-        return newToken.access_token;
+        return { token: newToken.access_token };
+      } else {
+        // Return token even if storage failed
+        return { 
+          token: newToken.access_token,
+          error: 'storage_failed',
+          details: 'Token obtained but failed to store in database'
+        };
       }
     }
     
-    return null;
+    return {
+      token: null,
+      error: 'invalid_response',
+      details: 'Reddit API response was invalid'
+    };
   } catch (error) {
     console.error('💥 Error ensuring valid token:', error);
-    return null;
+    return {
+      token: null,
+      error: 'critical_error',
+      details: error.message
+    };
   }
 }
 
@@ -228,16 +304,82 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const validToken = await ensureValidToken();
-    
-    if (!validToken) {
+    // First, validate that we have the required credentials
+    const credentialCheck = validateRedditCredentials();
+    if (!credentialCheck.valid) {
+      console.error('❌ Missing Reddit API credentials:', credentialCheck.missing);
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Failed to obtain valid Reddit access token' 
+          error: 'Missing Reddit API credentials',
+          details: `Please set the following Supabase secrets: ${credentialCheck.missing.join(', ')}`,
+          setup_instructions: {
+            message: 'To fix this error, you need to set Reddit API credentials as Supabase secrets',
+            steps: [
+              '1. Go to your Supabase project dashboard',
+              '2. Navigate to Settings > Edge Functions',
+              '3. Add the following secrets:',
+              '   - REDDIT_USERNAME: Your Reddit username',
+              '   - REDDIT_PASSWORD: Your Reddit password',
+              '   - REDDIT_CLIENT_ID: Your Reddit app client ID',
+              '   - REDDIT_CLIENT_SECRET: Your Reddit app client secret',
+              '4. Make sure your Reddit account does NOT have 2FA enabled',
+              '5. Create a Reddit app at https://www.reddit.com/prefs/apps/ (type: script)'
+            ]
+          }
         }),
         {
-          status: 500,
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const result = await ensureValidToken();
+    
+    if (!result.token) {
+      console.error('❌ Failed to obtain valid token:', result.error, result.details);
+      
+      // Provide specific error messages based on the error type
+      let userMessage = 'Failed to obtain valid Reddit access token';
+      let statusCode = 500;
+      
+      if (result.error === 'missing_credentials') {
+        userMessage = 'Reddit API credentials are not configured';
+        statusCode = 400;
+      } else if (result.error === 'invalid_grant') {
+        userMessage = 'Reddit credentials are invalid. Please check username/password and ensure 2FA is disabled.';
+        statusCode = 401;
+      } else if (result.error === 'unauthorized_client') {
+        userMessage = 'Reddit app credentials are invalid. Please check client ID and secret.';
+        statusCode = 401;
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: userMessage,
+          error_type: result.error,
+          details: result.details,
+          troubleshooting: {
+            common_issues: [
+              'Reddit account has 2FA enabled (not supported)',
+              'Incorrect username or password',
+              'Invalid Reddit app credentials',
+              'Reddit account is suspended or banned',
+              'Reddit app is not configured as "script" type'
+            ],
+            next_steps: [
+              'Verify Reddit credentials in Supabase secrets',
+              'Ensure Reddit account has 2FA disabled',
+              'Check Reddit app configuration at https://www.reddit.com/prefs/apps/',
+              'Try creating a new Reddit app if issues persist'
+            ]
+          }
+        }),
+        {
+          status: statusCode,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
@@ -249,8 +391,9 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: 'Reddit token is valid and ready',
-        token_preview: `${validToken.substring(0, 20)}...`,
-        timestamp: new Date().toISOString()
+        token_preview: `${result.token.substring(0, 20)}...`,
+        timestamp: new Date().toISOString(),
+        warning: result.error ? `Warning: ${result.error} - ${result.details}` : undefined
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -264,7 +407,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: false, 
         error: 'Critical error during token management',
-        details: error.message
+        details: error.message,
+        help: 'This is likely a configuration issue. Please check your Reddit API credentials in Supabase secrets.'
       }),
       {
         status: 500,

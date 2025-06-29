@@ -218,7 +218,7 @@ const HomePage: React.FC = () => {
             href="/terms"
             className="pixel-text text-gray-400 hover:text-white mx-2 sm:mx-4 text-xs transition-all duration-300 hover:scale-110 inline-block"
           >
-            Terms
+            Reddit
           </a>
         </nav>
         <p className="outfit-text text-gray-600 text-xs sm:text-sm">
